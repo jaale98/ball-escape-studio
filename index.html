@@ -10,7 +10,7 @@
     <aside class="panel">
       <header>
         <h1>Ball Escape Studio</h1>
-        <p class="muted">Phase 1 · deterministic sim + MP4 export</p>
+        <p class="muted">Deterministic ball-physics shorts</p>
       </header>
 
       <label class="field">
@@ -46,10 +46,25 @@
       <div id="progress" class="progress" hidden><div id="bar"></div><span id="progress-label"></span></div>
       <p id="export-msg" class="msg"></p>
 
+      <details id="tweaks" open>
+        <summary>Tweak</summary>
+        <p id="tweak-count" class="muted"></p>
+        <div class="row buttons">
+          <button id="save" title="Write these values into the scene file">Save to file</button>
+          <button id="reset-tweaks">Reset</button>
+        </div>
+        <div id="sliders"></div>
+      </details>
+
       <details>
         <summary>Scene file</summary>
         <p class="muted">Edit <code id="scene-path">scenes/…</code> and the preview reloads. Seed changes here are not saved to the file.</p>
         <pre id="scene-json"></pre>
+      </details>
+      <details>
+        <summary>Resolved scene</summary>
+        <p class="muted">After extends, modifiers, prefabs and defaults: exactly what the engine runs.</p>
+        <pre id="resolved-json"></pre>
       </details>
       <pre id="error" class="error" hidden></pre>
     </aside>

@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "sim": "tsx scripts/sim.ts",
-    "test": "tsx scripts/determinism.ts"
+    "test": "tsx scripts/determinism.ts",
+    "schema": "tsx scripts/schema.ts"
   },
   "dependencies": {
     "mp4-muxer": "^5.2.2",
@@ -21,6 +22,7 @@
     "@types/node": "^22.20.5",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
-    "vite": "^6.4.6"
+    "vite": "^6.4.6",
+    "zod-to-json-schema": "^3.25.2"
   }
 }

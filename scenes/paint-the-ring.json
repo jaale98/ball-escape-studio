@@ -1,0 +1,46 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Paint the ring",
+  "seed": 1,
+  "modifiers": [
+    "paint",
+    "zero-g"
+  ],
+  "duration": {
+    "max": 30,
+    "endOn": "never"
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 440,
+      "thickness": 12,
+      "spin": 0.3,
+      "gaps": []
+    },
+    {
+      "type": "ball",
+      "count": 3,
+      "radius": 30,
+      "speed": 900,
+      "spread": 100,
+      "colors": [
+        "#ff4d6d",
+        "#4dd4ff",
+        "#ffd23f"
+      ]
+    }
+  ],
+  "style": {
+    "background": "#101018"
+  },
+  "audio": {
+    "melody": "ode-to-joy",
+    "instrument": "bell",
+    "volume": 0.6
+  },
+  "overlay": {
+    "title": "Which color covers more?",
+    "counter": "none"
+  }
+}

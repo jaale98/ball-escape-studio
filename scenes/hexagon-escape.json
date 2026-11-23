@@ -1,0 +1,44 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Hexagon escape",
+  "seed": 272,
+  "duration": {
+    "max": 60,
+    "endOn": "firstEscape",
+    "tail": 2.5
+  },
+  "world": {
+    "gravity": 900
+  },
+  "entities": [
+    {
+      "type": "polygon",
+      "sides": 6,
+      "radius": 440,
+      "thickness": 14,
+      "spin": 0.7,
+      "open": [
+        0
+      ],
+      "gap": 80
+    },
+    {
+      "type": "ball",
+      "radius": 24,
+      "speed": 950,
+      "color": "#c77dff"
+    }
+  ],
+  "style": {
+    "trail": 0.85,
+    "ringColor": "#e6d3ff"
+  },
+  "audio": {
+    "melody": "pentatonic",
+    "instrument": "bell"
+  },
+  "overlay": {
+    "title": "Find the way out",
+    "counter": "bounces"
+  }
+}

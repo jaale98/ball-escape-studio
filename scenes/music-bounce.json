@@ -1,0 +1,42 @@
+{
+  "$schema": "../scene.schema.json",
+  "extends": "ring-escape",
+  "title": "Music bounce",
+  "seed": 245,
+  "modifiers": [
+    {
+      "use": "speed-up",
+      "factor": 1.01,
+      "max": 1600
+    }
+  ],
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 430,
+      "thickness": 12,
+      "spin": 0.6,
+      "gaps": [
+        {
+          "at": 0,
+          "width": 20
+        }
+      ]
+    },
+    {
+      "type": "ball",
+      "radius": 26,
+      "speed": 850,
+      "color": "#ffd23f"
+    }
+  ],
+  "audio": {
+    "melody": "midi:minuet-in-g",
+    "chords": true,
+    "instrument": "bell"
+  },
+  "overlay": {
+    "title": "Every bounce plays the next note",
+    "subtitle": "Minuet in G"
+  }
+}

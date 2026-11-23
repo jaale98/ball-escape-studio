@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "$schema": "../scene.schema.json",
   "title": "Nested rings",
   "seed": 1,
   "duration": {
@@ -12,69 +12,22 @@
   },
   "entities": [
     {
-      "type": "ring",
-      "radius": 150,
-      "thickness": 10,
+      "type": "nested",
+      "count": 5,
+      "inner": 150,
+      "outer": 470,
       "spin": 1.6,
-      "gaps": [
-        {
-          "at": 0,
-          "width": 40
-        }
-      ],
-      "color": "#ff4d6d"
-    },
-    {
-      "type": "ring",
-      "radius": 230,
-      "thickness": 10,
-      "spin": -1.3,
-      "gaps": [
-        {
-          "at": 120,
-          "width": 34
-        }
-      ],
-      "color": "#ff9f1c"
-    },
-    {
-      "type": "ring",
-      "radius": 310,
-      "thickness": 10,
-      "spin": 1.1,
-      "gaps": [
-        {
-          "at": 240,
-          "width": 30
-        }
-      ],
-      "color": "#ffd23f"
-    },
-    {
-      "type": "ring",
-      "radius": 390,
-      "thickness": 10,
-      "spin": -0.9,
-      "gaps": [
-        {
-          "at": 60,
-          "width": 26
-        }
-      ],
-      "color": "#7cff6b"
-    },
-    {
-      "type": "ring",
-      "radius": 470,
-      "thickness": 10,
-      "spin": 0.7,
-      "gaps": [
-        {
-          "at": 180,
-          "width": 22
-        }
-      ],
-      "color": "#4dd4ff"
+      "spinFalloff": 0.8,
+      "gapWidth": 40,
+      "gapShrink": 4.5,
+      "gapOffset": 120,
+      "colors": [
+        "#ff4d6d",
+        "#ff9f1c",
+        "#ffd23f",
+        "#7cff6b",
+        "#4dd4ff"
+      ]
     },
     {
       "type": "ball",
@@ -83,7 +36,6 @@
       "color": "#ffffff"
     }
   ],
-  "rules": [],
   "style": {
     "trail": 0.8
   },

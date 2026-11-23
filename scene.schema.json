@@ -1,0 +1,1365 @@
+{
+  "$ref": "#/definitions/Scene",
+  "definitions": {
+    "Scene": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "number",
+          "const": 1,
+          "default": 1
+        },
+        "title": {
+          "type": "string",
+          "default": "Untitled"
+        },
+        "seed": {
+          "type": "integer",
+          "default": 1
+        },
+        "duration": {
+          "type": "object",
+          "properties": {
+            "max": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "default": 60,
+              "description": "Hard cap in seconds."
+            },
+            "endOn": {
+              "type": "string",
+              "enum": [
+                "firstEscape",
+                "allEscaped",
+                "lastStanding",
+                "never"
+              ],
+              "default": "firstEscape"
+            },
+            "tail": {
+              "type": "number",
+              "minimum": 0,
+              "default": 2,
+              "description": "Seconds to keep rolling after the ending event."
+            }
+          },
+          "additionalProperties": false,
+          "default": {}
+        },
+        "world": {
+          "type": "object",
+          "properties": {
+            "gravity": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                }
+              ],
+              "default": 900,
+              "description": "px/s². A number pulls down; [x, y] is a vector."
+            },
+            "keepEnergy": {
+              "type": "boolean",
+              "default": true,
+              "description": "Hold each ball’s energy constant so bounces never die out."
+            },
+            "restitution": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1.5,
+              "default": 1
+            },
+            "friction": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0,
+              "description": "Share of sliding speed lost on each wall/peg contact. 0 = frictionless."
+            },
+            "maxBalls": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "default": 300
+            }
+          },
+          "additionalProperties": false,
+          "default": {}
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "on": {
+                "type": "string",
+                "enum": [
+                  "bounce",
+                  "escape",
+                  "hit",
+                  "eliminate"
+                ],
+                "description": "bounce = ball hits a wall; hit = two balls collide; eliminate = a ball runs out of hp."
+              },
+              "do": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "grow"
+                        },
+                        "amount": {
+                          "type": "number",
+                          "default": 1.5
+                        },
+                        "max": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "default": 380
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "shrinkGap"
+                        },
+                        "amount": {
+                          "type": "number",
+                          "default": 1
+                        },
+                        "min": {
+                          "type": "number",
+                          "minimum": 0,
+                          "default": 0
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "speedUp"
+                        },
+                        "factor": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "default": 1.02
+                        },
+                        "max": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "default": 3000
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "spawn"
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "default": 1
+                        },
+                        "x": {
+                          "type": "number",
+                          "description": "Spawn point. In a rule, defaults to the container the event happened at."
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "spread": {
+                          "type": "number",
+                          "minimum": 0,
+                          "default": 30
+                        },
+                        "speed": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "direction": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "damage"
+                        },
+                        "amount": {
+                          "type": "number",
+                          "default": 1
+                        },
+                        "perSpeed": {
+                          "type": "number",
+                          "default": 0,
+                          "description": "Extra damage per 1000 px/s of impact."
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "setGravity"
+                        },
+                        "gravity": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "array",
+                              "minItems": 2,
+                              "maxItems": 2,
+                              "items": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "do",
+                        "gravity"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "flipGravity"
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "rotateGravity"
+                        },
+                        "degrees": {
+                          "type": "number",
+                          "default": 90
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "spinUp"
+                        },
+                        "factor": {
+                          "type": "number",
+                          "default": 1.05
+                        },
+                        "max": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "default": 8
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "reverseSpin"
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "on",
+              "do"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "timeline": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Fire once at this time (seconds)."
+              },
+              "every": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "description": "Fire repeatedly with this period (seconds)."
+              },
+              "start": {
+                "type": "number",
+                "minimum": 0,
+                "default": 0,
+                "description": "With every: first firing time."
+              },
+              "until": {
+                "type": "number",
+                "minimum": 0,
+                "description": "With every: stop after this time."
+              },
+              "do": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "grow"
+                        },
+                        "amount": {
+                          "type": "number",
+                          "default": 1.5
+                        },
+                        "max": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "default": 380
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "shrinkGap"
+                        },
+                        "amount": {
+                          "type": "number",
+                          "default": 1
+                        },
+                        "min": {
+                          "type": "number",
+                          "minimum": 0,
+                          "default": 0
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "speedUp"
+                        },
+                        "factor": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "default": 1.02
+                        },
+                        "max": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "default": 3000
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "spawn"
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "default": 1
+                        },
+                        "x": {
+                          "type": "number",
+                          "description": "Spawn point. In a rule, defaults to the container the event happened at."
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "spread": {
+                          "type": "number",
+                          "minimum": 0,
+                          "default": 30
+                        },
+                        "speed": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "direction": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "damage"
+                        },
+                        "amount": {
+                          "type": "number",
+                          "default": 1
+                        },
+                        "perSpeed": {
+                          "type": "number",
+                          "default": 0,
+                          "description": "Extra damage per 1000 px/s of impact."
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "setGravity"
+                        },
+                        "gravity": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "array",
+                              "minItems": 2,
+                              "maxItems": 2,
+                              "items": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "do",
+                        "gravity"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "flipGravity"
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "rotateGravity"
+                        },
+                        "degrees": {
+                          "type": "number",
+                          "default": 90
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "spinUp"
+                        },
+                        "factor": {
+                          "type": "number",
+                          "default": 1.05
+                        },
+                        "max": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "default": 8
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "string",
+                          "const": "reverseSpin"
+                        }
+                      },
+                      "required": [
+                        "do"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "minItems": 1,
+                "description": "Ball actions (grow, speedUp, damage) apply to every live ball."
+              }
+            },
+            "required": [
+              "do"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "style": {
+          "type": "object",
+          "properties": {
+            "background": {
+              "type": "string",
+              "default": "#06060b"
+            },
+            "palette": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "default": [
+                "#ff4d6d",
+                "#4dd4ff",
+                "#ffd23f",
+                "#7cff6b",
+                "#c77dff",
+                "#ff9f1c"
+              ]
+            },
+            "ringColor": {
+              "type": "string",
+              "default": "#ffffff"
+            },
+            "trail": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.99,
+              "default": 0.82,
+              "description": "0 = no trail, 0.95 = long trail."
+            },
+            "glow": {
+              "type": "boolean",
+              "default": true
+            },
+            "paint": {
+              "type": "boolean",
+              "default": false,
+              "description": "Balls leave permanent paint on the background."
+            },
+            "showHp": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "additionalProperties": false,
+          "default": {}
+        },
+        "audio": {
+          "type": "object",
+          "properties": {
+            "melody": {
+              "type": "string",
+              "pattern": "^(pentatonic|ode-to-joy|fur-elise|midi:[\\w.-]+)$",
+              "default": "pentatonic"
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    }
+                  }
+                ]
+              },
+              "description": "Inline melody as MIDI note numbers; an array is a chord. Overrides melody."
+            },
+            "chords": {
+              "type": "boolean",
+              "default": false,
+              "description": "With a MIDI melody: play every note struck together, not just the top one."
+            },
+            "transpose": {
+              "type": "integer",
+              "default": 0
+            },
+            "instrument": {
+              "type": "string",
+              "enum": [
+                "pluck",
+                "bell",
+                "marimba"
+              ],
+              "default": "pluck"
+            },
+            "volume": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.7
+            },
+            "escapeSound": {
+              "type": "boolean",
+              "default": true
+            },
+            "hitSound": {
+              "type": "boolean",
+              "default": true,
+              "description": "Click when balls hit each other."
+            }
+          },
+          "additionalProperties": false,
+          "default": {}
+        },
+        "overlay": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "subtitle": {
+              "type": "string"
+            },
+            "timer": {
+              "type": "boolean",
+              "default": true
+            },
+            "counter": {
+              "type": "string",
+              "enum": [
+                "none",
+                "bounces",
+                "balls",
+                "escaped"
+              ],
+              "default": "bounces"
+            },
+            "winner": {
+              "type": "boolean",
+              "default": true,
+              "description": "Show a winner banner when a race or battle ends."
+            },
+            "zones": {
+              "type": "boolean",
+              "default": true,
+              "description": "Show zone counts."
+            }
+          },
+          "additionalProperties": false,
+          "default": {}
+        },
+        "$schema": {
+          "type": "string"
+        },
+        "extends": {
+          "type": "string",
+          "description": "Inherit from another scene (file name without .json)."
+        },
+        "modifiers": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "grow-on-bounce",
+                  "shrinking-gap",
+                  "speed-up",
+                  "spin-up",
+                  "multiply",
+                  "zero-g",
+                  "gravity-flip",
+                  "gravity-spin",
+                  "paint",
+                  "battle",
+                  "race"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "use": {
+                    "type": "string",
+                    "enum": [
+                      "grow-on-bounce",
+                      "shrinking-gap",
+                      "speed-up",
+                      "spin-up",
+                      "multiply",
+                      "zero-g",
+                      "gravity-flip",
+                      "gravity-spin",
+                      "paint",
+                      "battle",
+                      "race"
+                    ]
+                  }
+                },
+                "required": [
+                  "use"
+                ],
+                "additionalProperties": {
+                  "type": [
+                    "number",
+                    "boolean"
+                  ]
+                }
+              }
+            ]
+          },
+          "description": "grow-on-bounce: The ball grows a little with every wall bounce. Ends when it fills its ring.\nshrinking-gap: The exit gets narrower with every bounce.\nspeed-up: Every bounce makes the ball a little faster.\nspin-up: Every bounce spins the container faster.\nmultiply: Every escape spawns new balls back inside. Runs to the time limit.\nzero-g: No gravity: balls fly in straight lines.\ngravity-flip: Gravity reverses on a timer.\ngravity-spin: Gravity rotates a quarter turn on a timer.\npaint: Balls leave permanent paint instead of fading trails.\nbattle: Balls lose hp when they collide; the last one standing wins.\nrace: First ball out wins."
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "ring"
+                      },
+                      "x": {
+                        "type": "number",
+                        "default": 540
+                      },
+                      "y": {
+                        "type": "number",
+                        "default": 960
+                      },
+                      "radius": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 420
+                      },
+                      "thickness": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 12
+                      },
+                      "spin": {
+                        "type": "number",
+                        "default": 0.8,
+                        "description": "Rotation speed in radians per second. Positive = clockwise."
+                      },
+                      "angle": {
+                        "type": "number",
+                        "default": 0,
+                        "description": "Starting rotation in degrees."
+                      },
+                      "gaps": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "at": {
+                              "type": "number",
+                              "default": 0,
+                              "description": "Center of the gap in degrees (0 = right, 90 = down), relative to the ring rotation."
+                            },
+                            "width": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 360,
+                              "default": 30,
+                              "description": "Angular width of the gap in degrees."
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "default": [
+                          {
+                            "at": 0,
+                            "width": 30
+                          }
+                        ],
+                        "description": "Openings in the ring. [] = closed ring."
+                      },
+                      "color": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A circular wall the balls start inside. Escaping = leaving through a gap."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "polygon"
+                      },
+                      "x": {
+                        "type": "number",
+                        "default": 540
+                      },
+                      "y": {
+                        "type": "number",
+                        "default": 960
+                      },
+                      "radius": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 430,
+                        "description": "Distance from center to each corner."
+                      },
+                      "sides": {
+                        "type": "integer",
+                        "minimum": 3,
+                        "maximum": 24,
+                        "default": 6
+                      },
+                      "thickness": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 12
+                      },
+                      "spin": {
+                        "type": "number",
+                        "default": 0.8
+                      },
+                      "angle": {
+                        "type": "number",
+                        "default": 0
+                      },
+                      "open": {
+                        "type": "array",
+                        "items": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "default": [
+                          0
+                        ],
+                        "description": "Indices of sides with an exit. [] = closed."
+                      },
+                      "gap": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "description": "Width (px) of the exit in each open side, centered. Default: the whole side is missing."
+                      },
+                      "color": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A spinning regular polygon the balls start inside. Missing sides are exits."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "wall"
+                      },
+                      "x1": {
+                        "type": "number"
+                      },
+                      "y1": {
+                        "type": "number"
+                      },
+                      "x2": {
+                        "type": "number"
+                      },
+                      "y2": {
+                        "type": "number"
+                      },
+                      "thickness": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 10
+                      },
+                      "color": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "x1",
+                      "y1",
+                      "x2",
+                      "y2"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A static straight wall (two-sided)."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "peg"
+                      },
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "radius": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 9
+                      },
+                      "color": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "x",
+                      "y"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A static round peg."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "zone"
+                      },
+                      "x": {
+                        "type": "number",
+                        "description": "Left edge."
+                      },
+                      "y": {
+                        "type": "number",
+                        "description": "Top edge."
+                      },
+                      "width": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "height": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "x",
+                      "y",
+                      "width",
+                      "height"
+                    ],
+                    "additionalProperties": false,
+                    "description": "An invisible region that counts each ball entering it (once per ball)."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "ball"
+                      },
+                      "x": {
+                        "type": "number",
+                        "description": "Spawn position. Defaults to the first container center."
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "radius": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 22
+                      },
+                      "speed": {
+                        "type": "number",
+                        "minimum": 0,
+                        "default": 800,
+                        "description": "Launch speed in px/s."
+                      },
+                      "direction": {
+                        "type": "number",
+                        "description": "Launch direction in degrees. Random (from the seed) when omitted."
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 1,
+                        "description": "How many to spawn. 0 = template only (for spawn actions)."
+                      },
+                      "spread": {
+                        "type": "number",
+                        "minimum": 0,
+                        "description": "Random position jitter in px. Defaults to 40 when count > 1."
+                      },
+                      "color": {
+                        "type": "string"
+                      },
+                      "colors": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Per-ball colors, cycled."
+                      },
+                      "labels": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Per-ball names (teams, countries), cycled. Shown under each ball."
+                      },
+                      "hp": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "description": "Hit points. Balls without hp cannot be damaged."
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "nested"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 60,
+                        "default": 5
+                      },
+                      "x": {
+                        "type": "number",
+                        "default": 540
+                      },
+                      "y": {
+                        "type": "number",
+                        "default": 960
+                      },
+                      "inner": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 150,
+                        "description": "Radius of the innermost ring."
+                      },
+                      "outer": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 470,
+                        "description": "Radius of the outermost ring."
+                      },
+                      "thickness": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 10
+                      },
+                      "spin": {
+                        "type": "number",
+                        "default": 1.2,
+                        "description": "Spin of the innermost ring (rad/s)."
+                      },
+                      "spinFalloff": {
+                        "type": "number",
+                        "default": 0.85,
+                        "description": "Each ring outward spins this fraction of the previous."
+                      },
+                      "alternate": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Alternate spin direction ring to ring."
+                      },
+                      "gapWidth": {
+                        "type": "number",
+                        "default": 36,
+                        "description": "Gap of the innermost ring in degrees."
+                      },
+                      "gapShrink": {
+                        "type": "number",
+                        "default": 3,
+                        "description": "Each ring outward has a gap this many degrees narrower."
+                      },
+                      "gapOffset": {
+                        "type": "number",
+                        "default": 120,
+                        "description": "Degrees between consecutive rings’ gaps."
+                      },
+                      "colors": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Ring colors, inner to outer, cycled."
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Prefab: concentric rings with staggered gaps."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "pegboard"
+                      },
+                      "x": {
+                        "type": "number",
+                        "default": 540,
+                        "description": "Center x."
+                      },
+                      "y": {
+                        "type": "number",
+                        "default": 820,
+                        "description": "Top row y."
+                      },
+                      "rows": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": 10
+                      },
+                      "cols": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": 9
+                      },
+                      "spacing": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 100
+                      },
+                      "rowSpacing": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "description": "Defaults to spacing × 0.87."
+                      },
+                      "radius": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 9
+                      },
+                      "stagger": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Offset every other row by half a spacing."
+                      },
+                      "color": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Prefab: a grid of pegs (Plinko / Galton board)."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "bins"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": 9
+                      },
+                      "x1": {
+                        "type": "number",
+                        "default": 60
+                      },
+                      "x2": {
+                        "type": "number",
+                        "default": 1020
+                      },
+                      "top": {
+                        "type": "number",
+                        "default": 1420
+                      },
+                      "bottom": {
+                        "type": "number",
+                        "default": 1640
+                      },
+                      "thickness": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 8
+                      },
+                      "walls": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Add side walls that run up to the board."
+                      },
+                      "wallTop": {
+                        "type": "number",
+                        "default": 640
+                      },
+                      "color": {
+                        "type": "string"
+                      },
+                      "labels": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Prefab: a row of bins with a floor, dividers, and a counting zone in each."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 
@@ -36,6 +36,44 @@ function captureEndpoint(): Plugin {
   };
 }
 
+/**
+ * Dev-only endpoint: POST /__studio/scene?name=foo with a JSON body overwrites
+ * scenes/foo.json (an existing scene only). Used by "Save to file" in the studio.
+ */
+function sceneEndpoint(): Plugin {
+  return {
+    name: 'studio-scene',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/__studio/scene', (req, res) => {
+        const fail = (code: number, msg: string) => {
+          res.statusCode = code;
+          res.end(msg);
+        };
+        if (req.method !== 'POST') return fail(405, 'POST only');
+        const url = new URL(req.url ?? '', 'http://localhost');
+        const name = url.searchParams.get('name') ?? '';
+        if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name)) return fail(400, 'bad scene name');
+        const file = resolve(server.config.root, 'scenes', `${name}.json`);
+        if (!existsSync(file)) return fail(404, `no scene ${name}`);
+        const chunks: Buffer[] = [];
+        req.on('data', (c: Buffer) => chunks.push(c));
+        req.on('end', () => {
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+          } catch {
+            return fail(400, 'body is not JSON');
+          }
+          writeFileSync(file, `${JSON.stringify(parsed, null, 2)}\n`);
+          res.setHeader('content-type', 'application/json');
+          res.end(JSON.stringify({ file: `scenes/${name}.json` }));
+        });
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [captureEndpoint()],
+  plugins: [captureEndpoint(), sceneEndpoint()],
 });

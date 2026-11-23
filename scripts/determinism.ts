@@ -1,21 +1,27 @@
-/** Every scene must replay identically: same seed, same final state hash and event log. */
-import { readFileSync, readdirSync } from 'node:fs';
-import { parseScene } from '../src/engine/scene';
+/** Every scene must resolve, and replay identically: same seed, same final state hash and event log. */
+import { resolveScene } from '../src/engine/source';
 import { World } from '../src/engine/world';
+import { loadSources } from './scenes';
 
+const sources = loadSources();
 let failed = 0;
-for (const name of readdirSync('scenes').filter((f) => f.endsWith('.json')).sort()) {
-  const scene = parseScene(JSON.parse(readFileSync(`scenes/${name}`, 'utf8')));
-  const a = new World(scene).runToEnd();
-  const b = new World(scene).runToEnd();
-  const same = a.hash() === b.hash() && a.events.length === b.events.length && a.stepCount === b.stepCount;
-  const sanity = a.balls.every((ball) => Number.isFinite(ball.x) && Number.isFinite(ball.y));
-  const ok = same && sanity;
-  if (!ok) failed++;
-  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} ${a.endReason.padEnd(11)} ${a.time.toFixed(2)}s  hash ${a.hash()}`);
+for (const name of Object.keys(sources)) {
+  try {
+    const scene = resolveScene(name, sources);
+    const a = new World(scene).runToEnd();
+    const b = new World(scene).runToEnd();
+    const same = a.hash() === b.hash() && a.events.length === b.events.length && a.stepCount === b.stepCount;
+    const sane = a.balls.every((ball) => Number.isFinite(ball.x) && Number.isFinite(ball.y) && Number.isFinite(ball.vx));
+    const ok = same && sane;
+    if (!ok) failed++;
+    console.log(`${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(20)} ${a.endReason.padEnd(12)} ${a.time.toFixed(2).padStart(6)}s  hash ${a.hash()}${sane ? '' : '  (non-finite state)'}`);
+  } catch (err) {
+    failed++;
+    console.log(`FAIL  ${name.padEnd(20)} ${(err as Error).message.replace(/\n/g, ' | ')}`);
+  }
 }
 if (failed) {
   console.error(`\n${failed} scene(s) failed`);
   process.exit(1);
 }
-console.log('\nAll scenes deterministic.');
+console.log(`\nAll ${Object.keys(sources).length} scenes resolve and replay deterministically.`);

@@ -1,0 +1,45 @@
+{
+  "$schema": "../scene.schema.json",
+  "extends": "battle-royale",
+  "title": "Country battle",
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 450,
+      "thickness": 14,
+      "spin": 0.4,
+      "gaps": []
+    },
+    {
+      "type": "ball",
+      "count": 8,
+      "radius": 32,
+      "speed": 950,
+      "spread": 260,
+      "labels": [
+        "Brazil",
+        "Japan",
+        "France",
+        "Canada",
+        "Italy",
+        "Mexico",
+        "Kenya",
+        "Sweden"
+      ],
+      "colors": [
+        "#2fbf4a",
+        "#ffffff",
+        "#3a66ff",
+        "#ff3b3b",
+        "#1fae5b",
+        "#0e8f5a",
+        "#d62828",
+        "#ffd23f"
+      ]
+    }
+  ],
+  "overlay": {
+    "title": "Which country survives?",
+    "subtitle": "Comment your pick"
+  }
+}

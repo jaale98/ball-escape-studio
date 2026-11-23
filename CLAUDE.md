@@ -6,30 +6,40 @@ A browser studio for making ball-physics shorts. Scenes are JSON files in `scene
 
 When the user describes a video idea:
 
-1. Write `scenes/<kebab-name>.json`. Schema and defaults: `src/engine/scene.ts`. Copy the closest starter scene rather than starting blank.
-2. Check that it parses and ends well: `npm run sim -- scenes/<name>.json`. A parse error lists every bad field by path.
-3. Tune the seed: `npm run sim -- scenes/<name>.json --seeds 1-300 --target <seconds>` lists seeds whose first escape lands nearest the target. Aim for a climax around 20–45 s unless asked otherwise, then set `seed` in the file.
-4. If the dev server is running, the user sees it immediately. To look at a frame yourself, run this in the browser page: `await studio.capture('name', 12.5)`. It saves the exact export frame at 12.5 s to `captures/name.png`.
+1. **Start from the closest preset** (see the README's preset table). Prefer `"extends": "<preset>"` plus `"modifiers"` over copying. Only write a scene from scratch when nothing is close.
+2. Write `scenes/<kebab-name>.json` with `"$schema": "../scene.schema.json"`. Field reference: `src/engine/scene.ts` (primitives), `src/engine/source.ts` (extends, prefabs), `src/engine/modifiers.ts` (modifiers and their options).
+3. Check it: `npm run sim -- <name>`. Parse errors list every bad field by path; unknown keys are errors. `npm run sim -- <name> --resolved` shows what the engine actually runs.
+4. Tune the seed: `npm run sim -- <name> --seeds 1-300 --target <seconds>` sorts seeds by how close the climax (first escape, last elimination, or fill) lands to the target. Aim for 20–45 s unless asked otherwise, then set `seed`. For battles and races also look at the winner column.
+5. To look at a frame, run in the browser page: `await studio.capture('name', 12.5)`. It saves the exact export frame at 12.5 s to `captures/name.png`; read the image to check it.
+6. Run `npm test` before finishing.
 
-Scene conventions:
-- The canvas is 1080×1920. The default ring center is (540, 960). Keep rings within about x 60–1020 and y 400–1500 so the title (y around 250) and counter (y around 1700) stay clear.
+Reaching for code is the last resort. If a format truly needs a new engine capability, add it as a general primitive (entity, action, rule event, or modifier), then express the format as a scene file.
+
+## Scene conventions
+
+- The canvas is 1080×1920. The default container center is (540, 960). Keep play areas within about x 60–1020 and y 400–1500 so the title (y around 250) and counter (y around 1700) stay clear.
 - Angles in scene files are degrees (0 = right, 90 = down); `spin` is rad/s (positive = clockwise).
-- A ball must be smaller than its gap to escape: the gap's arc length (radius × width in radians) has to exceed the ball's diameter plus the ring thickness.
-- `grow` stops at 92% of the innermost ring holding the ball and then ends the run (`filled`).
+- A ball must fit its exit to escape: the ring gap's arc length (radius × width in radians) has to exceed the ball's diameter plus the ring thickness.
+- Modifiers set what their format needs (for example `multiply` forces `endOn: never`). Later modifiers and explicit rules still apply on top.
+- `extends` merges objects key by key but replaces arrays: a child that sets `entities` must list all of them.
 - Overlay titles should be short hooks ("Can it escape?", "5 rings. 1 ball.").
+- MIDI songs go in `songs/` and are referenced as `"melody": "midi:<file name without .mid>"`.
+- Keep `keepEnergy: true` for bouncing formats; use `keepEnergy: false` with restitution below 1 and some `friction` for things that settle (Plinko).
 
 ## Engine rules (don't break these)
 
 - `src/engine/` must stay deterministic: no `Math.random`, `Date`, `performance.now`, or iteration over unordered collections in simulation code. Use `Rng` with a named stream.
-- After any engine change, run `npm test`. It replays every scene twice and compares state hashes. Hashes in the output change when physics changes, which is expected; a FAIL is not.
+- After any engine change, run `npm test`. It resolves and replays every scene twice and compares state hashes. Hashes change when physics changes, which is expected; a FAIL is not. Re-tune affected preset seeds.
+- After changing a schema in `scene.ts`, `source.ts` or `modifiers.ts`, run `npm run schema`.
 - Visual effects in `src/render/` may only depend on the event log, the renderer's own `Rng`, and `dt`. The export re-renders from scratch and must match the preview.
 - `npm run typecheck` must pass.
 
 ## Layout
 
-- `src/engine/`: scene schema (zod), seeded RNG, physics `World`. No DOM; runs in Node.
-- `src/render/renderer.ts`: Canvas 2D drawing, trails, particles, overlay text.
-- `src/audio/sound.ts`: event-to-note mapping and Web Audio synth voices.
+- `src/engine/scene.ts`: primitive scene schema (zod, strict). `source.ts`: extends, prefabs, `resolveScene()`. `modifiers.ts`: named modifiers. `world.ts`: physics. `rng.ts`: seeded RNG. No DOM; runs in Node.
+- `src/render/renderer.ts`: Canvas 2D drawing, trails, paint, particles, labels, hp, overlays.
+- `src/audio/sound.ts`: event-to-sound mapping and Web Audio synth. `midi.ts`: MIDI reader.
 - `src/export/`: `mp4.ts` (WebCodecs + mp4-muxer frame-by-frame export), `still.ts` (deterministic single frames).
-- `src/main.ts`: studio UI. `window.studio` exposes `world`, `scene`, `exportMp4()`, `capture()`.
-- `scripts/sim.ts`: headless runner and seed search. `scripts/determinism.ts`: `npm test`.
+- `src/ui/sliders.ts`: auto-generated sliders. `src/main.ts`: studio UI; `window.studio` exposes `world`, `scene`, `exportMp4()`, `capture()`.
+- `scripts/`: `sim.ts` (headless runner and seed search), `determinism.ts` (`npm test`), `schema.ts`, `make-midi.ts`.
+- `vite.config.ts`: dev-only endpoints for captures and "Save to file".

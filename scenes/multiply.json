@@ -1,15 +1,43 @@
 {
-  "version": 1,
+  "$schema": "../scene.schema.json",
+  "extends": "ring-escape",
   "title": "Multiply on escape",
   "seed": 5,
-  "duration": { "max": 40, "endOn": "never" },
-  "world": { "gravity": 900, "maxBalls": 160 },
-  "entities": [
-    { "type": "ring", "radius": 400, "thickness": 14, "spin": 1.0, "gaps": [{ "at": 0, "width": 34 }] },
-    { "type": "ball", "radius": 18, "speed": 850 }
+  "modifiers": [
+    "multiply"
   ],
-  "rules": [{ "on": "escape", "do": [{ "do": "spawn", "count": 2 }] }],
-  "style": { "trail": 0.75 },
-  "audio": { "melody": "pentatonic", "instrument": "pluck", "volume": 0.55 },
-  "overlay": { "title": "Every escape makes 2 more", "counter": "balls" }
+  "duration": {
+    "max": 40
+  },
+  "world": {
+    "maxBalls": 160
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 400,
+      "thickness": 14,
+      "spin": 1.0,
+      "gaps": [
+        {
+          "at": 0,
+          "width": 34
+        }
+      ]
+    },
+    {
+      "type": "ball",
+      "radius": 18,
+      "speed": 850
+    }
+  ],
+  "style": {
+    "trail": 0.75
+  },
+  "audio": {
+    "volume": 0.55
+  },
+  "overlay": {
+    "title": "Every escape makes 2 more"
+  }
 }

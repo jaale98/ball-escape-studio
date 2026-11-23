@@ -1,0 +1,56 @@
+{
+  "$schema": "../scene.schema.json",
+  "extends": "ring-escape",
+  "title": "Ball race",
+  "seed": 88,
+  "modifiers": [
+    "race"
+  ],
+  "duration": {
+    "tail": 3
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 430,
+      "thickness": 14,
+      "spin": 0.8,
+      "gaps": [
+        {
+          "at": 0,
+          "width": 22
+        }
+      ]
+    },
+    {
+      "type": "ball",
+      "count": 4,
+      "radius": 26,
+      "speed": 900,
+      "spread": 120,
+      "labels": [
+        "Red",
+        "Blue",
+        "Yellow",
+        "Green"
+      ],
+      "colors": [
+        "#ff4d6d",
+        "#4dd4ff",
+        "#ffd23f",
+        "#7cff6b"
+      ]
+    }
+  ],
+  "style": {
+    "trail": 0.8
+  },
+  "audio": {
+    "instrument": "marimba"
+  },
+  "overlay": {
+    "title": "First one out wins",
+    "subtitle": "Pick your color",
+    "counter": "bounces"
+  }
+}

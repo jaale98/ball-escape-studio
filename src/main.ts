@@ -1,15 +1,30 @@
+import { parseMidi } from './audio/midi';
 import { createMaster, playVoice, SoundMapper } from './audio/sound';
-import { parseScene, type Scene } from './engine/scene';
+import type { Scene } from './engine/scene';
+import { mergeSource, resolveScene } from './engine/source';
 import { DT, World } from './engine/world';
 import { canExport, exportMp4 } from './export/mp4';
 import { renderStill } from './export/still';
 import { Renderer } from './render/renderer';
+import { fmt, setPath, tunables } from './ui/sliders';
 
 // Every JSON file in scenes/ is a scene. Editing one triggers a Vite reload.
 const files = import.meta.glob('../scenes/*.json', { eager: true, import: 'default' }) as Record<string, unknown>;
 const scenes = Object.entries(files)
   .map(([path, raw]) => ({ name: path.split('/').pop()!.replace(/\.json$/, ''), path: path.replace('../', ''), raw }))
   .sort((a, b) => a.name.localeCompare(b.name));
+const sources: Record<string, unknown> = Object.fromEntries(scenes.map((s) => [s.name, s.raw]));
+
+// MIDI files in songs/ can be used as melodies: "audio": { "melody": "midi:minuet-in-g" }.
+const songUrls = import.meta.glob('../songs/*.mid', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+const midiCache = new Map<string, number[][]>();
+async function loadMidi(name: string): Promise<number[][]> {
+  const file = name.endsWith('.mid') ? name : `${name}.mid`;
+  const url = Object.entries(songUrls).find(([p]) => p.endsWith(`/${file}`))?.[1];
+  if (!url) throw new Error(`audio.melody: no MIDI file songs/${file}`);
+  if (!midiCache.has(url)) midiCache.set(url, parseMidi(await (await fetch(url)).arrayBuffer()));
+  return midiCache.get(url)!;
+}
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const sceneSelect = $<HTMLSelectElement>('scene');
@@ -56,29 +71,135 @@ function currentEntry() {
   return scenes.find((s) => s.name === sceneSelect.value);
 }
 
-/** Load the selected scene file. Keeps the seed from the UI when `keepSeed` is set. */
-function loadScene(keepSeed: boolean): void {
+/** Slider tweaks not yet saved to the file: dotted path -> value. */
+const overrides = new Map<string, number>();
+let loadToken = 0;
+
+/** Resolve the selected scene (extends, modifiers, prefabs, slider tweaks, MIDI) and restart. */
+async function loadScene(keepSeed: boolean, rebuildSliders = true): Promise<void> {
   const entry = currentEntry();
   if (!entry) return;
+  const token = ++loadToken;
   $('scene-path').textContent = entry.path;
   $('scene-json').textContent = JSON.stringify(entry.raw, null, 2);
   try {
-    const parsed = parseScene(entry.raw);
+    const resolved = resolveScene(entry.name, sources, (merged) => {
+      for (const [path, v] of overrides) setPath(merged, path, v);
+    });
+    if (resolved.audio.melody.startsWith('midi:') && !resolved.audio.notes) {
+      resolved.audio.notes = await loadMidi(resolved.audio.melody.slice(5));
+    }
+    if (token !== loadToken) return;
     // A UI seed is remembered per scene, but only while the file's own seed is
     // unchanged: editing the seed in the file always wins.
     const [fileSeed, uiSeed] = (store.get(`seed:${entry.name}`) ?? '').split(':').map(Number);
-    const remembered = fileSeed === parsed.seed && Number.isFinite(uiSeed) ? uiSeed : parsed.seed;
+    const remembered = fileSeed === resolved.seed && Number.isFinite(uiSeed) ? uiSeed : resolved.seed;
     const seed = keepSeed && seedInput.value !== '' ? Number(seedInput.value) : remembered;
-    scene = { ...parsed, seed };
+    scene = { ...resolved, seed };
     seedInput.value = String(seed);
+    $('resolved-json').textContent = JSON.stringify(scene, null, 2);
     errorBox.hidden = true;
+    if (rebuildSliders) buildSliders();
     restart();
   } catch (err) {
+    if (token !== loadToken) return;
     scene = null;
     world = null;
     errorBox.hidden = false;
     errorBox.textContent = `${entry.path}\n${(err as Error).message}`;
   }
+}
+
+// ---- Sliders ----------------------------------------------------------------
+
+let sliderTimer = 0;
+function buildSliders(): void {
+  const entry = currentEntry();
+  const box = $('sliders');
+  box.replaceChildren();
+  if (!entry) return;
+  let merged: Record<string, unknown>;
+  try {
+    merged = mergeSource(entry.name, sources);
+  } catch {
+    return;
+  }
+  for (const [path, v] of overrides) setPath(merged, path, v);
+  let group = '';
+  for (const t of tunables(merged)) {
+    if (t.group !== group) {
+      group = t.group;
+      const h = document.createElement('div');
+      h.className = 'slider-group';
+      h.textContent = group;
+      box.append(h);
+    }
+    const row = document.createElement('label');
+    row.className = 'slider';
+    row.title = t.path;
+    const name = document.createElement('span');
+    name.textContent = t.label;
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = String(t.min);
+    input.max = String(t.max);
+    input.step = String(t.step);
+    input.value = String(t.value);
+    const out = document.createElement('output');
+    out.textContent = fmt(t.value, t.step);
+    if (overrides.has(t.path)) row.classList.add('changed');
+    input.addEventListener('input', () => {
+      const v = Number(input.value);
+      out.textContent = fmt(v, t.step);
+      overrides.set(t.path, v);
+      row.classList.add('changed');
+      updateTweakButtons();
+      clearTimeout(sliderTimer);
+      sliderTimer = window.setTimeout(() => void loadScene(true, false), 120);
+    });
+    row.append(name, input, out);
+    box.append(row);
+  }
+  updateTweakButtons();
+}
+
+function updateTweakButtons(): void {
+  const n = overrides.size;
+  $<HTMLButtonElement>('save').disabled = n === 0;
+  $<HTMLButtonElement>('reset-tweaks').disabled = n === 0;
+  $('tweak-count').textContent = n ? `${n} unsaved ${n === 1 ? 'change' : 'changes'}` : 'Drag to tweak; changes preview instantly.';
+}
+
+/** Write slider tweaks into the scene file (dev server only). The page reloads with the saved file. */
+async function saveTweaks(): Promise<void> {
+  const entry = currentEntry();
+  if (!entry || !overrides.size) return;
+  const merged = mergeSource(entry.name, sources);
+  const child = structuredClone(entry.raw) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const inheritedMods = ((merged.modifiers as unknown[]) ?? []).length - ((child.modifiers as unknown[]) ?? []).length;
+  const skipped: string[] = [];
+  for (const [path, v] of overrides) {
+    const parts = path.split('.');
+    if (parts[0] === 'modifiers') {
+      const i = Number(parts[1]) - inheritedMods;
+      if (i < 0) {
+        skipped.push(path);
+        continue;
+      }
+      setPath(child, ['modifiers', String(i), ...parts.slice(2)].join('.'), v);
+      continue;
+    }
+    // A tweak to an inherited value copies that whole section into this file.
+    if (!(parts[0] in child)) child[parts[0]] = structuredClone(merged[parts[0]]);
+    setPath(child, path, v);
+  }
+  const res = await fetch(`/__studio/scene?name=${encodeURIComponent(entry.name)}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(child, null, 2),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  $('tweak-count').textContent = skipped.length ? `Saved. Not saved (inherited modifier): ${skipped.join(', ')}` : 'Saved.';
 }
 
 function restart(): void {
@@ -94,9 +215,14 @@ function restart(): void {
 function setSeed(seed: number): void {
   seedInput.value = String(seed);
   const entry = currentEntry();
-  const fileSeed = entry ? (entry.raw as { seed?: number }).seed ?? 1 : 1;
+  let fileSeed = 1;
+  try {
+    fileSeed = entry ? ((mergeSource(entry.name, sources).seed as number | undefined) ?? 1) : 1;
+  } catch {
+    /* unresolvable scene: the error box already says why */
+  }
   store.set(`seed:${sceneSelect.value}`, `${fileSeed}:${seed}`);
-  loadScene(true);
+  void loadScene(true, false);
 }
 
 function ensureAudio(): void {
@@ -127,9 +253,10 @@ function updateStats(): void {
   $('s-time').textContent = `${world.time.toFixed(1)}s`;
   $('s-bounces').textContent = String(world.bounces);
   $('s-balls').textContent = String(world.aliveCount);
-  $('s-escapes').textContent = String(world.escapes);
+  $('s-escapes').textContent = String(world.uniqueEscapes);
+  const winner = world.winner >= 0 ? world.balls[world.winner] : null;
   $('s-status').textContent = world.done
-    ? `ended: ${world.endReason} at ${world.time.toFixed(2)}s`
+    ? `ended: ${world.endReason} at ${world.time.toFixed(2)}s${winner ? ` · winner ${winner.label ?? `ball ${winner.id}`}` : ''}`
     : world.firstEscapeStep >= 0
       ? `first escape at ${(world.firstEscapeStep * DT).toFixed(2)}s`
       : playing
@@ -171,7 +298,15 @@ function frame(now: number): void {
 sceneSelect.addEventListener('change', () => {
   store.set('scene', sceneSelect.value);
   seedInput.value = '';
-  loadScene(false);
+  overrides.clear();
+  void loadScene(false);
+});
+$('reset-tweaks').addEventListener('click', () => {
+  overrides.clear();
+  void loadScene(true);
+});
+$('save').addEventListener('click', () => {
+  saveTweaks().catch((err) => ($('tweak-count').textContent = `Save failed: ${(err as Error).message}`));
 });
 seedInput.addEventListener('change', () => setSeed(Math.trunc(Number(seedInput.value) || 0)));
 $('reroll').addEventListener('click', () => setSeed(Math.floor(Math.random() * 100000)));
@@ -267,5 +402,5 @@ exportBtn.addEventListener('click', async () => {
   },
 };
 
-loadScene(false);
+void loadScene(false);
 requestAnimationFrame(frame);

@@ -111,6 +111,28 @@ pre.error { color: var(--danger); white-space: pre-wrap; }
   background: #000;
 }
 
+.slider-group {
+  margin: 12px 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.slider {
+  display: grid;
+  grid-template-columns: 96px 1fr 52px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 2px 0;
+}
+.slider span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slider input { width: 100%; min-width: 0; accent-color: var(--accent); }
+.slider output { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.slider.changed span, .slider.changed output { color: var(--accent); }
+#tweaks .buttons { margin: 6px 0; }
+
 @media (max-width: 760px) {
   body { flex-direction: column-reverse; height: auto; }
   .panel { width: 100%; height: auto; border-right: 0; border-top: 1px solid var(--line); }

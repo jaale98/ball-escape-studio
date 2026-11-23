@@ -1,0 +1,57 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Battle royale",
+  "seed": 131,
+  "modifiers": [
+    {
+      "use": "battle",
+      "hp": 10,
+      "damage": 1
+    }
+  ],
+  "duration": {
+    "max": 75,
+    "tail": 3
+  },
+  "world": {
+    "gravity": 600
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 450,
+      "thickness": 14,
+      "spin": 0.4,
+      "gaps": []
+    },
+    {
+      "type": "ball",
+      "count": 8,
+      "radius": 32,
+      "speed": 950,
+      "spread": 260
+    }
+  ],
+  "style": {
+    "trail": 0.7,
+    "palette": [
+      "#ff4d6d",
+      "#4dd4ff",
+      "#ffd23f",
+      "#7cff6b",
+      "#c77dff",
+      "#ff9f1c",
+      "#ffffff",
+      "#ff7ad9"
+    ]
+  },
+  "audio": {
+    "melody": "pentatonic",
+    "instrument": "pluck",
+    "volume": 0.6
+  },
+  "overlay": {
+    "title": "Last ball standing",
+    "counter": "balls"
+  }
+}
