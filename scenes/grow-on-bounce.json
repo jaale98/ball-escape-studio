@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "title": "Grow on bounce",
+  "seed": 11,
+  "duration": { "max": 60, "endOn": "firstEscape", "tail": 2.5 },
+  "world": { "gravity": 900 },
+  "entities": [
+    { "type": "ring", "radius": 430, "thickness": 14, "spin": 0.7, "gaps": [{ "at": 90, "width": 38 }] },
+    { "type": "ball", "radius": 16, "speed": 950, "color": "#ffd23f" }
+  ],
+  "rules": [{ "on": "bounce", "do": [{ "do": "grow", "amount": 2.2 }] }],
+  "style": { "trail": 0.7, "ringColor": "#ffe8a3" },
+  "audio": { "melody": "fur-elise", "instrument": "bell" },
+  "overlay": { "title": "It grows every bounce", "subtitle": "Will it get out before it fills the ring?", "counter": "bounces" }
+}

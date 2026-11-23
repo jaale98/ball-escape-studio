@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "title": "Ring escape",
+  "seed": 25,
+  "duration": { "max": 60, "endOn": "firstEscape", "tail": 2.5 },
+  "world": { "gravity": 900, "keepEnergy": true },
+  "entities": [
+    { "type": "ring", "radius": 420, "thickness": 14, "spin": 0.9, "gaps": [{ "at": 0, "width": 26 }] },
+    { "type": "ball", "radius": 24, "speed": 900 }
+  ],
+  "style": { "trail": 0.85 },
+  "audio": { "melody": "pentatonic", "instrument": "pluck" },
+  "overlay": { "title": "Can it escape?", "counter": "bounces" }
+}

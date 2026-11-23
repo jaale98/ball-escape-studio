@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ball Escape Studio</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <aside class="panel">
+      <header>
+        <h1>Ball Escape Studio</h1>
+        <p class="muted">Phase 1 · deterministic sim + MP4 export</p>
+      </header>
+
+      <label class="field">
+        <span>Scene</span>
+        <select id="scene"></select>
+      </label>
+
+      <div class="field">
+        <span>Seed</span>
+        <div class="row">
+          <input id="seed" type="number" step="1" />
+          <button id="reroll" title="Random seed (R)">Reroll</button>
+        </div>
+      </div>
+
+      <div class="row buttons">
+        <button id="play" class="primary" title="Play / pause (Space)">Pause</button>
+        <button id="restart" title="Restart (Backspace)">Restart</button>
+        <button id="sound" title="Toggle sound (M)">Sound off</button>
+      </div>
+      <label class="check"><input id="loop" type="checkbox" checked /> Loop when the run ends</label>
+
+      <section class="stats">
+        <div><span>Time</span><b id="s-time">0.0s</b></div>
+        <div><span>Bounces</span><b id="s-bounces">0</b></div>
+        <div><span>Balls</span><b id="s-balls">0</b></div>
+        <div><span>Escapes</span><b id="s-escapes">0</b></div>
+        <div class="wide"><span>Status</span><b id="s-status">running</b></div>
+        <div class="wide"><span>State hash</span><b id="s-hash" class="mono">—</b></div>
+      </section>
+
+      <button id="export" class="primary big">Export MP4 (1080×1920, 60 fps)</button>
+      <div id="progress" class="progress" hidden><div id="bar"></div><span id="progress-label"></span></div>
+      <p id="export-msg" class="msg"></p>
+
+      <details>
+        <summary>Scene file</summary>
+        <p class="muted">Edit <code id="scene-path">scenes/…</code> and the preview reloads. Seed changes here are not saved to the file.</p>
+        <pre id="scene-json"></pre>
+      </details>
+      <pre id="error" class="error" hidden></pre>
+    </aside>
+
+    <main class="stage">
+      <canvas id="view" width="1080" height="1920"></canvas>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "title": "Shrinking gap",
+  "seed": 260,
+  "duration": { "max": 60, "endOn": "firstEscape", "tail": 2.5 },
+  "world": { "gravity": 0 },
+  "entities": [
+    { "type": "ring", "radius": 440, "thickness": 12, "spin": 1.2, "gaps": [{ "at": 0, "width": 60 }] },
+    { "type": "ball", "radius": 20, "speed": 1100, "color": "#4dd4ff" }
+  ],
+  "rules": [{ "on": "bounce", "do": [{ "do": "shrinkGap", "amount": 1.5, "min": 3 }] }],
+  "style": { "background": "#030812", "ringColor": "#9fe8ff", "trail": 0.9 },
+  "audio": { "melody": "ode-to-joy", "instrument": "marimba" },
+  "overlay": { "title": "The exit closes every bounce", "counter": "bounces" }
+}
