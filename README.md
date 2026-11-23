@@ -28,7 +28,7 @@ Every run is **deterministic**: the same scene and seed always produce exactly t
 - **Frame-perfect MP4 export.** Frames are rendered one by one, encoded with WebCodecs (H.264 + AAC), and muxed in the browser. A 30 s single-ball video exports in about 10 s, with no dropped frames, even in a background tab.
 - **Headless CLI.** `npm run sim` runs a scene in milliseconds, searches seed ranges for the best ending, and prints the event log, for you or for an AI agent.
 - **Editor autocomplete.** [`scene.schema.json`](scene.schema.json) gives VS Code completion and inline docs for every field.
-- **Made for Claude Code.** [`CLAUDE.md`](CLAUDE.md) teaches Claude Code the scene format, so you can ask for new videos in plain English on your regular Claude plan. No API key needed.
+- **Ask Claude.** A prompt box runs Claude Code on your regular Claude plan (no API key) to edit or create scenes while you watch, with full version history, undo, and Like/Dislike notes that teach it your taste.
 
 ## Quick start
 
@@ -41,7 +41,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173, pick a scene, press **Sound off** to turn sound on, drag some sliders, and click **Export MP4**.
+Open http://localhost:5173, pick a scene, press **Sound off** to turn sound on, drag some sliders or ask Claude for a change, and click **Export MP4**.
 
 **Keyboard:** `Space` play/pause · `R` reroll seed · `M` sound · `Backspace` restart
 
@@ -145,13 +145,19 @@ npm test                                # every scene resolves and replays ident
 npm run schema                          # regenerate scene.schema.json
 ```
 
-## Using it with Claude Code
+## Ask Claude
 
-Scenes are plain files, so [Claude Code](https://claude.com/claude-code) can write them for you on your regular Claude plan, with no API key. Open this folder in Claude Code, keep `npm run dev` running, and ask:
+The studio has a prompt box. Type what you want, such as *"make the gap shrink faster and use bell sounds"* or *"a new video: three balls race out of a hexagon, named after planets"*, and Claude edits or creates the scene while you watch. The preview updates the moment the file is written, without a page reload.
 
-> Make a scene where three balls race out of a hexagon that spins faster every time one bounces, with country names, ending around 30 seconds.
+- **Runs on your Claude plan, not API credits.** The dev server runs the [Claude Code](https://claude.com/claude-code) CLI (`claude -p`) in this folder, with `ANTHROPIC_API_KEY` removed from its environment. You need Claude Code installed and logged in (`claude`, then `/login`).
+- **Scoped.** In the prompt box Claude can only read the project, edit files in `scenes/`, and run `npm run sim` / `npm test`. Everything else is denied automatically.
+- **Fast or Smart.** Fast (Haiku) for quick edits, Smart (Sonnet) for new formats. Follow-up prompts on the same scene continue the same conversation; **New chat** starts fresh.
+- **History and undo.** Every version of every scene (from Claude, slider saves, or your editor) is kept in `.studio/history`. **Undo last change** or restore any version; restoring adds a new version, so nothing is ever lost.
+- **It learns your taste.** **Like** / **Dislike** (with an optional note) append to `.studio/taste.md`, which Claude reads before making scenes.
 
-Claude Code writes `scenes/<name>.json`, checks it with `npm run sim`, tunes the seed for a good ending, can look at exact frames, and the studio reloads it. [`CLAUDE.md`](CLAUDE.md) holds the conventions it follows.
+You can also skip the prompt box and talk to Claude Code directly in this folder ("folder mode"). It follows the same conventions from [`CLAUDE.md`](CLAUDE.md): start from the closest preset, validate with `npm run sim`, tune the seed, and look at exact frames with `studio.capture()`.
+
+`npm run eval:ai` runs ten typical requests through the prompt-box path and reports how many produce valid scenes and how quickly the first scene write lands.
 
 ## How it works
 
@@ -174,7 +180,8 @@ scenes/*.json ─► resolveScene: extends ─► modifiers ─► prefabs ─�
 - **`src/render/`** draws a world onto a 1080×1920 canvas. Effects are driven only by the event log and a seeded RNG, so the export matches the preview.
 - **`src/audio/`** maps events to notes, reads MIDI files, and synthesizes sound with Web Audio. The same code drives live playback and the offline mixdown.
 - **`src/export/`** handles the frame-by-frame MP4 encoder and deterministic still frames.
-- **`src/ui/`** generates the sliders.
+- **`src/ui/`** holds the sliders, the prompt box, and the history panel.
+- **`server/`** holds the dev-server endpoints, including the Claude Code runner (`claude.ts`) and scene history.
 
 Export runs the scene twice: a headless pass that learns the length and every event (for the soundtrack), then a rendering pass. Both must end on the same state hash, which the studio reports after each export.
 
@@ -182,7 +189,7 @@ Export runs the scene twice: a headless pass that learns the length and every ev
 
 1. **Core engine and export** (done)
 2. **Scene language:** inheritance, modifiers, prefabs, sliders, MIDI, 13 formats (done)
-3. **AI through Claude Code:** an in-studio prompt box backed by the Claude Code CLI on your own plan
+3. **AI through Claude Code:** prompt box on your own plan, version history and undo, taste notes (done)
 4. **The Director:** automatic seed search scored for suspense, a variant grid, swipe-to-keep review
 5. **Full studio:** WebGL crowds, custom rule scripts, batch production and series tools
 

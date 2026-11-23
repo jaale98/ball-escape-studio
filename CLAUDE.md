@@ -13,6 +13,10 @@ When the user describes a video idea:
 5. To look at a frame, run in the browser page: `await studio.capture('name', 12.5)`. It saves the exact export frame at 12.5 s to `captures/name.png`; read the image to check it.
 6. Run `npm test` before finishing.
 
+When you are running from the studio's prompt box, extra instructions are appended (see `server/claude.ts`): you may only edit `scenes/` and run `npm run sim` / `npm test`, and you should write the scene file first so the preview updates, then validate.
+
+If `.studio/taste.md` exists, read it: it lists videos the user liked or disliked (with their notes). Lean toward what they liked.
+
 Reaching for code is the last resort. If a format truly needs a new engine capability, add it as a general primitive (entity, action, rule event, or modifier), then express the format as a scene file.
 
 ## Scene conventions
@@ -42,4 +46,7 @@ Reaching for code is the last resort. If a format truly needs a new engine capab
 - `src/export/`: `mp4.ts` (WebCodecs + mp4-muxer frame-by-frame export), `still.ts` (deterministic single frames).
 - `src/ui/sliders.ts`: auto-generated sliders. `src/main.ts`: studio UI; `window.studio` exposes `world`, `scene`, `exportMp4()`, `capture()`.
 - `scripts/`: `sim.ts` (headless runner and seed search), `determinism.ts` (`npm test`), `schema.ts`, `make-midi.ts`.
-- `vite.config.ts`: dev-only endpoints for captures and "Save to file".
+- `server/studio.ts`: dev-only endpoints (captures, Save to file, the AI prompt box, version history, ratings). `server/claude.ts`: runs `claude -p` on the user's plan and turns its stream into studio events.
+- `src/scenes.ts`: scene sources with hot updates (scene edits never reload the page). `src/ui/assistant.ts`: prompt box. `src/ui/history.ts`: history panel and Like/Dislike.
+- `.studio/` (gitignored): `history/<scene>/` snapshots of every scene version, `taste.md` likes and dislikes.
+- `npm run eval:ai`: runs 10 scene requests through the prompt-box path and reports how many produce valid scenes and how fast.

@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "sim": "tsx scripts/sim.ts",
     "test": "tsx scripts/determinism.ts",
-    "schema": "tsx scripts/schema.ts"
+    "schema": "tsx scripts/schema.ts",
+    "eval:ai": "tsx scripts/ai-eval.ts"
   },
   "dependencies": {
     "mp4-muxer": "^5.2.2",

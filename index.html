@@ -13,6 +13,23 @@
         <p class="muted">Deterministic ball-physics shorts</p>
       </header>
 
+      <section class="ai" aria-label="Ask Claude">
+        <textarea id="ai-prompt" rows="3" placeholder="Describe a change or a new video… (⌘↵ to send)"></textarea>
+        <div class="row">
+          <select id="ai-model" title="Fast is quicker for edits; Smart is better at new formats">
+            <option value="fast">Fast (Haiku)</option>
+            <option value="smart">Smart (Sonnet)</option>
+          </select>
+          <button id="ai-send" class="primary">Send</button>
+          <button id="ai-stop" hidden>Stop</button>
+        </div>
+        <div class="ai-meta">
+          <span id="ai-status" class="muted">Runs Claude Code on your Claude plan.</span>
+          <button id="ai-new" class="link" title="Forget this scene's conversation">New chat</button>
+        </div>
+        <ol id="ai-log" class="ai-log" hidden></ol>
+      </section>
+
       <label class="field">
         <span>Scene</span>
         <select id="scene"></select>
@@ -46,6 +63,15 @@
       <div id="progress" class="progress" hidden><div id="bar"></div><span id="progress-label"></span></div>
       <p id="export-msg" class="msg"></p>
 
+      <div class="rate">
+        <div class="row buttons">
+          <button id="like" title="Tell Claude you like videos like this">Like</button>
+          <button id="dislike" title="Tell Claude to steer away from this">Dislike</button>
+        </div>
+        <input id="rate-note" type="text" placeholder="Why? (optional, Claude reads this)" />
+        <p id="rate-msg" class="muted"></p>
+      </div>
+
       <details id="tweaks" open>
         <summary>Tweak</summary>
         <p id="tweak-count" class="muted"></p>
@@ -56,9 +82,16 @@
         <div id="sliders"></div>
       </details>
 
+      <details id="history-box">
+        <summary>History</summary>
+        <p class="muted">Every version of this scene file: from Claude, slider saves, or your editor.</p>
+        <div class="row buttons"><button id="undo">Undo last change</button></div>
+        <ol id="history-list" class="history"></ol>
+      </details>
+
       <details>
         <summary>Scene file</summary>
-        <p class="muted">Edit <code id="scene-path">scenes/…</code> and the preview reloads. Seed changes here are not saved to the file.</p>
+        <p class="muted">Edit <code id="scene-path">scenes/…</code> (or ask Claude) and the preview updates. Seed changes here are not saved to the file.</p>
         <pre id="scene-json"></pre>
       </details>
       <details>

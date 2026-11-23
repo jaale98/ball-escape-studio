@@ -6,14 +6,14 @@ import { DT, World } from './engine/world';
 import { canExport, exportMp4 } from './export/mp4';
 import { renderStill } from './export/still';
 import { Renderer } from './render/renderer';
+import { entriesFrom, type SceneEntry, sceneFiles } from './scenes';
+import { initAssistant } from './ui/assistant';
+import { initRating, refreshHistory } from './ui/history';
 import { fmt, setPath, tunables } from './ui/sliders';
 
-// Every JSON file in scenes/ is a scene. Editing one triggers a Vite reload.
-const files = import.meta.glob('../scenes/*.json', { eager: true, import: 'default' }) as Record<string, unknown>;
-const scenes = Object.entries(files)
-  .map(([path, raw]) => ({ name: path.split('/').pop()!.replace(/\.json$/, ''), path: path.replace('../', ''), raw }))
-  .sort((a, b) => a.name.localeCompare(b.name));
-const sources: Record<string, unknown> = Object.fromEntries(scenes.map((s) => [s.name, s.raw]));
+// Every JSON file in scenes/ is a scene. Edits arrive as hot updates (no page reload).
+let scenes: SceneEntry[] = entriesFrom(sceneFiles);
+let sources: Record<string, unknown> = Object.fromEntries(scenes.map((s) => [s.name, s.raw]));
 
 // MIDI files in songs/ can be used as melodies: "audio": { "melody": "midi:minuet-in-g" }.
 const songUrls = import.meta.glob('../songs/*.mid', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
@@ -64,8 +64,13 @@ let endedAt = 0;
 let audio: { ctx: AudioContext; master: AudioNode } | null = null;
 let soundOn = store.get('sound') === '1';
 
-for (const s of scenes) sceneSelect.add(new Option(s.name, s.name));
-sceneSelect.value = scenes.some((s) => s.name === store.get('scene')) ? store.get('scene')! : (scenes[0]?.name ?? '');
+function fillSceneList(selected: string): void {
+  sceneSelect.replaceChildren(...scenes.map((s) => new Option(s.name, s.name)));
+  sceneSelect.value = scenes.some((s) => s.name === selected) ? selected : (scenes[0]?.name ?? '');
+}
+fillSceneList(store.get('scene') ?? '');
+/** A scene Claude just wrote that should be shown as soon as it arrives. */
+let pendingSelect = '';
 
 function currentEntry() {
   return scenes.find((s) => s.name === sceneSelect.value);
@@ -99,7 +104,10 @@ async function loadScene(keepSeed: boolean, rebuildSliders = true): Promise<void
     seedInput.value = String(seed);
     $('resolved-json').textContent = JSON.stringify(scene, null, 2);
     errorBox.hidden = true;
-    if (rebuildSliders) buildSliders();
+    if (rebuildSliders) {
+      buildSliders();
+      void refreshHistory(entry.name);
+    }
     restart();
   } catch (err) {
     if (token !== loadToken) return;
@@ -329,7 +337,7 @@ syncSoundButton();
 document.addEventListener('pointerdown', () => ensureAudio(), { once: true });
 
 document.addEventListener('keydown', (e) => {
-  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
   if (e.code === 'Space') {
     e.preventDefault();
     playBtn.click();
@@ -401,6 +409,66 @@ exportBtn.addEventListener('click', async () => {
     return res.json();
   },
 };
+
+// ---- Hot scene updates, Claude, history, taste --------------------------------
+
+window.addEventListener('scenes-updated', (e) => {
+  const next = (e as CustomEvent<SceneEntry[]>).detail;
+  const before = sources;
+  scenes = next;
+  sources = Object.fromEntries(scenes.map((s) => [s.name, s.raw]));
+  const wanted = pendingSelect && sources[pendingSelect] ? pendingSelect : sceneSelect.value;
+  const switched = wanted !== sceneSelect.value;
+  if (wanted === pendingSelect) pendingSelect = '';
+  fillSceneList(wanted);
+  if (switched) store.set('scene', wanted);
+  const current = sceneSelect.value;
+  // Reload when the shown scene (or anything it extends) changed. The file is now the truth.
+  if (switched || JSON.stringify(before[current]) !== JSON.stringify(sources[current]) || dependsOnChanged(current, before)) {
+    overrides.clear();
+    if (switched) seedInput.value = '';
+    void loadScene(false);
+  }
+});
+
+/** True if a scene this one extends changed. */
+function dependsOnChanged(name: string, before: Record<string, unknown>): boolean {
+  let raw = sources[name] as { extends?: string } | undefined;
+  for (let i = 0; i < 10 && raw?.extends; i++) {
+    const parent = raw.extends;
+    if (JSON.stringify(before[parent]) !== JSON.stringify(sources[parent])) return true;
+    raw = sources[parent] as { extends?: string } | undefined;
+  }
+  return false;
+}
+
+initAssistant({
+  currentScene: () => currentEntry()?.name,
+  onFile: (path) => {
+    const m = /^scenes\/([\w-]+)\.json$/.exec(path);
+    if (m && m[1] !== sceneSelect.value) pendingSelect = m[1];
+  },
+});
+
+initRating(() => {
+  const entry = currentEntry();
+  if (!entry || !scene) return null;
+  const kinds = scene.entities.map((e) => (e.type === 'ball' ? `${e.count}× ball r${e.radius}` : e.type)).join(', ');
+  const raw = entry.raw as { extends?: string; modifiers?: unknown };
+  const summary = [
+    raw.extends ? `extends ${raw.extends}` : '',
+    raw.modifiers ? `modifiers ${JSON.stringify(raw.modifiers)}` : '',
+    kinds,
+    `gravity ${JSON.stringify(scene.world.gravity)}`,
+    `ends on ${scene.duration.endOn}`,
+    `melody ${scene.audio.melody}/${scene.audio.instrument}`,
+    `seed ${scene.seed}`,
+    world ? `ran ${world.time.toFixed(1)}s, ${world.bounces} bounces${world.done ? `, ended ${world.endReason}` : ''}` : '',
+  ]
+    .filter(Boolean)
+    .join('; ');
+  return { name: entry.name, title: scene.overlay.title ?? scene.title, summary };
+});
 
 void loadScene(false);
 requestAnimationFrame(frame);
