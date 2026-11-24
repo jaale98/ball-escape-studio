@@ -1,8 +1,15 @@
 {
   "$schema": "../scene.schema.json",
-  "extends": "ring-escape",
   "title": "Grow on bounce",
   "seed": 11,
+  "duration": {
+    "max": 60,
+    "endOn": "firstEscape",
+    "tail": 2.5
+  },
+  "world": {
+    "gravity": 900
+  },
   "modifiers": [
     {
       "use": "grow-on-bounce",
@@ -39,6 +46,7 @@
   },
   "overlay": {
     "title": "It grows every bounce",
-    "subtitle": "Will it get out before it fills the ring?"
+    "subtitle": "Will it get out before it fills the ring?",
+    "counter": "bounces"
   }
 }
