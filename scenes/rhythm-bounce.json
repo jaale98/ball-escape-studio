@@ -1,0 +1,49 @@
+{
+  "$schema": "../scene.schema.json",
+  "extends": "music-bounce",
+  "title": "Rhythm bounce",
+  "seed": 1,
+  "modifiers": [
+    "zero-g"
+  ],
+  "duration": {
+    "max": 40,
+    "endOn": "never"
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 430,
+      "thickness": 12,
+      "spin": 0.5,
+      "gaps": []
+    },
+    {
+      "type": "ball",
+      "radius": 28,
+      "speed": 900,
+      "color": "#7cff6b",
+      "x": 700,
+      "y": 960,
+      "direction": 75
+    }
+  ],
+  "audio": {
+    "melody": "midi:minuet-in-g",
+    "parts": [
+      0
+    ],
+    "chords": false,
+    "rhythmLock": true,
+    "instrument": "marimba"
+  },
+  "style": {
+    "trail": 0.9,
+    "ringColor": "#c8ffd0"
+  },
+  "overlay": {
+    "title": "Every bounce is in time",
+    "subtitle": "Minuet in G",
+    "counter": "bounces"
+  }
+}

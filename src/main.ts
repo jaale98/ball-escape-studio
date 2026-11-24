@@ -1,12 +1,17 @@
-import { parseMidi } from './audio/midi';
+import { songGroups } from './audio/midi';
 import { createMaster, playVoice, SoundMapper } from './audio/sound';
 import type { Scene } from './engine/scene';
 import { mergeSource, resolveScene } from './engine/source';
 import { DT, World } from './engine/world';
+import { type RunScore } from './director/score';
 import { canExport, exportMp4 } from './export/mp4';
 import { renderStill } from './export/still';
 import { Renderer } from './render/renderer';
 import { entriesFrom, type SceneEntry, sceneFiles } from './scenes';
+import { loadSong, songFiles, songUrls } from './songs';
+import { initDirector } from './ui/director';
+import { initMusic, refreshMusic } from './ui/music';
+import { enqueue, initQueue } from './ui/queue';
 import { initAssistant } from './ui/assistant';
 import { initRating, refreshHistory } from './ui/history';
 import { fmt, setPath, tunables } from './ui/sliders';
@@ -16,14 +21,11 @@ let scenes: SceneEntry[] = entriesFrom(sceneFiles);
 let sources: Record<string, unknown> = Object.fromEntries(scenes.map((s) => [s.name, s.raw]));
 
 // MIDI files in songs/ can be used as melodies: "audio": { "melody": "midi:minuet-in-g" }.
-const songUrls = import.meta.glob('../songs/*.mid', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
-const midiCache = new Map<string, number[][]>();
-async function loadMidi(name: string): Promise<number[][]> {
-  const file = name.endsWith('.mid') ? name : `${name}.mid`;
-  const url = Object.entries(songUrls).find(([p]) => p.endsWith(`/${file}`))?.[1];
-  if (!url) throw new Error(`audio.melody: no MIDI file songs/${file}`);
-  if (!midiCache.has(url)) midiCache.set(url, parseMidi(await (await fetch(url)).arrayBuffer()));
-  return midiCache.get(url)!;
+let songs: Record<string, string> = songUrls(songFiles);
+function songUrl(name: string): string {
+  const url = songs[name.replace(/\.mid$/, '')];
+  if (!url) throw new Error(`audio.melody: no MIDI file songs/${name}.mid (drop one onto the studio to add it)`);
+  return url;
 }
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -60,6 +62,8 @@ let mapper: SoundMapper | null = null;
 let audioCursor = 0;
 let playing = true;
 let exporting = false;
+/** The Director view covers the stage: pause the main preview while it's open. */
+let directorOpen = false;
 let endedAt = 0;
 let audio: { ctx: AudioContext; master: AudioNode } | null = null;
 let soundOn = store.get('sound') === '1';
@@ -77,7 +81,7 @@ function currentEntry() {
 }
 
 /** Slider tweaks not yet saved to the file: dotted path -> value. */
-const overrides = new Map<string, number>();
+const overrides = new Map<string, unknown>();
 let loadToken = 0;
 
 /** Resolve the selected scene (extends, modifiers, prefabs, slider tweaks, MIDI) and restart. */
@@ -91,8 +95,14 @@ async function loadScene(keepSeed: boolean, rebuildSliders = true): Promise<void
     const resolved = resolveScene(entry.name, sources, (merged) => {
       for (const [path, v] of overrides) setPath(merged, path, v);
     });
-    if (resolved.audio.melody.startsWith('midi:') && !resolved.audio.notes) {
-      resolved.audio.notes = await loadMidi(resolved.audio.melody.slice(5));
+    let song = null;
+    if (resolved.audio.melody.startsWith('midi:')) {
+      song = await loadSong(songUrl(resolved.audio.melody.slice(5)));
+      if (!resolved.audio.notes) {
+        const { groups, times } = songGroups(song, resolved.audio.parts);
+        resolved.audio.notes = groups;
+        resolved.audio.noteTimes = times;
+      }
     }
     if (token !== loadToken) return;
     // A UI seed is remembered per scene, but only while the file's own seed is
@@ -102,7 +112,8 @@ async function loadScene(keepSeed: boolean, rebuildSliders = true): Promise<void
     const seed = keepSeed && seedInput.value !== '' ? Number(seedInput.value) : remembered;
     scene = { ...resolved, seed };
     seedInput.value = String(seed);
-    $('resolved-json').textContent = JSON.stringify(scene, null, 2);
+    $('resolved-json').textContent = JSON.stringify({ ...scene, audio: { ...scene.audio, notes: scene.audio.notes ? `(${scene.audio.notes.length} note groups)` : undefined, noteTimes: undefined } }, null, 2);
+    refreshMusic(scene, Object.keys(songs), song);
     errorBox.hidden = true;
     if (rebuildSliders) {
       buildSliders();
@@ -116,6 +127,14 @@ async function loadScene(keepSeed: boolean, rebuildSliders = true): Promise<void
     errorBox.hidden = false;
     errorBox.textContent = `${entry.path}\n${(err as Error).message}`;
   }
+}
+
+/** Set (or with undefined, clear) a tweak from any panel, and re-run the preview. */
+function setTweak(path: string, value: unknown): void {
+  overrides.set(path, value); // undefined = unset (dropped when saved)
+  updateTweakButtons();
+  clearTimeout(sliderTimer);
+  sliderTimer = window.setTimeout(() => void loadScene(true, true), 60);
 }
 
 // ---- Sliders ----------------------------------------------------------------
@@ -280,7 +299,7 @@ let acc = 0;
 function frame(now: number): void {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
-  if (world && renderer && !exporting) {
+  if (world && renderer && !exporting && !directorOpen) {
     let rdt = 0;
     if (playing && !world.done) {
       acc += dt;
@@ -351,41 +370,11 @@ if (!canExport()) {
   $('export-msg').textContent = 'MP4 export needs WebCodecs (recent Chrome or Edge).';
 }
 
-exportBtn.addEventListener('click', async () => {
-  if (!scene || exporting) return;
-  exporting = true;
-  exportBtn.disabled = true;
-  const progress = $('progress');
-  const bar = $('bar');
-  const label = $('progress-label');
-  const msg = $('export-msg');
-  progress.hidden = false;
-  msg.textContent = '';
-  const names = { simulate: 'Simulating', audio: 'Rendering audio', video: 'Encoding video', finish: 'Encoding audio' };
-  try {
-    const result = await exportMp4(scene, (stage, f) => {
-      bar.style.width = `${Math.round((stage === 'video' ? f : stage === 'finish' ? 1 : 0) * 100)}%`;
-      label.textContent = `${names[stage]}${stage === 'video' ? ` ${Math.round(f * 100)}%` : '…'}`;
-    });
-    const url = URL.createObjectURL(result.blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${sceneSelect.value}-seed${scene.seed}.mp4`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    msg.textContent =
-      `Saved ${a.download}: ${result.seconds.toFixed(1)}s video, ${(result.blob.size / 1e6).toFixed(1)} MB, ` +
-      `rendered in ${(result.ms / 1000).toFixed(1)}s (${result.codec}). ` +
-      (result.deterministic ? 'Determinism check passed.' : 'Warning: render pass diverged from the pre-pass.');
-  } catch (err) {
-    msg.textContent = `Export failed: ${(err as Error).message}`;
-    console.error(err);
-  } finally {
-    progress.hidden = true;
-    exporting = false;
-    exportBtn.disabled = false;
-    restart();
-  }
+exportBtn.addEventListener('click', () => {
+  if (!scene) return;
+  const name = currentEntry()?.name ?? 'scene';
+  enqueue(`${name} · seed ${scene.seed}`, `${name}-seed${scene.seed}`, scene);
+  $('export-msg').textContent = 'Added to the export queue below.';
 });
 
 // Expose a small hook for automated checks and Claude Code ("folder mode").
@@ -411,6 +400,13 @@ exportBtn.addEventListener('click', async () => {
 };
 
 // ---- Hot scene updates, Claude, history, taste --------------------------------
+
+window.addEventListener('songs-updated', (e) => {
+  songs = (e as CustomEvent<Record<string, string>>).detail;
+  if (scene) void loadScene(true, true);
+});
+
+initMusic({ set: setTweak });
 
 window.addEventListener('scenes-updated', (e) => {
   const next = (e as CustomEvent<SceneEntry[]>).detail;
@@ -468,6 +464,37 @@ initRating(() => {
     .filter(Boolean)
     .join('; ');
   return { name: entry.name, title: scene.overlay.title ?? scene.title, summary };
+});
+
+initQueue({
+  setExporting: (busy) => {
+    exporting = busy;
+    if (!busy) restart();
+  },
+});
+
+const variantName = (r: RunScore) => {
+  const name = currentEntry()?.name ?? 'scene';
+  return `${name}-seed${r.seed}${r.speed !== 1 || r.spin !== 1 ? `-v${Math.round(r.speed * 100)}-${Math.round(r.spin * 100)}` : ''}`;
+};
+
+initDirector({
+  scene: () => scene,
+  sceneName: () => currentEntry()?.name ?? '',
+  use: (r) => {
+    setSeed(r.seed);
+    setTweak('seed', r.seed);
+    setTweak('world.speedScale', r.speed);
+    setTweak('world.spinScale', r.spin);
+  },
+  keep: (r) => {
+    if (!scene) return;
+    const variant = { ...scene, seed: r.seed, world: { ...scene.world, speedScale: scene.world.speedScale * r.speed, spinScale: scene.world.spinScale * r.spin } };
+    enqueue(`${currentEntry()?.name ?? 'scene'} · seed ${r.seed} · score ${r.score.toFixed(0)}`, variantName(r), variant);
+  },
+  setOpen: (open) => {
+    directorOpen = open;
+  },
 });
 
 void loadScene(false);

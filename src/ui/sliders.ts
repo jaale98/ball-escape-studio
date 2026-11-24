@@ -127,7 +127,10 @@ function niceStep(raw: number): number {
 export function setPath(obj: Raw, path: string, value: unknown): void {
   const parts = path.split('.');
   let cur: Raw = obj;
-  for (const p of parts.slice(0, -1)) cur = cur[p];
+  for (const p of parts.slice(0, -1)) {
+    if (cur[p] === undefined || cur[p] === null) cur[p] = {};
+    cur = cur[p];
+  }
   cur[parts[parts.length - 1]] = value;
 }
 

@@ -19,12 +19,14 @@ Every run is **deterministic**: the same scene and seed always produce exactly t
 
 ## Features
 
-- **13 formats out of the box:** ring escape, nested rings, multiply, grow on bounce, shrinking gap, ball race, battle royale, country battle, Plinko, hexagon escape, paint the ring, gravity flip, and music bounce. Each one is just a scene file.
+- **14 formats out of the box:** ring escape, nested rings, multiply, grow on bounce, shrinking gap, ball race, battle royale, country battle, Plinko, hexagon escape, paint the ring, gravity flip, music bounce, and rhythm bounce. Each one is just a scene file.
+- **The Director.** Simulates hundreds of runs in a fraction of a second, scores each for the story you want (slow burn, last-second escape, chaos, comeback, in time with the song), and shows the best nine playing side by side. Use one, swipe through them, or export the best.
+- **Swipe review and an export queue.** Keep (→) or discard (←) candidates one by one; kept videos render in the background and land in `exports/`.
 - **A small scene language.** Scenes can `extend` other scenes, stack named `modifiers` (`"multiply"`, `"battle"`, `"gravity-flip"`…), and use prefabs (`nested` rings, a `pegboard`, `bins`). Most new formats need no code at all.
 - **Deterministic physics.** Fixed 240 Hz timestep, seeded randomness, no wall-clock time. A state hash proves two runs are identical.
 - **Built for the genre.** Spinning rings and polygons with exits, walls, pegs, counting zones, hit points, winners, timed events, and bounces that never lose energy.
 - **Live sliders.** Every number in a scene becomes a slider. Changes preview instantly, and **Save to file** writes them back to the JSON.
-- **Music from bounces.** Every bounce plays the next note of a melody: improvised pentatonic, *Ode to Joy*, *Für Elise*, or **any MIDI file** you drop into `songs/` (with optional chords). There are synth instruments plus hit, pop and escape sounds.
+- **Music from bounces.** Every bounce plays the next note of a melody: improvised pentatonic, *Ode to Joy*, *Für Elise*, or **any MIDI file**. Drag a `.mid` onto the studio to add it, pick it from the Music panel, and choose which tracks and channels play ("Melody only" finds the tune). **Rhythm lock** keeps every bounce in time with the song. There are synth instruments plus hit, pop and escape sounds.
 - **Frame-perfect MP4 export.** Frames are rendered one by one, encoded with WebCodecs (H.264 + AAC), and muxed in the browser. A 30 s single-ball video exports in about 10 s, with no dropped frames, even in a background tab.
 - **Headless CLI.** `npm run sim` runs a scene in milliseconds, searches seed ranges for the best ending, and prints the event log, for you or for an AI agent.
 - **Editor autocomplete.** [`scene.schema.json`](scene.schema.json) gives VS Code completion and inline docs for every field.
@@ -119,6 +121,7 @@ The full schema with every default lives in [`src/engine/scene.ts`](src/engine/s
 | [`multiply`](scenes/multiply.json) | Every escape spawns two more | ring-escape + `multiply` |
 | [`gravity-flip`](scenes/gravity-flip.json) | Gravity reverses every 4 s | ring-escape + `gravity-flip` |
 | [`music-bounce`](scenes/music-bounce.json) | Each bounce plays the next note of a MIDI song | ring-escape + `speed-up` + `midi:minuet-in-g` |
+| [`rhythm-bounce`](scenes/rhythm-bounce.json) | Every bounce lands in time with the song | music-bounce + `zero-g` + `rhythmLock` |
 | [`ball-race`](scenes/ball-race.json) | Four named balls, first one out wins | ring-escape + `race` |
 | [`nested-rings`](scenes/nested-rings.json) | Five counter-rotating rings | `nested` prefab |
 | [`battle-royale`](scenes/battle-royale.json) | Hit points, last ball standing | closed ring + `battle` |
@@ -126,6 +129,24 @@ The full schema with every default lives in [`src/engine/scene.ts`](src/engine/s
 | [`hexagon-escape`](scenes/hexagon-escape.json) | A spinning hexagon with a narrow exit | `polygon` |
 | [`plinko`](scenes/plinko.json) | Balls rain through pegs into counted bins | `pegboard` + `bins` + timeline spawner |
 | [`paint-the-ring`](scenes/paint-the-ring.json) | Which color covers more? | closed ring + `paint` + `zero-g` |
+
+## The Director
+
+Click **Director** in the studio. Pick a story, set when the climax should land, and click **Find the best runs**. The Director simulates every candidate in Web Workers (300 runs of a 30 s scene take well under a second), optionally nudging ball speed and container spin by up to ±10%, then refines around the best five.
+
+| Story | What it rewards |
+| --- | --- |
+| Slow burn | Climax near the target, near-misses building toward it, no dead stretches |
+| Last-second escape | Climax almost exactly on the target, lots of near-misses |
+| Chaos | As many hits and balls as possible |
+| Comeback | Races and battles where the lead changes and the winner was behind at halftime |
+| In time with the song | Bounces that follow the MIDI song's note timing |
+
+The best nine play side by side. **Use** makes one the scene's seed (plus `world.speedScale` / `world.spinScale` tweaks; **Save to file** keeps them). **Export** queues it, and **Review one by one** opens the swipe view.
+
+### Rhythm lock
+
+Set `"audio": { "melody": "midi:<song>", "rhythmLock": true }` on a zero-gravity, one-ball ring scene. After every bounce the ball's speed is set so that it reaches the wall exactly when the next note is due, so the song plays in time (100% of notes in the bundled preset). The tempo is chosen automatically, between half and double the song's own; `"tempo"` overrides it. Without rhythm lock, the Director's "In time with the song" story searches seeds for the best natural fit. Expect around 25–30% of notes on time there: free bounces are irregular.
 
 ## Finding the perfect seed
 
@@ -141,6 +162,7 @@ This lists the seeds whose climax (first escape, last elimination, or fill) land
 npm run sim -- ring-escape              # summary of one run
 npm run sim -- ring-escape --events     # every bounce, escape and hit, timestamped
 npm run sim -- ring-escape --resolved   # the scene after extends, modifiers and prefabs
+npm run sim -- ring-escape --director slow-burn --target 30 --vary 0.1   # the Director, headless
 npm test                                # every scene resolves and replays identically
 npm run schema                          # regenerate scene.schema.json
 ```
@@ -180,7 +202,8 @@ scenes/*.json ─► resolveScene: extends ─► modifiers ─► prefabs ─�
 - **`src/render/`** draws a world onto a 1080×1920 canvas. Effects are driven only by the event log and a seeded RNG, so the export matches the preview.
 - **`src/audio/`** maps events to notes, reads MIDI files, and synthesizes sound with Web Audio. The same code drives live playback and the offline mixdown.
 - **`src/export/`** handles the frame-by-frame MP4 encoder and deterministic still frames.
-- **`src/ui/`** holds the sliders, the prompt box, and the history panel.
+- **`src/director/`** holds the Director: run scoring and story templates (`score.ts`, also used by the CLI) and the Web Worker pool.
+- **`src/ui/`** holds the sliders, prompt box, history, music panel, Director view, swipe review, and export queue.
 - **`server/`** holds the dev-server endpoints, including the Claude Code runner (`claude.ts`) and scene history.
 
 Export runs the scene twice: a headless pass that learns the length and every event (for the soundtrack), then a rendering pass. Both must end on the same state hash, which the studio reports after each export.
@@ -190,7 +213,7 @@ Export runs the scene twice: a headless pass that learns the length and every ev
 1. **Core engine and export** (done)
 2. **Scene language:** inheritance, modifiers, prefabs, sliders, MIDI, 13 formats (done)
 3. **AI through Claude Code:** prompt box on your own plan, version history and undo, taste notes (done)
-4. **The Director:** automatic seed search scored for suspense, a variant grid, swipe-to-keep review
+4. **The Director:** story-scored seed search in Web Workers, variant grid, swipe review, export queue, MIDI upload / part picker, rhythm lock (done)
 5. **Full studio:** WebGL crowds, custom rule scripts, batch production and series tools
 
 ## License

@@ -93,6 +93,17 @@
               "type": "integer",
               "exclusiveMinimum": 0,
               "default": 300
+            },
+            "speedScale": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "default": 1,
+              "description": "Multiplies every ball launch speed. The Director tunes this."
+            },
+            "spinScale": {
+              "type": "number",
+              "default": 1,
+              "description": "Multiplies every container spin. The Director tunes this."
             }
           },
           "additionalProperties": false,
@@ -702,6 +713,31 @@
               "type": "boolean",
               "default": false,
               "description": "With a MIDI melody: play every note struck together, not just the top one."
+            },
+            "parts": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "description": "With a MIDI melody: which parts (track/channel pairs, numbered from 0) feed the melody. Default: all."
+            },
+            "noteTimes": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "description": "Filled in by the studio from the MIDI file: when each melody note falls in the song (seconds). Used for rhythm sync."
+            },
+            "rhythmLock": {
+              "type": "boolean",
+              "default": false,
+              "description": "Keep bounces in time with the MIDI song: after each bounce the ball’s speed is set so it reaches the wall exactly on the next note. Needs zero gravity, one ball and a ring."
+            },
+            "tempo": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "With rhythmLock: song speed multiplier. Default: chosen so the ball keeps roughly its launch speed."
             },
             "transpose": {
               "type": "integer",

@@ -166,6 +166,8 @@ export const SceneSchema = z
         restitution: z.number().min(0).max(1.5).default(1),
         friction: z.number().min(0).max(1).default(0).describe('Share of sliding speed lost on each wall/peg contact. 0 = frictionless.'),
         maxBalls: z.number().int().positive().default(300),
+        speedScale: z.number().positive().default(1).describe('Multiplies every ball launch speed. The Director tunes this.'),
+        spinScale: z.number().default(1).describe('Multiplies every container spin. The Director tunes this.'),
       })
       .strict()
       .default({}),
@@ -195,6 +197,13 @@ export const SceneSchema = z
           .optional()
           .describe('Inline melody as MIDI note numbers; an array is a chord. Overrides melody.'),
         chords: z.boolean().default(false).describe('With a MIDI melody: play every note struck together, not just the top one.'),
+        parts: z.array(z.number().int().min(0)).optional().describe('With a MIDI melody: which parts (track/channel pairs, numbered from 0) feed the melody. Default: all.'),
+        noteTimes: z.array(z.number()).optional().describe('Filled in by the studio from the MIDI file: when each melody note falls in the song (seconds). Used for rhythm sync.'),
+        rhythmLock: z
+          .boolean()
+          .default(false)
+          .describe('Keep bounces in time with the MIDI song: after each bounce the ball’s speed is set so it reaches the wall exactly on the next note. Needs zero gravity, one ball and a ring.'),
+        tempo: z.number().positive().optional().describe('With rhythmLock: song speed multiplier. Default: chosen so the ball keeps roughly its launch speed.'),
         transpose: z.number().int().default(0),
         instrument: z.enum(['pluck', 'bell', 'marimba']).default('pluck'),
         volume: z.number().min(0).max(1).default(0.7),

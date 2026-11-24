@@ -33,20 +33,30 @@ export class Renderer {
   private escapeFlash = 0;
   private lastFlashStep = -Infinity;
   private banner = 0;
+  private readonly scale: number;
+  private readonly glowAllowed: boolean;
 
+  /**
+   * @param opts.scale  draw at this fraction of 1080x1920 (mini previews use ~0.25)
+   * @param opts.glow   allow glow effects (off for mini previews: they're costly)
+   */
   constructor(
     canvas: HTMLCanvasElement,
     private readonly scene: Scene,
+    opts: { scale?: number; glow?: boolean } = {},
   ) {
-    canvas.width = WIDTH;
-    canvas.height = HEIGHT;
+    this.scale = opts.scale ?? 1;
+    this.glowAllowed = opts.glow ?? true;
+    canvas.width = Math.round(WIDTH * this.scale);
+    canvas.height = Math.round(HEIGHT * this.scale);
     this.ctx = canvas.getContext('2d', { alpha: false })!;
     this.rng = new Rng(scene.seed, 'fx');
     if (scene.style.paint) {
       this.paint = document.createElement('canvas');
-      this.paint.width = WIDTH;
-      this.paint.height = HEIGHT;
+      this.paint.width = canvas.width;
+      this.paint.height = canvas.height;
       const p = this.paint.getContext('2d')!;
+      p.setTransform(this.scale, 0, 0, this.scale, 0, 0);
       p.fillStyle = scene.style.background;
       p.fillRect(0, 0, WIDTH, HEIGHT);
     }
@@ -57,6 +67,7 @@ export class Renderer {
     const { ctx, scene } = this;
     const { style } = scene;
     this.consumeEvents(world);
+    ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
 
     // Background, or the paint layer with this frame's paint added.
     if (this.paint) {
@@ -70,14 +81,16 @@ export class Renderer {
           p.fill();
         }
       }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.drawImage(this.paint, 0, 0);
+      ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
     } else {
       ctx.fillStyle = style.background;
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
     }
 
     this.drawTrails(world, dt);
-    const glow = style.glow && world.aliveCount <= 60;
+    const glow = style.glow && this.glowAllowed && world.aliveCount <= 60;
     this.drawZones(world);
     this.drawSolids(world, glow);
     this.drawContainers(world, glow);

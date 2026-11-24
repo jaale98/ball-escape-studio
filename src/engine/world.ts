@@ -153,6 +153,8 @@ export class World {
 
   private endStep = Infinity;
   private filled = false;
+  /** Rhythm lock: seconds of real time per second of song, or 0 when off. */
+  private rhythmK = 0;
   private nextBallId = 0;
   private startingBalls = 0;
   private readonly rngSpawn: Rng;
@@ -184,7 +186,7 @@ export class World {
           radius: e.radius,
           thickness: e.thickness,
           angle: e.angle * DEG,
-          spin: e.spin,
+          spin: e.spin * scene.world.spinScale,
           gaps: e.gaps.filter((g) => g.width > 0).map((g) => ({ at: g.at * DEG, width: g.width * DEG })),
           color: e.color ?? scene.style.ringColor,
         });
@@ -197,7 +199,7 @@ export class World {
           radius: e.radius,
           thickness: e.thickness,
           angle: e.angle * DEG,
-          spin: e.spin,
+          spin: e.spin * scene.world.spinScale,
           sides: e.sides,
           open: Array.from({ length: e.sides }, (_, k) => e.open.includes(k)),
           gap: e.gap,
@@ -220,6 +222,29 @@ export class World {
       }
     }
     this.startingBalls = this.balls.length;
+
+    // Rhythm lock: pick a tempo so the ball keeps roughly its launch speed.
+    const nt = scene.audio.noteTimes;
+    const ring = this.containers[0];
+    if (scene.audio.rhythmLock && nt && nt.length > 1 && this.gx === 0 && this.gy === 0 && ring?.kind === 'ring' && this.balls.length === 1) {
+      const intervals = nt
+        .slice(1)
+        .map((t, i) => t - nt[i])
+        .filter((d) => d > 1e-6)
+        .sort((a, b) => a - b);
+      const median = intervals[Math.floor(intervals.length / 2)];
+      const b = this.balls[0];
+      // With no gravity every bounce in a circle repeats the same chord length,
+      // set by how far the launch line passes from the center.
+      const speed = Math.max(1, Math.hypot(b.vx, b.vy));
+      const R = this.innerRadius(ring) - b.r;
+      const off = Math.abs((b.x - ring.x) * (b.vy / speed) - (b.y - ring.y) * (b.vx / speed));
+      const chord = 2 * Math.sqrt(Math.max(R * R - off * off, (0.2 * R) ** 2));
+      // Default tempo: the most common note length plays at the launch speed,
+      // but never slower than half or faster than double the song's own tempo
+      // (beyond that it stops sounding like the song; the ball speeds up instead).
+      this.rhythmK = scene.audio.tempo ? 1 / scene.audio.tempo : Math.max(0.5, Math.min(2, chord / speed / median));
+    }
   }
 
   get time(): number {
@@ -315,7 +340,7 @@ export class World {
     const cy = (y ?? anchor?.y ?? HEIGHT / 2) + (spread ? this.rngSpawn.range(-spread, spread) : 0);
     const dirDeg = direction ?? spec.direction;
     const dir = dirDeg !== undefined ? dirDeg * DEG : this.rngSpawn.range(0, TAU);
-    const v = speed ?? spec.speed;
+    const v = (speed ?? spec.speed) * this.scene.world.speedScale;
     const id = this.nextBallId++;
     const palette = this.scene.style.palette;
     const ball: Ball = {
@@ -619,6 +644,40 @@ export class World {
     this.bounces++;
     this.emit('bounce', b, c ? c.id : -1, solid, -1, strength);
     this.applyActions(this.rules.bounce, b, c, strength);
+    if (this.rhythmK > 0) this.lockToRhythm(b, this.bounces - 1);
+  }
+
+  /**
+   * Rhythm lock: the bounce that just happened played note `i`. Set the ball's
+   * speed so its straight-line path reaches the ring wall exactly when note
+   * i+1 is due (the song loops). Exact with zero gravity and a circular wall.
+   */
+  private lockToRhythm(b: Ball, i: number): void {
+    const nt = this.scene.audio.noteTimes!;
+    const ring = this.containers.find((c, k) => c.kind === 'ring' && !b.escaped[k]);
+    if (!ring || this.aliveCount !== 1) return;
+    const songLength = nt[nt.length - 1] - nt[0] + Math.max(0.25, nt[nt.length - 1] - nt[nt.length - 2]);
+    let dt = 0;
+    for (let j = i; dt < 1e-6 && j < i + nt.length; j++) {
+      const a = nt[j % nt.length] + Math.floor(j / nt.length) * songLength;
+      const z = nt[(j + 1) % nt.length] + Math.floor((j + 1) / nt.length) * songLength;
+      dt = z - a; // skip zero-length gaps (shouldn't happen: chords are one group)
+    }
+    const s0 = Math.hypot(b.vx, b.vy);
+    if (s0 < 1e-6 || dt < 1e-6) return;
+    const ux = b.vx / s0;
+    const uy = b.vy / s0;
+    const px = b.x - ring.x;
+    const py = b.y - ring.y;
+    const R = this.innerRadius(ring) - b.r;
+    const pu = px * ux + py * uy;
+    const disc = pu * pu - (px * px + py * py - R * R);
+    if (disc < 0) return;
+    const dist = -pu + Math.sqrt(disc);
+    const speed = Math.max(150, Math.min(4000, dist / (dt * this.rhythmK)));
+    b.vx = ux * speed;
+    b.vy = uy * speed;
+    b.energy = this.energyOf(b);
   }
 
   private escape(b: Ball, c: Container, idx: number): void {
@@ -631,7 +690,8 @@ export class World {
     }
     if (this.firstEscapeStep < 0) {
       this.firstEscapeStep = this.stepCount;
-      if (this.scene.duration.endOn === 'firstEscape') this.winner = b.id;
+      // Only a race (several balls at the start) has a winner worth announcing.
+      if (this.scene.duration.endOn === 'firstEscape' && this.startingBalls > 1) this.winner = b.id;
     }
     this.emit('escape', b, idx, -1, -1, Math.hypot(b.vx, b.vy));
     this.applyActions(this.rules.escape, b, c, 0);

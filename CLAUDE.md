@@ -9,7 +9,7 @@ When the user describes a video idea:
 1. **Start from the closest preset** (see the README's preset table). Prefer `"extends": "<preset>"` plus `"modifiers"` over copying. Only write a scene from scratch when nothing is close.
 2. Write `scenes/<kebab-name>.json` with `"$schema": "../scene.schema.json"`. Field reference: `src/engine/scene.ts` (primitives), `src/engine/source.ts` (extends, prefabs), `src/engine/modifiers.ts` (modifiers and their options).
 3. Check it: `npm run sim -- <name>`. Parse errors list every bad field by path; unknown keys are errors. `npm run sim -- <name> --resolved` shows what the engine actually runs.
-4. Tune the seed: `npm run sim -- <name> --seeds 1-300 --target <seconds>` sorts seeds by how close the climax (first escape, last elimination, or fill) lands to the target. Aim for 20–45 s unless asked otherwise, then set `seed`. For battles and races also look at the winner column.
+4. Tune the seed with the Director: `npm run sim -- <name> --director <story> --target <seconds> [--vary 0.1]`, where story is slow-burn, last-second, chaos, comeback or music-sync. It prints the best seeds with their facts and a ready-to-paste `seed` (and `world.speedScale` / `spinScale` when `--vary` is on). For a plain timing search, `--seeds 1-300 --target <s>` also works. Aim for 20–45 s unless asked otherwise.
 5. To look at a frame, run in the browser page: `await studio.capture('name', 12.5)`. It saves the exact export frame at 12.5 s to `captures/name.png`; read the image to check it.
 6. Run `npm test` before finishing.
 
@@ -27,7 +27,7 @@ Reaching for code is the last resort. If a format truly needs a new engine capab
 - Modifiers set what their format needs (for example `multiply` forces `endOn: never`). Later modifiers and explicit rules still apply on top.
 - `extends` merges objects key by key but replaces arrays: a child that sets `entities` must list all of them.
 - Overlay titles should be short hooks ("Can it escape?", "5 rings. 1 ball.").
-- MIDI songs go in `songs/` and are referenced as `"melody": "midi:<file name without .mid>"`.
+- MIDI songs go in `songs/` and are referenced as `"melody": "midi:<file name without .mid>"`. `audio.parts` picks track/channel parts (numbered as in the studio's Music panel); `audio.rhythmLock: true` keeps bounces in time with the song (zero gravity, one ball, a ring).
 - Keep `keepEnergy: true` for bouncing formats; use `keepEnergy: false` with restitution below 1 and some `friction` for things that settle (Plinko).
 
 ## Engine rules (don't break these)
@@ -44,7 +44,8 @@ Reaching for code is the last resort. If a format truly needs a new engine capab
 - `src/render/renderer.ts`: Canvas 2D drawing, trails, paint, particles, labels, hp, overlays.
 - `src/audio/sound.ts`: event-to-sound mapping and Web Audio synth. `midi.ts`: MIDI reader.
 - `src/export/`: `mp4.ts` (WebCodecs + mp4-muxer frame-by-frame export), `still.ts` (deterministic single frames).
-- `src/ui/sliders.ts`: auto-generated sliders. `src/main.ts`: studio UI; `window.studio` exposes `world`, `scene`, `exportMp4()`, `capture()`.
+- `src/director/score.ts`: Director scoring and story templates (shared by the studio and the CLI). `pool.ts` / `worker.ts`: Web Worker search.
+- `src/ui/`: `sliders.ts`, `music.ts` (song + part picker, MIDI drop), `director.ts` (variant grid), `review.ts` (swipe review), `queue.ts` (export queue), `player.ts` (mini previews). `src/main.ts`: studio UI; `window.studio` exposes `world`, `scene`, `exportMp4()`, `capture()`.
 - `scripts/`: `sim.ts` (headless runner and seed search), `determinism.ts` (`npm test`), `schema.ts`, `make-midi.ts`.
 - `server/studio.ts`: dev-only endpoints (captures, Save to file, the AI prompt box, version history, ratings). `server/claude.ts`: runs `claude -p` on the user's plan and turns its stream into studio events.
 - `src/scenes.ts`: scene sources with hot updates (scene edits never reload the page). `src/ui/assistant.ts`: prompt box. `src/ui/history.ts`: history panel and Like/Dislike.

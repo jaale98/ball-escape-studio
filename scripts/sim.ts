@@ -7,10 +7,13 @@
  *       try many seeds; with --target, sort by how close the ending lands to that many seconds
  *   npm run sim -- ring-escape --events                 also print every bounce / escape / hit
  *   npm run sim -- ring-escape --resolved               print the scene after extends, modifiers, prefabs
+ *   npm run sim -- ring-escape --director slow-burn --target 30 [--seeds 1-300] [--vary 0.1]
+ *       the Director: score candidates for a story shape (slow-burn, last-second, chaos,
+ *       comeback, music-sync) and print the best, with optional speed/spin variation
  */
-import { resolveScene } from '../src/engine/source';
+import { candidates, refinements, type RunScore, scoreRun, type Template, TEMPLATES } from '../src/director/score';
 import { World } from '../src/engine/world';
-import { loadSources, sceneName } from './scenes';
+import { loadSources, resolveWithSongs, sceneName } from './scenes';
 
 const args = process.argv.slice(2);
 const file = args.find((a) => !a.startsWith('--') && !/^\d/.test(a));
@@ -25,7 +28,7 @@ const flag = (name: string) => {
 
 let base;
 try {
-  base = resolveScene(sceneName(file), loadSources());
+  base = resolveWithSongs(sceneName(file), loadSources());
 } catch (err) {
   console.error((err as Error).message);
   process.exit(1);
@@ -35,6 +38,35 @@ if (args.includes('--resolved')) {
   process.exit(0);
 }
 const fmt = (s: number) => (s < 0 ? '-' : `${s.toFixed(2)}s`);
+
+
+const director = flag('director') as Template | undefined;
+if (director) {
+  if (!(director in TEMPLATES)) {
+    console.error(`Unknown template "${director}". Choose: ${Object.keys(TEMPLATES).join(', ')}`);
+    process.exit(1);
+  }
+  const target = Number(flag('target') ?? 30);
+  const vary = Number(flag('vary') ?? 0);
+  const [a, b] = (flag('seeds') ?? '1-300').split('-').map(Number);
+  const t0 = performance.now();
+  const results: RunScore[] = candidates(b - a + 1, vary, a).map((v) => scoreRun(base, v, { template: director, target }));
+  results.sort((x, y) => y.score - x.score);
+  if (vary > 0) {
+    const more = refinements(results.slice(0, 5), 8, vary).map((v) => scoreRun(base, v, { template: director, target }));
+    results.push(...more);
+    results.sort((x, y) => y.score - x.score);
+  }
+  console.log(`Director: ${TEMPLATES[director].label}, target ${target}s, ${results.length} runs in ${((performance.now() - t0) / 1000).toFixed(1)}s\n`);
+  console.log('score  seed   speed  spin   facts');
+  for (const r of results.slice(0, 12)) {
+    console.log(`${r.score.toFixed(1).padStart(5)}  ${String(r.seed).padEnd(6)} ${r.speed.toFixed(3)}  ${r.spin.toFixed(3)}  ${r.facts.join(', ')}`);
+  }
+  const top = results[0];
+  console.log(`\nBest: "seed": ${top.seed}${top.speed !== 1 || top.spin !== 1 ? `, "world": { "speedScale": ${top.speed}, "spinScale": ${top.spin} }` : ''}`);
+  console.log(`Signals: ${Object.entries(top.signals).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(', ')}`);
+  process.exit(0);
+}
 
 function run(seed: number) {
   const t0 = performance.now();

@@ -7,6 +7,8 @@
  *   GET  /__studio/history?name=     versions of a scene, newest first
  *   POST /__studio/history/restore   { name, id } write an old version back (as a new version)
  *   POST /__studio/rate              { name, rating, title, summary, note? } append to .studio/taste.md
+ *   POST /__studio/song?name=        add a MIDI file to songs/
+ *   POST /__studio/export?name=      save an MP4 to exports/
  *
  * Every change to a scene file (from the AI, a slider save, a restore, or your
  * editor) is snapshotted in .studio/history/<scene>/ so nothing is ever lost.
@@ -120,6 +122,30 @@ export function studioPlugin(): Plugin {
         pendingLabels.set(file, 'slider tweaks saved');
         writeFileSync(file, `${JSON.stringify(parsed, null, 2)}\n`);
         send(res, 200, { file: `scenes/${name}.json` });
+      });
+
+      server.middlewares.use('/__studio/song', async (req, res) => {
+        if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
+        const name = new URL(req.url ?? '', 'http://x').searchParams.get('name') ?? '';
+        if (!NAME.test(name)) return send(res, 400, { error: 'bad song name' });
+        const body = await readBody(req);
+        if (body.length < 14 || body.subarray(0, 4).toString('latin1') !== 'MThd') return send(res, 400, { error: 'not a MIDI file' });
+        if (body.length > 2_000_000) return send(res, 413, { error: 'MIDI file too large (2 MB max)' });
+        mkdirSync(resolve(root, 'songs'), { recursive: true });
+        writeFileSync(resolve(root, 'songs', `${name}.mid`), body);
+        send(res, 200, { file: `songs/${name}.mid` });
+      });
+
+      server.middlewares.use('/__studio/export', async (req, res) => {
+        if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
+        const raw = new URL(req.url ?? '', 'http://x').searchParams.get('name') ?? 'video';
+        const base = raw.replace(/[^a-zA-Z0-9_.-]+/g, '-').slice(0, 100) || 'video';
+        const body = await readBody(req);
+        mkdirSync(resolve(root, 'exports'), { recursive: true });
+        let name = base;
+        for (let i = 2; existsSync(resolve(root, 'exports', `${name}.mp4`)); i++) name = `${base}-${i}`;
+        writeFileSync(resolve(root, 'exports', `${name}.mp4`), body);
+        send(res, 200, { file: `exports/${name}.mp4` });
       });
 
       server.middlewares.use('/__studio/history/restore', async (req, res) => {

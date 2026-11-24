@@ -1,0 +1,110 @@
+/**
+ * Export queue: renders kept videos one after another in the background and
+ * saves each to exports/ (dev server) or downloads it.
+ */
+import type { Scene } from '../engine/scene';
+import { exportMp4 } from '../export/mp4';
+
+interface Item {
+  id: number;
+  label: string;
+  fileName: string;
+  scene: Scene;
+  status: 'queued' | 'rendering' | 'saved' | 'failed';
+  progress: number;
+  detail: string;
+  url?: string;
+}
+
+const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+const items: Item[] = [];
+let nextId = 1;
+let running = false;
+let setBusy: (busy: boolean) => void = () => {};
+
+export function initQueue(hooks: { setExporting(busy: boolean): void }): void {
+  setBusy = hooks.setExporting;
+  $('q-clear').addEventListener('click', () => {
+    for (let i = items.length - 1; i >= 0; i--) if (items[i].status === 'saved' || items[i].status === 'failed') items.splice(i, 1);
+    draw();
+  });
+}
+
+export function enqueue(label: string, fileName: string, scene: Scene): void {
+  items.push({ id: nextId++, label, fileName: fileName.replace(/[^a-zA-Z0-9_.-]+/g, '-'), scene: structuredClone(scene), status: 'queued', progress: 0, detail: '' });
+  draw();
+  void process();
+}
+
+async function process(): Promise<void> {
+  if (running) return;
+  running = true;
+  setBusy(true);
+  try {
+    for (let item = items.find((i) => i.status === 'queued'); item; item = items.find((i) => i.status === 'queued')) {
+      item.status = 'rendering';
+      draw();
+      try {
+        const result = await exportMp4(item.scene, (stage, f) => {
+          item.progress = stage === 'video' ? f : stage === 'finish' ? 1 : 0;
+          item.detail = stage === 'video' ? `${Math.round(f * 100)}%` : stage;
+          draw();
+        });
+        item.url = URL.createObjectURL(result.blob);
+        const res = await fetch(`/__studio/export?name=${encodeURIComponent(item.fileName)}`, { method: 'POST', body: result.blob }).catch(() => null);
+        if (res?.ok) {
+          const { file } = await res.json();
+          item.detail = `${file} · ${result.seconds.toFixed(1)}s · ${(result.blob.size / 1e6).toFixed(1)} MB`;
+        } else {
+          const a = document.createElement('a');
+          a.href = item.url;
+          a.download = `${item.fileName}.mp4`;
+          a.click();
+          item.detail = `downloaded · ${result.seconds.toFixed(1)}s`;
+        }
+        if (!result.deterministic) item.detail += ' · warning: render diverged';
+        item.status = 'saved';
+      } catch (err) {
+        item.status = 'failed';
+        item.detail = (err as Error).message;
+      }
+      draw();
+    }
+  } finally {
+    running = false;
+    setBusy(false);
+  }
+}
+
+function draw(): void {
+  const box = $('queue-box');
+  box.hidden = items.length === 0;
+  $('q-count').textContent = String(items.filter((i) => i.status === 'queued' || i.status === 'rendering').length || items.length);
+  const list = $<HTMLOListElement>('queue-list');
+  list.replaceChildren(
+    ...items.map((i) => {
+      const li = document.createElement('li');
+      li.className = i.status;
+      const name = document.createElement('span');
+      name.textContent = i.label;
+      const status = document.createElement('span');
+      status.className = 'muted';
+      status.textContent = i.status === 'queued' ? 'waiting' : i.status === 'rendering' ? `rendering ${i.detail}` : i.detail;
+      li.append(name, status);
+      if (i.status === 'rendering') {
+        const bar = document.createElement('div');
+        bar.className = 'qbar';
+        bar.style.width = `${Math.round(i.progress * 100)}%`;
+        li.append(bar);
+      }
+      if (i.url) {
+        const a = document.createElement('a');
+        a.href = i.url;
+        a.download = `${i.fileName}.mp4`;
+        a.textContent = 'Download';
+        li.append(a);
+      }
+      return li;
+    }),
+  );
+}

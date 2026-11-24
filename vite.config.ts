@@ -5,6 +5,6 @@ export default defineConfig({
   plugins: [studioPlugin()],
   server: {
     // Scene history and taste notes change constantly; they never affect the page.
-    watch: { ignored: ['**/.studio/**', '**/captures/**'] },
+    watch: { ignored: ['**/.studio/**', '**/captures/**', '**/exports/**'] },
   },
 });

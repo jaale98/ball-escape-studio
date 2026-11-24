@@ -1,13 +1,12 @@
 /** Every scene must resolve, and replay identically: same seed, same final state hash and event log. */
-import { resolveScene } from '../src/engine/source';
 import { World } from '../src/engine/world';
-import { loadSources } from './scenes';
+import { loadSources, resolveWithSongs } from './scenes';
 
 const sources = loadSources();
 let failed = 0;
 for (const name of Object.keys(sources)) {
   try {
-    const scene = resolveScene(name, sources);
+    const scene = resolveWithSongs(name, sources);
     const a = new World(scene).runToEnd();
     const b = new World(scene).runToEnd();
     const same = a.hash() === b.hash() && a.events.length === b.events.length && a.stepCount === b.stepCount;

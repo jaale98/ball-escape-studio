@@ -12,10 +12,9 @@
  * first scene write (when the preview would update) and total time.
  */
 import { existsSync, readFileSync, rmSync } from 'node:fs';
-import { resolveScene } from '../src/engine/source';
 import { World } from '../src/engine/world';
 import { runClaude } from '../server/claude';
-import { loadSources } from './scenes';
+import { loadSources, resolveWithSongs } from './scenes';
 
 const PROMPTS = [
   'a ball escaping a spinning ring where the gap shrinks every bounce, purple theme',
@@ -71,7 +70,7 @@ async function one(i: number, idea: string) {
   if (existsSync(file)) {
     try {
       JSON.parse(readFileSync(file, 'utf8'));
-      const w = new World(resolveScene(name, loadSources())).runToEnd();
+      const w = new World(resolveWithSongs(name, loadSources())).runToEnd();
       valid = Number.isFinite(w.time) && w.time > 3;
       detail = `${w.endReason} at ${w.time.toFixed(1)}s, ${w.bounces} bounces${w.winner >= 0 ? `, winner ${w.balls[w.winner].label ?? w.winner}` : ''}`;
     } catch (err) {

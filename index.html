@@ -59,9 +59,19 @@
         <div class="wide"><span>State hash</span><b id="s-hash" class="mono">—</b></div>
       </section>
 
-      <button id="export" class="primary big">Export MP4 (1080×1920, 60 fps)</button>
+      <div class="row buttons">
+        <button id="open-director" title="Search hundreds of runs for the best story">Director</button>
+        <button id="export" class="primary">Export MP4</button>
+      </div>
       <div id="progress" class="progress" hidden><div id="bar"></div><span id="progress-label"></span></div>
       <p id="export-msg" class="msg"></p>
+
+      <details id="queue-box" open hidden>
+        <summary>Export queue (<span id="q-count">0</span>)</summary>
+        <p class="muted">1080×1920 · 60 fps · saved to <code>exports/</code></p>
+        <ol id="queue-list" class="queue"></ol>
+        <button id="q-clear">Clear finished</button>
+      </details>
 
       <div class="rate">
         <div class="row buttons">
@@ -71,6 +81,20 @@
         <input id="rate-note" type="text" placeholder="Why? (optional, Claude reads this)" />
         <p id="rate-msg" class="muted"></p>
       </div>
+
+      <details id="music">
+        <summary>Music</summary>
+        <label class="field"><span>Melody</span><select id="melody"></select></label>
+        <div id="parts-row" hidden>
+          <div class="row buttons">
+            <button id="parts-melody" title="Use only the part that looks like the melody">Melody only</button>
+            <button id="parts-all">All parts</button>
+          </div>
+          <div id="parts"></div>
+        </div>
+        <label class="check"><input id="chords" type="checkbox" /> Play chords (every note struck together)</label>
+        <p id="music-msg" class="muted">Drop a .mid file anywhere on the studio to add it.</p>
+      </details>
 
       <details id="tweaks" open>
         <summary>Tweak</summary>
@@ -104,6 +128,38 @@
 
     <main class="stage">
       <canvas id="view" width="1080" height="1920"></canvas>
+
+      <section id="director" class="overlay" hidden aria-label="Director">
+        <header class="director-bar">
+          <h2>Director <span id="d-scene" class="muted"></span></h2>
+          <label>Story <select id="d-template"></select></label>
+          <label>Climax at <input id="d-target" type="number" min="3" max="120" step="1" value="30" /> s</label>
+          <label>Try <select id="d-count"><option>100</option><option selected>300</option><option>1000</option></select> runs</label>
+          <label class="check"><input id="d-vary" type="checkbox" checked /> Vary speed &amp; spin ±10%</label>
+          <button id="d-run" class="primary">Find the best runs</button>
+          <button id="d-close">Close</button>
+        </header>
+        <p id="d-desc" class="muted"></p>
+        <div id="d-progress" class="progress" hidden><div id="d-bar"></div><span id="d-label"></span></div>
+        <div id="d-grid" class="variant-grid"></div>
+        <footer class="row buttons director-foot">
+          <button id="d-review">Review one by one</button>
+          <button id="d-queue-top">Export top 3</button>
+        </footer>
+      </section>
+
+      <section id="review" class="overlay review" hidden aria-label="Review">
+        <div class="review-head">
+          <b id="r-count"></b>
+          <span id="r-meta" class="muted"></span>
+          <button id="r-exit">Done</button>
+        </div>
+        <canvas id="r-canvas"></canvas>
+        <div class="row buttons review-actions">
+          <button id="r-discard">Discard (←)</button>
+          <button id="r-keep" class="primary">Keep, export (→)</button>
+        </div>
+      </section>
     </main>
 
     <script type="module" src="/src/main.ts"></script>
