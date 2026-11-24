@@ -40,6 +40,32 @@ async function pickVideoCodec(): Promise<string> {
 const channel = new MessageChannel();
 const waiting: (() => void)[] = [];
 channel.port1.onmessage = () => waiting.shift()?.();
+/**
+ * Audio: AAC-LC when the browser can encode it, otherwise Opus (both play in
+ * MP4 on every major platform; AAC is what TikTok/Reels expect).
+ */
+async function pickAudio(): Promise<{ muxCodec: 'aac' | 'opus'; config: AudioEncoderConfig }> {
+  const aac = { codec: 'mp4a.40.2', sampleRate: SAMPLE_RATE, numberOfChannels: 2, bitrate: 192_000, aac: { format: 'aac' } } as AudioEncoderConfig;
+  if ((await AudioEncoder.isConfigSupported(aac).catch(() => ({ supported: false }))).supported) return { muxCodec: 'aac', config: aac };
+  const opus: AudioEncoderConfig = { codec: 'opus', sampleRate: SAMPLE_RATE, numberOfChannels: 2, bitrate: 160_000 };
+  if ((await AudioEncoder.isConfigSupported(opus).catch(() => ({ supported: false }))).supported) return { muxCodec: 'opus', config: opus };
+  throw new Error('This browser cannot encode audio for MP4. Try a recent Chrome or Edge.');
+}
+
+/**
+ * The AAC AudioSpecificConfig for AAC-LC at our sample rate and channel count.
+ * We write it ourselves rather than trusting the encoder's `description`: some
+ * browsers return a whole MPEG-4 ES descriptor there, which the muxer then
+ * wraps again, leaving a file whose audio no player can decode (silent video).
+ */
+function aacConfig(sampleRate: number, channels: number): Uint8Array {
+  const rates = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
+  const freq = rates.indexOf(sampleRate);
+  if (freq < 0) throw new Error(`unsupported AAC sample rate ${sampleRate}`);
+  const objectType = 2; // AAC-LC
+  return new Uint8Array([(objectType << 3) | (freq >> 1), ((freq & 1) << 7) | (channels << 3)]);
+}
+
 export const tick = () =>
   new Promise<void>((r) => {
     waiting.push(r);
@@ -77,10 +103,11 @@ export async function exportMp4(scene: Scene, onProgress: ExportProgress = () =>
 
   // 3. Muxer + encoders.
   const codec = await pickVideoCodec();
+  const audioPick = await pickAudio();
   const muxer = new Muxer({
     target: new ArrayBufferTarget(),
     video: { codec: 'avc', width: WIDTH, height: HEIGHT, frameRate: FPS },
-    audio: { codec: 'aac', numberOfChannels: 2, sampleRate: SAMPLE_RATE },
+    audio: { codec: audioPick.muxCodec, numberOfChannels: 2, sampleRate: SAMPLE_RATE },
     fastStart: 'in-memory',
     firstTimestampBehavior: 'offset',
   });
@@ -121,11 +148,18 @@ export async function exportMp4(scene: Scene, onProgress: ExportProgress = () =>
 
   // 5. Audio encode (AAC) in 1024-sample chunks.
   onProgress('finish', 0);
+  const asc = aacConfig(SAMPLE_RATE, 2);
   const aenc = new AudioEncoder({
-    output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
+    output: (chunk, meta) => {
+      if (audioPick.muxCodec === 'aac') {
+        // Always hand the muxer a correct, bare AudioSpecificConfig (see aacConfig).
+        meta = { ...meta, decoderConfig: { codec: 'mp4a.40.2', sampleRate: SAMPLE_RATE, numberOfChannels: 2, description: asc } };
+      }
+      muxer.addAudioChunk(chunk, meta);
+    },
     error: (e) => (encodeError = e),
   });
-  aenc.configure({ codec: 'mp4a.40.2', sampleRate: SAMPLE_RATE, numberOfChannels: 2, bitrate: 192_000 });
+  aenc.configure(audioPick.config);
   const offset = Math.round((startFrame / FPS) * SAMPLE_RATE);
   const total = Math.min(audio.length - offset, Math.ceil(seconds * SAMPLE_RATE));
   const left = audio.getChannelData(0).subarray(offset);
