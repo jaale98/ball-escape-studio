@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "title": "Butterfly effect",
   "category": "chaos",
-  "seed": 132,
+  "seed": 120,
   "modifiers": [
     {
       "use": "butterfly",
@@ -34,7 +34,7 @@
       "type": "ball",
       "radius": 16,
       "speed": 900,
-      "jitter": 1e-05
+      "jitter": 0.002
     }
   ],
   "style": {

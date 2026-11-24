@@ -545,7 +545,7 @@ export class World {
             // Pendulum k swings (waveBase + k) times per wave period: the pattern repeats every `wave` seconds.
             const swings = e.waveBase + (e.count - 1 - i);
             l1 = e.gravity * (e.wave / (2 * Math.PI * swings)) ** 2;
-            x = e.x + (i - (e.count - 1) / 2) * Math.min(64, 900 / Math.max(1, e.count));
+            x = e.x + (i - (e.count - 1) / 2) * Math.min(64, 760 / Math.max(1, e.count));
           }
           const last = e.arms === 2 ? 1 : 0;
           const a1 = ((e.angles[0] ?? 120) + (last === 0 ? i * e.spread : 0)) * DEG;

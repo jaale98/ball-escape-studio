@@ -340,7 +340,7 @@ export function playVoice(ctx: BaseAudioContext, dest: AudioNode, v: Voice, when
     return;
   }
   if (v.kind === 'tick') {
-    tone(ctx, panner, when, hz(v.midi[0] ?? 84), 'square', 0.05 * v.gain, 0.04);
+    tone(ctx, panner, when, hz(v.midi[0] ?? 84), 'square', 0.1 * v.gain, 0.04);
     return;
   }
   if (v.kind === 'chime') {
@@ -355,7 +355,7 @@ export function playVoice(ctx: BaseAudioContext, dest: AudioNode, v: Voice, when
     return;
   }
   if (v.kind === 'shoot') {
-    noiseHit(ctx, panner, when, 'bandpass', 1400, 2.5, 0.35 * v.gain, 0.12);
+    noiseHit(ctx, panner, when, 'bandpass', 1400, 2.5, 0.7 * v.gain, 0.12);
     sweep(ctx, panner, when, 900, 300, 0.1, 'triangle', 0.08 * v.gain);
     return;
   }
@@ -390,24 +390,24 @@ export function playVoice(ctx: BaseAudioContext, dest: AudioNode, v: Voice, when
     const f = hz(m);
     const peak = 0.26 * v.gain * each;
     if (instrument === 'glass') {
-      tone(ctx, panner, when, f, 'sine', peak, 2.2);
-      tone(ctx, panner, when, f * 2.32, 'sine', peak * 0.4, 1.3);
-      tone(ctx, panner, when, f * 4.25, 'sine', peak * 0.22, 0.6);
-      tone(ctx, panner, when, f * 6.8, 'sine', peak * 0.08, 0.3);
+      tone(ctx, panner, when, f, 'sine', peak * 0.4, 2.2);
+      tone(ctx, panner, when, f * 2.32, 'sine', peak * 0.16, 1.3);
+      tone(ctx, panner, when, f * 4.25, 'sine', peak * 0.09, 0.6);
+      tone(ctx, panner, when, f * 6.8, 'sine', peak * 0.03, 0.3);
     } else if (instrument === 'chip') {
-      tone(ctx, panner, when, f, 'square', peak * 0.45, 0.22);
-      tone(ctx, panner, when + 0.05, f * 2, 'square', peak * 0.18, 0.12);
+      tone(ctx, panner, when, f, 'square', peak * 1.3, 0.22);
+      tone(ctx, panner, when + 0.05, f * 2, 'square', peak * 0.5, 0.12);
     } else if (instrument === 'piano') {
-      tone(ctx, panner, when, f, 'triangle', peak * 1.1, 1.4);
-      tone(ctx, panner, when, f * 2, 'sine', peak * 0.4, 0.9);
-      tone(ctx, panner, when, f * 3, 'sine', peak * 0.18, 0.5);
-      tone(ctx, panner, when, f * 4.02, 'sine', peak * 0.08, 0.25);
+      tone(ctx, panner, when, f, 'triangle', peak * 0.66, 1.4);
+      tone(ctx, panner, when, f * 2, 'sine', peak * 0.24, 0.9);
+      tone(ctx, panner, when, f * 3, 'sine', peak * 0.11, 0.5);
+      tone(ctx, panner, when, f * 4.02, 'sine', peak * 0.05, 0.25);
     } else if (instrument === 'kalimba') {
-      tone(ctx, panner, when, f, 'sine', peak * 1.15, 0.9);
-      tone(ctx, panner, when, f * 5.43, 'sine', peak * 0.25, 0.09);
-      tone(ctx, panner, when, f * 3, 'sine', peak * 0.12, 0.2);
+      tone(ctx, panner, when, f, 'sine', peak * 0.75, 0.9);
+      tone(ctx, panner, when, f * 5.43, 'sine', peak * 0.16, 0.09);
+      tone(ctx, panner, when, f * 3, 'sine', peak * 0.08, 0.2);
     } else if (instrument === 'pop') {
-      sweep(ctx, panner, when, f * 1.9, f, 0.05, 'sine', peak * 1.3, undefined, 0.2);
+      sweep(ctx, panner, when, f * 1.9, f, 0.05, 'sine', peak * 2.1, undefined, 0.2);
     } else if (instrument === 'synth') {
       const lp = ctx.createBiquadFilter();
       lp.type = 'lowpass';
@@ -415,11 +415,11 @@ export function playVoice(ctx: BaseAudioContext, dest: AudioNode, v: Voice, when
       lp.frequency.setValueAtTime(5200, when);
       lp.frequency.exponentialRampToValueAtTime(500, when + 0.4);
       lp.connect(panner);
-      tone(ctx, lp, when, f * 0.995, 'sawtooth', peak * 0.45, 0.45);
-      tone(ctx, lp, when, f * 1.005, 'sawtooth', peak * 0.45, 0.45);
-      tone(ctx, lp, when, f / 2, 'square', peak * 0.2, 0.3);
+      tone(ctx, lp, when, f * 0.995, 'sawtooth', peak * 0.9, 0.45);
+      tone(ctx, lp, when, f * 1.005, 'sawtooth', peak * 0.9, 0.45);
+      tone(ctx, lp, when, f / 2, 'square', peak * 0.4, 0.3);
     } else if (instrument === 'meow') {
-      meow(ctx, panner, when, f, peak);
+      meow(ctx, panner, when, f, peak * 1.6);
     } else if (instrument === 'bell') {
       tone(ctx, panner, when, f, 'sine', peak, 1.6);
       tone(ctx, panner, when, f * 2.76, 'sine', peak * 0.35, 0.9);

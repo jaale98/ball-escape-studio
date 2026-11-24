@@ -6,12 +6,14 @@
  *   { "on": "hit", "script": "if (ctx.other) ctx.ball.color = ctx.other.color" }
  *
  * What a script gets (`ctx`):
- *   ctx.event      'bounce' | 'escape' | 'hit' | 'eliminate' | 'strike' | 'wake' | 'timeline'
+ *   ctx.event      'bounce' | 'escape' | 'hit' | 'eliminate' | 'strike' | 'wake' | 'break' | 'teleport'
+ *                  | 'swallow' | 'capture' | 'merge' | 'convert' | 'corner' | 'finish' | 'timeline'
  *   ctx.time       seconds since the start
  *   ctx.ball       the ball the event happened to (mutable: x, y, vx, vy, r, color, hp, label…), or null
  *   ctx.other      the other ball in a hit / strike / wake, or null
  *   ctx.container  the ring or polygon involved (mutable: spin, radius, gaps…), or null
  *   ctx.world      balls(), spawn({x,y,speed,direction,radius,color}), do(action), gravity(x, y), end(), time, bounces
+ *                  (do() takes any action, V2 ones included: split, clone, moveGap, addSide, growForce, freezeAll…)
  *   ctx.rng        seeded randomness: next(), range(min, max), int(n)
  *   ctx.state      an object that persists between calls (counters, flags)
  *
