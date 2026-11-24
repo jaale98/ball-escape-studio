@@ -9,13 +9,17 @@
  *   POST /__studio/rate              { name, rating, title, summary, note? } append to .studio/taste.md
  *   POST /__studio/song?name=        add a MIDI file to songs/
  *   POST /__studio/export?name=      save an MP4 to exports/
+ *   POST /__studio/export-meta       caption, scene and log row for an export
+ *   GET  /__studio/exports           past exports (from exports/log.csv)
+ *   POST /__studio/reveal            { file } show an export (or the folder) in Finder / Explorer
+ *   POST /__studio/scene-op          { op: derive|duplicate|rename|delete, name, to? }
  *
  * Every change to a scene file (from the AI, a slider save, a restore, or your
  * editor) is snapshotted in .studio/history/<scene>/ so nothing is ever lost.
  */
-import type { ChildProcess } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import type { Plugin } from 'vite';
 import { type AiEvent, isAuthError, runClaude } from './claude';
@@ -142,6 +146,103 @@ export function studioPlugin(): Plugin {
         mkdirSync(resolve(root, 'songs'), { recursive: true });
         writeFileSync(resolve(root, 'songs', `${name}.mid`), body);
         send(res, 200, { file: `songs/${name}.mid` });
+      });
+
+      server.middlewares.use('/__studio/scene-op', async (req, res) => {
+        if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
+        const { op, name, to } = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+        if (!NAME.test(String(name))) return send(res, 400, { error: 'bad scene name' });
+        const file = join(scenesDir(), `${name}.json`);
+        if (!existsSync(file)) return send(res, 404, { error: `There is no scene named ${name}.` });
+        const all = readdirSync(scenesDir()).filter((f) => f.endsWith('.json'));
+        const extenders = all.filter((f) => {
+          try {
+            return JSON.parse(readFileSync(join(scenesDir(), f), 'utf8')).extends === name;
+          } catch {
+            return false;
+          }
+        });
+        const freeName = (want: string) => {
+          let n = want;
+          for (let i = 2; existsSync(join(scenesDir(), `${n}.json`)); i++) n = `${want}-${i}`;
+          return n;
+        };
+        if (op === 'derive' || op === 'duplicate') {
+          if (!NAME.test(String(to))) return send(res, 400, { error: 'Pick a name with letters, numbers and dashes.' });
+          const made = freeName(to);
+          const raw = JSON.parse(readFileSync(file, 'utf8'));
+          const out =
+            op === 'derive'
+              ? { $schema: '../scene.schema.json', extends: name, title: `${raw.title ?? name} (new)` }
+              : { ...raw, title: `${raw.title ?? name} (copy)` };
+          const dest = join(scenesDir(), `${made}.json`);
+          pendingLabels.set(dest, op === 'derive' ? `new, building on ${name}` : `duplicated from ${name}`);
+          writeFileSync(dest, `${JSON.stringify(out, null, 2)}\n`);
+          return send(res, 200, { name: made });
+        }
+        if (op === 'rename') {
+          if (!NAME.test(String(to))) return send(res, 400, { error: 'Pick a name with letters, numbers and dashes.' });
+          if (existsSync(join(scenesDir(), `${to}.json`))) return send(res, 409, { error: `A scene named ${to} already exists.` });
+          // Scenes that build on this one follow the new name.
+          for (const f of extenders) {
+            const p = join(scenesDir(), f);
+            const raw = JSON.parse(readFileSync(p, 'utf8'));
+            raw.extends = to;
+            pendingLabels.set(p, `parent renamed to ${to}`);
+            writeFileSync(p, `${JSON.stringify(raw, null, 2)}\n`);
+          }
+          const dest = join(scenesDir(), `${to}.json`);
+          pendingLabels.set(dest, `renamed from ${name}`);
+          renameSync(file, dest);
+          if (existsSync(historyDir(name)) && !existsSync(historyDir(to))) renameSync(historyDir(name), historyDir(to));
+          return send(res, 200, { name: to });
+        }
+        if (op === 'delete') {
+          if (extenders.length) return send(res, 409, { error: `Other scenes build on ${name}: ${extenders.map((f) => f.replace(/\.json$/, '')).join(', ')}. Delete or rename those first.` });
+          const trash = resolve(root, '.studio', 'trash');
+          mkdirSync(trash, { recursive: true });
+          renameSync(file, join(trash, `${name}-${Date.now()}.json`));
+          return send(res, 200, { name });
+        }
+        send(res, 400, { error: 'unknown op' });
+      });
+
+      server.middlewares.use('/__studio/exports', (req, res) => {
+        if (req.method !== 'GET') return send(res, 405, { error: 'GET only' });
+        const dir = resolve(root, 'exports');
+        const log = join(dir, 'log.csv');
+        if (!existsSync(log)) return send(res, 200, []);
+        const parse = (line: string) => [...line.matchAll(/"((?:[^"]|"")*)"/g)].map((m) => m[1].replace(/""/g, '"'));
+        const rows = readFileSync(log, 'utf8')
+          .split('\n')
+          .slice(1)
+          .filter(Boolean)
+          .map(parse)
+          .filter((c) => c[1] && existsSync(join(dir, c[1])))
+          .map(([time, file, scene, seed, , , , seconds]) => ({
+            time,
+            file,
+            scene,
+            seed,
+            seconds,
+            size: statSync(join(dir, file)).size,
+            hasScene: existsSync(join(dir, file.replace(/\.mp4$/, '.scene.json'))),
+          }))
+          .reverse();
+        send(res, 200, rows);
+      });
+
+      server.middlewares.use('/__studio/reveal', async (req, res) => {
+        if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
+        const { file } = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+        const dir = resolve(root, 'exports');
+        mkdirSync(dir, { recursive: true });
+        const target = file ? join(dir, String(file)) : dir;
+        if (!target.startsWith(dir) || (file && !/^[a-zA-Z0-9_.-]+$/.test(String(file))) || !existsSync(target)) return send(res, 400, { error: 'not an export' });
+        const [cmd, args] =
+          process.platform === 'darwin' ? ['open', file ? ['-R', target] : [target]] : process.platform === 'win32' ? ['explorer', file ? [`/select,${target}`] : [target]] : ['xdg-open', [file ? dir : target]];
+        spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref();
+        send(res, 200, { ok: true });
       });
 
       server.middlewares.use('/__studio/export-meta', async (req, res) => {

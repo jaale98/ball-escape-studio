@@ -9,10 +9,10 @@ import { tick } from './mp4';
  * depend on them), but nothing is encoded, so it is fast. Yields every few
  * frames: one long synchronous burst of GPU canvas work can come back blank.
  */
-export async function renderStill(scene: Scene, seconds: number): Promise<HTMLCanvasElement> {
+export async function renderStill(scene: Scene, seconds: number, scale = 1): Promise<HTMLCanvasElement> {
   const canvas = document.createElement('canvas');
   const world = new World(scene);
-  const renderer = new Renderer(canvas, scene);
+  const renderer = new Renderer(canvas, scene, { scale, glow: scale >= 0.5 });
   const target = Math.max(0, Math.round(seconds * FPS));
   renderer.render(world, 0);
   for (let i = 1; i <= target && !world.done; i++) {

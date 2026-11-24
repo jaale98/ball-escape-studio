@@ -8,89 +8,108 @@
   </head>
   <body>
     <aside class="panel">
-      <header>
+      <header class="brand">
         <h1>Ball Escape Studio</h1>
-        <p class="muted">Deterministic ball-physics shorts</p>
+        <button id="help-btn" class="link" title="Keyboard shortcuts (?)">Shortcuts</button>
       </header>
 
-      <section class="ai" aria-label="Ask Claude">
-        <textarea id="ai-prompt" rows="3" placeholder="Describe a change or a new video… (⌘↵ to send)"></textarea>
-        <div class="row">
-          <select id="ai-model" title="Fast is quicker for edits; Smart is better at new formats">
-            <option value="fast">Fast (Haiku)</option>
-            <option value="smart">Smart (Sonnet)</option>
-          </select>
-          <button id="ai-send" class="primary">Send</button>
-          <button id="ai-stop" hidden>Stop</button>
-        </div>
-        <div class="ai-meta">
-          <span id="ai-status" class="muted">Runs Claude Code on your Claude plan.</span>
-          <button id="ai-new" class="link" title="Forget this scene's conversation">New chat</button>
-        </div>
-        <ol id="ai-log" class="ai-log" hidden></ol>
-      </section>
-
-      <label class="field">
-        <span>Scene</span>
-        <select id="scene"></select>
-      </label>
-
-      <div class="field">
-        <span>Seed</span>
-        <div class="row">
-          <input id="seed" type="number" step="1" />
-          <button id="reroll" title="Random seed (R)">Reroll</button>
-        </div>
+      <div class="scene-bar">
+        <select id="scene" aria-label="Scene"></select>
+        <button id="browse" title="Browse, create and manage scenes (B)">Browse</button>
       </div>
 
-      <div class="row buttons">
-        <button id="play" class="primary" title="Play / pause (Space)">Pause</button>
-        <button id="restart" title="Restart (Backspace)">Restart</button>
-        <button id="sound" title="Toggle sound (M)">Sound off</button>
+      <div id="dirty-bar" class="dirty-bar" hidden>
+        <span id="dirty-text"></span>
+        <button id="save" class="primary" title="Write your changes into the scene file (⌘S)">Save</button>
+        <button id="discard" title="Throw away unsaved changes">Discard</button>
       </div>
-      <label class="check"><input id="loop" type="checkbox" checked /> Loop when the run ends</label>
+      <p id="save-msg" class="msg"></p>
 
-      <section class="stats">
-        <div><span>Time</span><b id="s-time">0.0s</b></div>
-        <div><span>Bounces</span><b id="s-bounces">0</b></div>
-        <div><span>Balls</span><b id="s-balls">0</b></div>
-        <div><span>Escapes</span><b id="s-escapes">0</b></div>
-        <div class="wide"><span>Status</span><b id="s-status">running</b></div>
-        <div class="wide"><span>State hash</span><b id="s-hash" class="mono">—</b></div>
-      </section>
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="create">Create</button>
+        <button role="tab" data-tab="tune">Tune</button>
+        <button role="tab" data-tab="music">Music</button>
+        <button role="tab" data-tab="history">History</button>
+        <button role="tab" data-tab="info">Info</button>
+      </nav>
 
-      <section class="critic" aria-label="Critic">
-        <div class="critic-head"><b>Critic</b><button id="critic-fix" class="link" hidden>Fix with Claude</button></div>
-        <ol id="critic-list"></ol>
-      </section>
+      <!-- Create: ask Claude, the Critic, the Director, export -->
+      <section class="tab" data-tab="create">
+        <section class="ai" aria-label="Ask Claude">
+          <textarea id="ai-prompt" rows="3" placeholder="Describe a change or a new video… (⌘↵ to send)"></textarea>
+          <div class="row">
+            <select id="ai-model" title="Fast is quicker for edits; Smart is better at new formats">
+              <option value="fast">Fast (Haiku)</option>
+              <option value="smart">Smart (Sonnet)</option>
+            </select>
+            <button id="ai-send" class="primary">Send</button>
+            <button id="ai-stop" hidden>Stop</button>
+          </div>
+          <div class="ai-meta">
+            <span id="ai-status" class="muted">Runs Claude Code on your Claude plan.</span>
+            <button id="ai-new" class="link" title="Forget this scene's conversation">New chat</button>
+          </div>
+          <ol id="ai-log" class="ai-log" hidden></ol>
+        </section>
 
-      <div class="row buttons">
-        <button id="open-director" title="Search hundreds of runs for the best story">Director</button>
-        <button id="export" class="primary">Export MP4</button>
-      </div>
-      <div id="progress" class="progress" hidden><div id="bar"></div><span id="progress-label"></span></div>
-      <p id="export-msg" class="msg"></p>
+        <section class="critic" aria-label="Critic">
+          <div class="critic-head"><b>Critic</b><button id="critic-fix" class="link" hidden>Fix with Claude</button></div>
+          <ol id="critic-list"></ol>
+        </section>
 
-      <details id="queue-box" open hidden>
-        <summary>Export queue (<span id="q-count">0</span>)</summary>
-        <p class="muted">1080×1920 · 60 fps · saved to <code>exports/</code></p>
-        <ol id="queue-list" class="queue"></ol>
-        <button id="q-clear">Clear finished</button>
-      </details>
-
-      <div class="rate">
         <div class="row buttons">
-          <button id="like" title="Tell Claude you like videos like this">Like</button>
-          <button id="dislike" title="Tell Claude to steer away from this">Dislike</button>
+          <button id="open-director" title="Search hundreds of runs for the best story (D)">Director</button>
+          <button id="export" class="primary" title="Render a 1080×1920 MP4 (E)">Export MP4</button>
         </div>
-        <input id="rate-note" type="text" placeholder="Why? (optional, Claude reads this)" />
-        <p id="rate-msg" class="muted"></p>
-      </div>
+        <p id="export-msg" class="msg"></p>
 
-      <details id="music">
-        <summary>Music</summary>
-        <label class="field"><span>Melody</span><select id="melody"></select></label>
+        <details id="queue-box" open hidden>
+          <summary>Export queue (<span id="q-count">0</span>)</summary>
+          <p class="muted">1080×1920 · 60 fps · saved to <code>exports/</code> (History tab lists them)</p>
+          <ol id="queue-list" class="queue"></ol>
+          <button id="q-clear">Clear finished</button>
+        </details>
+
+        <div class="rate">
+          <div class="row buttons">
+            <button id="like" title="Tell Claude you like videos like this">Like</button>
+            <button id="dislike" title="Tell Claude to steer away from this">Dislike</button>
+          </div>
+          <input id="rate-note" type="text" placeholder="Why? (optional, Claude reads this)" />
+          <p id="rate-msg" class="muted"></p>
+        </div>
+      </section>
+
+      <!-- Tune: seed and every number in the scene -->
+      <section class="tab" data-tab="tune" hidden>
+        <div class="field">
+          <span>Seed</span>
+          <div class="row">
+            <input id="seed" type="number" step="1" aria-label="Seed" />
+            <button id="reroll" title="Random seed (R)">Reroll</button>
+          </div>
+        </div>
+        <p class="muted">Every number in the scene. Changes preview instantly; <b>Save</b> writes them to the file.</p>
+        <div id="sliders"></div>
+      </section>
+
+      <!-- Music: song, parts, rhythm lock -->
+      <section class="tab" data-tab="music" hidden>
+        <label class="field"><span>Song</span><select id="melody"></select></label>
+        <p id="song-info" class="muted"></p>
+        <div class="rhythm">
+          <label class="check"><input id="rhythm-lock" type="checkbox" /> <span><b>Rhythm lock</b>: every bounce lands on the beat</span></label>
+          <p id="rhythm-why" class="muted"></p>
+          <button id="rhythm-find" hidden title="Try 150 seeds and keep the one whose bounces stay in time longest">Find a seed that stays in time</button>
+          <div id="tempo-row" class="slider" hidden>
+            <span>Tempo</span>
+            <input id="tempo" type="range" min="0.5" max="2" step="0.05" value="1" />
+            <output id="tempo-out">auto</output>
+          </div>
+          <label id="tempo-auto-row" class="check" hidden><input id="tempo-auto" type="checkbox" checked /> Automatic tempo</label>
+        </div>
         <div id="parts-row" hidden>
+          <span class="field-label">Parts that play</span>
           <div class="row buttons">
             <button id="parts-melody" title="Use only the part that looks like the melody">Melody only</button>
             <button id="parts-all">All parts</button>
@@ -98,42 +117,66 @@
           <div id="parts"></div>
         </div>
         <label class="check"><input id="chords" type="checkbox" /> Play chords (every note struck together)</label>
-        <p id="music-msg" class="muted">Drop a .mid file anywhere on the studio to add it.</p>
-      </details>
+        <p id="music-msg" class="muted">Drop a .mid file anywhere on the studio to add your own song.</p>
+      </section>
 
-      <details id="tweaks" open>
-        <summary>Tweak</summary>
-        <p id="tweak-count" class="muted"></p>
-        <div class="row buttons">
-          <button id="save" title="Write these values into the scene file">Save to file</button>
-          <button id="reset-tweaks">Reset</button>
-        </div>
-        <div id="sliders"></div>
-      </details>
-
-      <details id="history-box">
-        <summary>History</summary>
-        <p class="muted">Every version of this scene file: from Claude, slider saves, or your editor.</p>
+      <!-- History: versions of this scene, and past exports -->
+      <section class="tab" data-tab="history" hidden>
+        <h3>This scene</h3>
+        <p class="muted">Every version of the file: from Claude, saves, or your editor.</p>
         <div class="row buttons"><button id="undo">Undo last change</button></div>
         <ol id="history-list" class="history"></ol>
-      </details>
+        <h3>Exports</h3>
+        <div class="row buttons"><button id="exports-open">Open exports folder</button><button id="exports-refresh">Refresh</button></div>
+        <ol id="exports-list" class="exports"></ol>
+      </section>
 
-      <details>
-        <summary>Scene file</summary>
-        <p class="muted">Edit <code id="scene-path">scenes/…</code> (or ask Claude) and the preview updates. Seed changes here are not saved to the file.</p>
-        <pre id="scene-json"></pre>
-      </details>
-      <details>
-        <summary>Resolved scene</summary>
-        <p class="muted">After extends, modifiers, prefabs and defaults: exactly what the engine runs.</p>
-        <pre id="resolved-json"></pre>
-      </details>
+      <!-- Info: live stats and the raw scene -->
+      <section class="tab" data-tab="info" hidden>
+        <section class="stats">
+          <div><span>Time</span><b id="s-time">0.0s</b></div>
+          <div><span>Bounces</span><b id="s-bounces">0</b></div>
+          <div><span>Balls</span><b id="s-balls">0</b></div>
+          <div><span>Escapes</span><b id="s-escapes">0</b></div>
+          <div class="wide"><span>Status</span><b id="s-status">running</b></div>
+          <div class="wide"><span>State hash</span><b id="s-hash" class="mono">—</b></div>
+        </section>
+        <details>
+          <summary>Scene file</summary>
+          <p class="muted">Edit <code id="scene-path">scenes/…</code> (or ask Claude) and the preview updates.</p>
+          <pre id="scene-json"></pre>
+        </details>
+        <details>
+          <summary>Resolved scene</summary>
+          <p class="muted">After extends, modifiers, prefabs and defaults: exactly what the engine runs.</p>
+          <pre id="resolved-json"></pre>
+        </details>
+        <button id="show-tips">Show the welcome tips again</button>
+      </section>
+
       <pre id="error" class="error" hidden></pre>
       <p id="script-msg" class="msg error-text"></p>
     </aside>
 
     <main class="stage">
-      <canvas id="view" width="1080" height="1920"></canvas>
+      <div class="player">
+        <div class="view-wrap">
+          <canvas id="view" width="1080" height="1920"></canvas>
+        </div>
+        <div class="transport">
+          <button id="play" class="icon" title="Play / pause (Space)" aria-label="Pause">❚❚</button>
+          <button id="restart" class="icon" title="Restart (Backspace)" aria-label="Restart">↺</button>
+          <div id="tl" class="timeline" title="Click or drag to jump">
+            <div id="tl-fill" class="tl-fill"></div>
+            <div id="tl-markers" class="tl-markers"></div>
+            <div id="tl-hover" class="tl-hover" hidden></div>
+          </div>
+          <span id="tl-time" class="tl-time mono">0:00</span>
+          <button id="tl-climax" title="Jump to just before the climax (J)">Climax</button>
+          <button id="sound" class="icon" title="Sound (M)" aria-label="Sound">🔇</button>
+          <label class="check small" title="Restart when the run ends"><input id="loop" type="checkbox" checked /> Loop</label>
+        </div>
+      </div>
 
       <section id="director" class="overlay" hidden aria-label="Director">
         <header class="director-bar">
@@ -175,6 +218,64 @@
           <button id="r-keep" class="primary">Keep, export (→)</button>
         </div>
       </section>
+
+      <section id="gallery" class="overlay" hidden aria-label="Scenes">
+        <header class="director-bar">
+          <h2>Scenes</h2>
+          <input id="g-search" type="text" placeholder="Search scenes…" />
+          <button id="g-close">Close</button>
+        </header>
+        <p class="muted">Click a scene to open it. <b>New from this</b> makes a scene that builds on it; <b>Duplicate</b> makes an independent copy.</p>
+        <div id="g-groups"></div>
+      </section>
+
+      <section id="welcome" class="overlay welcome" hidden aria-label="Welcome">
+        <div class="welcome-card">
+          <h2>Make a satisfying physics short</h2>
+          <ol>
+            <li><b>Pick a format.</b> Browse the scenes: ring escapes, battles, Plinko, music, loops… (B)</li>
+            <li><b>Watch it.</b> Space plays and pauses; the timeline jumps to the climax. Turn sound on: bounces play music.</li>
+            <li><b>Change it.</b> Ask Claude in plain words, drag sliders in Tune, or pick a song in Music.</li>
+            <li><b>Make it great.</b> The Director tries hundreds of runs and finds the most dramatic one.</li>
+            <li><b>Export.</b> 1080×1920, 60 fps MP4, with a caption, ready to post.</li>
+          </ol>
+          <div class="row buttons">
+            <button id="w-start" class="primary">Turn on sound and start</button>
+            <button id="w-browse">Browse formats</button>
+            <button id="w-close">Close</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="help" class="overlay welcome" hidden aria-label="Shortcuts">
+        <div class="welcome-card">
+          <h2>Keyboard shortcuts</h2>
+          <dl class="keys">
+            <dt>Space</dt><dd>Play / pause</dd>
+            <dt>Backspace</dt><dd>Restart</dd>
+            <dt>J</dt><dd>Jump to the climax</dd>
+            <dt>M</dt><dd>Sound on / off</dd>
+            <dt>R</dt><dd>New random seed</dd>
+            <dt>B</dt><dd>Browse scenes</dd>
+            <dt>D</dt><dd>Director</dd>
+            <dt>E</dt><dd>Export MP4</dd>
+            <dt>⌘S</dt><dd>Save changes to the scene file</dd>
+            <dt>⌘↵</dt><dd>Send the prompt to Claude</dd>
+            <dt>← / →</dt><dd>Discard / keep, in review</dd>
+            <dt>?</dt><dd>This list</dd>
+          </dl>
+          <div class="row buttons"><button id="help-close" class="primary">Close</button></div>
+        </div>
+      </section>
+
+      <div id="modal" class="overlay welcome" hidden role="dialog" aria-modal="true">
+        <div class="welcome-card modal-card">
+          <h2 id="m-title"></h2>
+          <p id="m-body"></p>
+          <input id="m-input" type="text" hidden />
+          <div id="m-buttons" class="row buttons"></div>
+        </div>
+      </div>
     </main>
 
     <script type="module" src="/src/main.ts"></script>

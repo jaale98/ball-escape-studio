@@ -1,0 +1,164 @@
+{
+  "ode-to-joy": {
+    "title": "Ode to Joy",
+    "composer": "Beethoven",
+    "category": "Classical",
+    "bpm": 112
+  },
+  "fur-elise": {
+    "title": "Für Elise",
+    "composer": "Beethoven",
+    "category": "Classical",
+    "bpm": 66
+  },
+  "minuet-in-g": {
+    "title": "Minuet in G",
+    "composer": "Petzold",
+    "category": "Classical",
+    "bpm": 120
+  },
+  "prelude-in-c": {
+    "title": "Prelude in C",
+    "composer": "J. S. Bach",
+    "category": "Classical",
+    "bpm": 66
+  },
+  "canon-in-d": {
+    "title": "Canon in D",
+    "composer": "Pachelbel",
+    "category": "Classical",
+    "bpm": 72
+  },
+  "moonlight-sonata": {
+    "title": "Moonlight Sonata",
+    "composer": "Beethoven",
+    "category": "Classical",
+    "bpm": 54
+  },
+  "hall-of-the-mountain-king": {
+    "title": "In the Hall of the Mountain King",
+    "composer": "Grieg",
+    "category": "Classical",
+    "bpm": 132
+  },
+  "eine-kleine-nachtmusik": {
+    "title": "Eine kleine Nachtmusik",
+    "composer": "Mozart",
+    "category": "Classical",
+    "bpm": 132
+  },
+  "turkish-march": {
+    "title": "Turkish March",
+    "composer": "Mozart",
+    "category": "Classical",
+    "bpm": 120
+  },
+  "can-can": {
+    "title": "Can-Can (Infernal Galop)",
+    "composer": "Offenbach",
+    "category": "Classical",
+    "bpm": 150
+  },
+  "william-tell": {
+    "title": "William Tell Overture (Finale)",
+    "composer": "Rossini",
+    "category": "Classical",
+    "bpm": 150
+  },
+  "habanera": {
+    "title": "Habanera",
+    "composer": "Bizet",
+    "category": "Classical",
+    "bpm": 72
+  },
+  "morning-mood": {
+    "title": "Morning Mood",
+    "composer": "Grieg",
+    "category": "Classical",
+    "bpm": 66
+  },
+  "the-entertainer": {
+    "title": "The Entertainer",
+    "composer": "Scott Joplin",
+    "category": "Ragtime & marches",
+    "bpm": 80
+  },
+  "when-the-saints": {
+    "title": "When the Saints Go Marching In",
+    "composer": "Traditional",
+    "category": "Ragtime & marches",
+    "bpm": 132
+  },
+  "yankee-doodle": {
+    "title": "Yankee Doodle",
+    "composer": "Traditional",
+    "category": "Ragtime & marches",
+    "bpm": 132
+  },
+  "greensleeves": {
+    "title": "Greensleeves",
+    "composer": "Traditional",
+    "category": "Folk & traditional",
+    "bpm": 96
+  },
+  "amazing-grace": {
+    "title": "Amazing Grace",
+    "composer": "Traditional",
+    "category": "Folk & traditional",
+    "bpm": 84
+  },
+  "auld-lang-syne": {
+    "title": "Auld Lang Syne",
+    "composer": "Traditional",
+    "category": "Folk & traditional",
+    "bpm": 84
+  },
+  "oh-susanna": {
+    "title": "Oh! Susanna",
+    "composer": "Stephen Foster",
+    "category": "Folk & traditional",
+    "bpm": 120
+  },
+  "twinkle-twinkle": {
+    "title": "Twinkle Twinkle Little Star",
+    "composer": "Traditional",
+    "category": "Nursery & kids",
+    "bpm": 100
+  },
+  "mary-had-a-little-lamb": {
+    "title": "Mary Had a Little Lamb",
+    "composer": "Traditional",
+    "category": "Nursery & kids",
+    "bpm": 112
+  },
+  "frere-jacques": {
+    "title": "Frère Jacques",
+    "composer": "Traditional",
+    "category": "Nursery & kids",
+    "bpm": 108
+  },
+  "row-your-boat": {
+    "title": "Row, Row, Row Your Boat",
+    "composer": "Traditional",
+    "category": "Nursery & kids",
+    "bpm": 72
+  },
+  "london-bridge": {
+    "title": "London Bridge",
+    "composer": "Traditional",
+    "category": "Nursery & kids",
+    "bpm": 112
+  },
+  "happy-birthday": {
+    "title": "Happy Birthday",
+    "composer": "Traditional",
+    "category": "Nursery & kids",
+    "bpm": 100
+  },
+  "old-macdonald": {
+    "title": "Old MacDonald Had a Farm",
+    "composer": "Traditional",
+    "category": "Nursery & kids",
+    "bpm": 120
+  }
+}

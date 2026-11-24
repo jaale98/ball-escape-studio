@@ -54,6 +54,8 @@ export interface RunScore extends Variation {
   stats: { deadTime: number; nearMisses: number; bounceRate: number; leadChanges: number; peakBalls: number; capped: boolean; scriptError: string };
   /** Perfect loops: the seamless stretch found. */
   loop?: { from: number; to: number; error: number };
+  /** Moments worth marking on a timeline. */
+  markers: { t: number; kind: 'escape' | 'eliminate' | 'near' | 'climax' | 'strike' }[];
 }
 
 export interface DirectorOptions {
@@ -126,6 +128,7 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
   const hpAtHalf = new Map<number, number>();
   let halfSampled = false;
 
+  const markers: RunScore['markers'] = [];
   let cursor = 0;
   const sampleEvery = Math.round(PHYSICS_HZ / 4);
   const looping = opts.template === 'perfect-loop';
@@ -151,7 +154,11 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
         lastActivity = et;
       }
       if (e.type === 'hit') hits++;
-      if (e.type === 'eliminate') lastEliminationAt = e.step / PHYSICS_HZ;
+      if (e.type === 'eliminate') {
+        lastEliminationAt = e.step / PHYSICS_HZ;
+        if (markers.length < 400) markers.push({ t: lastEliminationAt, kind: 'eliminate' });
+      }
+      if (e.type === 'escape' && markers.length < 400 && w.balls.length <= 40) markers.push({ t: e.step / PHYSICS_HZ, kind: 'escape' });
       if (e.type === 'bounce') {
         bounceTimes.push(e.step / PHYSICS_HZ);
         // Near miss: a ring bounce just beside a gap edge.
@@ -282,6 +289,11 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
       scriptError: w.scriptError,
     },
     loop,
+    markers: [
+      ...nearMisses.filter((x) => climax < 0 || x < climax).slice(0, 80).map((x) => ({ t: x, kind: 'near' as const })),
+      ...markers,
+      ...(climax >= 0 ? [{ t: climax, kind: 'climax' as const }] : []),
+    ],
   };
 }
 

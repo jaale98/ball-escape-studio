@@ -30,6 +30,9 @@ export function critique(scene: Scene, r: RunScore): Note[] {
   if (scene.duration.endOn === 'firstEscape' && r.climax > 0 && s.nearMisses === 0) warn('No near-misses before the escape, so there is little suspense. A narrower gap or a different seed builds tension.');
   if (scene.duration.endOn === 'lastStanding' && s.leadChanges === 0) warn('One ball leads the whole battle. A different seed (Director: Comeback) makes it closer.');
   if (s.capped) warn(`The ball cap (${scene.world.maxBalls}) was reached, so spawning stopped.`);
+  if (scene.audio.rhythmLock && r.signals.rhythm !== undefined && r.signals.rhythm < 0.9) {
+    warn(`Rhythm lock keeps only ${Math.round(r.signals.rhythm * 100)}% of notes on time with this seed (some paths can't hit the beat). The Director's “In time with the song” story finds seeds that stay in time.`);
+  }
   if (r.loop && r.loop.error > 8) warn(`The loop seam is ${r.loop.error.toFixed(0)}px off; the cut may be visible. Try the Director's Perfect loop story.`);
 
   if (!notes.length) {

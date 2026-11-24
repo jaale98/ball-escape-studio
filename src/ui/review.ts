@@ -10,6 +10,8 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 export interface ReviewHooks {
   keep(item: GridItem): void;
   exit(): void;
+  /** Where to play sound (null = silent). */
+  audio?: () => { ctx: AudioContext; master: AudioNode } | null;
 }
 
 let list: GridItem[] = [];
@@ -42,7 +44,7 @@ function show(): void {
   if (index >= list.length) return finish();
   const it = list[index];
   const r = it.r;
-  player = new Player($<HTMLCanvasElement>('r-canvas'), it.scene, 0.5);
+  player = new Player($<HTMLCanvasElement>('r-canvas'), it.scene, 0.5, hooks.audio);
   $('r-count').textContent = `${index + 1} / ${list.length} · kept ${kept}`;
   $('r-meta').textContent = `${it.title} · seed ${r.seed}${r.speed !== 1 || r.spin !== 1 ? ` · speed ×${r.speed} spin ×${r.spin}` : ''} · ${r.facts.join(', ')}`;
 }

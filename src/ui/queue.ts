@@ -23,18 +23,42 @@ const items: Item[] = [];
 let nextId = 1;
 let running = false;
 let setBusy: (busy: boolean) => void = () => {};
+let onSaved: () => void = () => {};
+const STORE = 'bes:queue';
 
-export function initQueue(hooks: { setExporting(busy: boolean): void }): void {
+/** Unfinished exports are kept in the browser so a reload doesn't lose them. */
+function persist(): void {
+  try {
+    const pending = items.filter((i) => i.status === 'queued' || i.status === 'rendering').map(({ label, fileName, scene, meta }) => ({ label, fileName, scene, meta }));
+    if (pending.length) localStorage.setItem(STORE, JSON.stringify(pending));
+    else localStorage.removeItem(STORE);
+  } catch {
+    /* storage full or unavailable: the queue still works, it just won't survive a reload */
+  }
+}
+
+export function initQueue(hooks: { setExporting(busy: boolean): void; onSaved(): void }): number {
   setBusy = hooks.setExporting;
+  onSaved = hooks.onSaved;
   $('q-clear').addEventListener('click', () => {
     for (let i = items.length - 1; i >= 0; i--) if (items[i].status === 'saved' || items[i].status === 'failed') items.splice(i, 1);
     draw();
   });
+  // Resume exports left unfinished last time.
+  let resumed: { label: string; fileName: string; scene: Scene; meta?: Item['meta'] }[] = [];
+  try {
+    resumed = JSON.parse(localStorage.getItem(STORE) ?? '[]');
+  } catch {
+    resumed = [];
+  }
+  for (const r of resumed) enqueue(r.label, r.fileName, r.scene, r.meta);
+  return resumed.length;
 }
 
 export function enqueue(label: string, fileName: string, scene: Scene, meta?: Item['meta']): void {
   items.push({ id: nextId++, label, fileName: fileName.replace(/[^a-zA-Z0-9_.-]+/g, '-'), scene: structuredClone(scene), status: 'queued', progress: 0, detail: '', meta });
   draw();
+  persist();
   void process();
 }
 
@@ -72,11 +96,13 @@ async function process(): Promise<void> {
         }
         if (!result.deterministic) item.detail += ' · warning: render diverged';
         item.status = 'saved';
+        onSaved();
       } catch (err) {
         item.status = 'failed';
         item.detail = (err as Error).message;
       }
       draw();
+      persist();
     }
   } finally {
     running = false;

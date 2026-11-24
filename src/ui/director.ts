@@ -34,6 +34,8 @@ export interface DirectorHooks {
   /** Save a generated scene as scenes/<name>.json; returns the name used. */
   save(source: { name: string; raw: Raw }): Promise<string>;
   setOpen(open: boolean): void;
+  /** Sound for the swipe review. */
+  audio(): { ctx: AudioContext; master: AudioNode } | null;
 }
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -60,6 +62,7 @@ export function initDirector(h: DirectorHooks): void {
     stopLoop();
     $('director').hidden = true;
     startReview(items.slice(0, 24), {
+      audio: () => hooks.audio(),
       keep: (it) => hooks.keep(it),
       exit: () => {
         $('director').hidden = false;
@@ -220,6 +223,7 @@ async function runTournament(): Promise<void> {
         signals: {},
         facts: [`${m.roundName}`, `climax ${m.climax.toFixed(1)}s`, `${m.winner.label} wins`],
         stats: { deadTime: 0, nearMisses: 0, bounceRate: 0, leadChanges: 0, peakBalls: 2, capped: false, scriptError: '' },
+        markers: [],
       };
       out.push({ scene: s, r, title: `${m.roundName}: ${m.a.label} vs ${m.b.label}`, source: { name: m.name, raw: m.raw } });
     }

@@ -31,7 +31,8 @@ Reaching for code is the last resort. If a format truly needs a new engine capab
 - Modifiers set what their format needs (for example `multiply` forces `endOn: never`). Later modifiers and explicit rules still apply on top.
 - `extends` merges objects key by key but replaces arrays: a child that sets `entities` must list all of them.
 - Overlay titles should be short hooks ("Can it escape?", "5 rings. 1 ball.").
-- MIDI songs go in `songs/` and are referenced as `"melody": "midi:<file name without .mid>"`. `audio.parts` picks track/channel parts (numbered as in the studio's Music panel); `audio.rhythmLock: true` keeps bounces in time with the song (zero gravity, one ball, a ring).
+- Songs: `"melody": "midi:<name>"`. The songbook (`songs/songs.json` lists titles; source in `scripts/songbook.ts`, regenerate with `npm run songs`) has 27 public-domain pieces; songbook songs put the melody in part 0 and the bass in part 1, so use `"parts": [0]` for the tune alone. Users can drop their own `.mid` files into `songs/`.
+- `audio.rhythmLock: true` keeps every bounce on the beat. It needs exactly one ball and a ring or polygon (gravity is fine); `rhythmLockStatus()` in `src/engine/world.ts` says whether it applies. Pick the seed with `npm run sim -- <name> --director music-sync`, since not every seed stays in time.
 - Keep `keepEnergy: true` for bouncing formats; use `keepEnergy: false` with restitution below 1 and some `friction` for things that settle (Plinko).
 
 ## Engine rules (don't break these)
@@ -50,7 +51,8 @@ Reaching for code is the last resort. If a format truly needs a new engine capab
 - `src/export/`: `mp4.ts` (WebCodecs + mp4-muxer frame-by-frame export), `still.ts` (deterministic single frames).
 - `src/director/score.ts`: Director scoring and story templates (shared by the studio and the CLI). `pool.ts` / `worker.ts`: Web Worker search. `critic.ts`, `remix.ts`, `tournament.ts`, `caption.ts`, `check.ts` / `preflight.ts` (script preflight).
 - `src/engine/script.ts`: custom rule scripts (compile + the `ctx` API). `src/render/gl.ts`: WebGL crowd layer.
-- `src/ui/`: `sliders.ts`, `music.ts` (song + part picker, MIDI drop), `director.ts` (variant grid), `review.ts` (swipe review), `queue.ts` (export queue), `player.ts` (mini previews). `src/main.ts`: studio UI; `window.studio` exposes `world`, `scene`, `exportMp4()`, `capture()`.
+- `src/ui/`: `sliders.ts`, `music.ts` (song picker, rhythm lock, parts, MIDI drop), `director.ts` (variant grid), `review.ts` (swipe review), `queue.ts` (export queue, persisted), `player.ts` (mini previews), `gallery.ts` (scene browser and file operations), `timeline.ts` (scrubber and markers), `exports.ts` (past exports), `modal.ts` (dialogs).
+- Studio state: everything the user changes is an "override" (unsaved change) in `main.ts` until Save writes it to the scene file. `src/main.ts`: studio UI; `window.studio` exposes `world`, `scene`, `exportMp4()`, `capture()`.
 - `scripts/`: `sim.ts` (headless runner and seed search), `determinism.ts` (`npm test`), `schema.ts`, `make-midi.ts`.
 - `server/studio.ts`: dev-only endpoints (captures, Save to file, the AI prompt box, version history, ratings). `server/claude.ts`: runs `claude -p` on the user's plan and turns its stream into studio events.
 - `src/scenes.ts`: scene sources with hot updates (scene edits never reload the page). `src/ui/assistant.ts`: prompt box. `src/ui/history.ts`: history panel and Like/Dislike.

@@ -13,6 +13,23 @@ const SETTLE_THRESHOLD = 90;
 const HIT_THRESHOLD = 40;
 /** After taking damage a ball can't be damaged again for this long (pinned balls would otherwise trade hits every step). */
 const DAMAGE_COOLDOWN = Math.round(0.25 * PHYSICS_HZ);
+const RHYTHM_MIN_SPEED = 120;
+const RHYTHM_MAX_SPEED = 4000;
+
+/**
+ * Can rhythm lock work for this scene? It needs a MIDI song (for note timing),
+ * exactly one ball for the whole run (several balls can't all bounce on the
+ * beat), and a ring or polygon to bounce in. Gravity is fine.
+ */
+export function rhythmLockStatus(scene: Scene): { ok: boolean; reason: string } {
+  if (!scene.audio.melody.startsWith('midi:') && !scene.audio.noteTimes) return { ok: false, reason: 'Needs a song with timing: pick a MIDI song (the songbook ones all work).' };
+  const balls = scene.entities.reduce((n, e) => n + (e.type === 'ball' ? e.count : 0), 0);
+  const spawns = JSON.stringify(scene.rules) + JSON.stringify(scene.timeline);
+  if (balls !== 1 || /"spawn"|spawn\(/.test(spawns)) return { ok: false, reason: 'Needs exactly one ball: with several, the bounces can’t all land on the beat.' };
+  if (!scene.entities.some((e) => e.type === 'ring' || e.type === 'polygon')) return { ok: false, reason: 'Needs a ring or polygon for the ball to bounce in.' };
+  return { ok: true, reason: '' };
+}
+
 /** Above this many balls, ball-ball collisions use a spatial hash. */
 const HASH_THRESHOLD = 48;
 
@@ -296,8 +313,7 @@ export class World {
 
     // Rhythm lock: pick a tempo so the ball keeps roughly its launch speed.
     const nt = scene.audio.noteTimes;
-    const ring = this.containers[0];
-    if (scene.audio.rhythmLock && nt && nt.length > 1 && this.gx === 0 && this.gy === 0 && ring?.kind === 'ring' && this.balls.length === 1) {
+    if (scene.audio.rhythmLock && nt && nt.length > 1 && rhythmLockStatus(scene).ok && this.balls.length === 1 && this.containers[0]) {
       const intervals = nt
         .slice(1)
         .map((t, i) => t - nt[i])
@@ -305,16 +321,13 @@ export class World {
         .sort((a, b) => a - b);
       const median = intervals[Math.floor(intervals.length / 2)];
       const b = this.balls[0];
-      // With no gravity every bounce in a circle repeats the same chord length,
-      // set by how far the launch line passes from the center.
       const speed = Math.max(1, Math.hypot(b.vx, b.vy));
-      const R = this.innerRadius(ring) - b.r;
-      const off = Math.abs((b.x - ring.x) * (b.vy / speed) - (b.y - ring.y) * (b.vx / speed));
-      const chord = 2 * Math.sqrt(Math.max(R * R - off * off, (0.2 * R) ** 2));
-      // Default tempo: the most common note length plays at the launch speed,
+      // How long the ball naturally takes to reach the wall at its launch speed.
+      const natural = this.ghostTime(b, this.containers[0], b.vx / speed, b.vy / speed, speed, 4);
+      // Default tempo: the most common note length plays at about that pace,
       // but never slower than half or faster than double the song's own tempo
-      // (beyond that it stops sounding like the song; the ball speeds up instead).
-      this.rhythmK = scene.audio.tempo ? 1 / scene.audio.tempo : Math.max(0.5, Math.min(2, chord / speed / median));
+      // (beyond that it stops sounding like the song; the ball adapts instead).
+      this.rhythmK = scene.audio.tempo ? 1 / scene.audio.tempo : Math.max(0.5, Math.min(2, (Number.isFinite(natural) ? natural : 0.4) / median));
     }
   }
 
@@ -874,30 +887,121 @@ export class World {
    */
   private lockToRhythm(b: Ball, i: number): void {
     const nt = this.scene.audio.noteTimes!;
-    const ring = this.containers.find((c, k) => c.kind === 'ring' && !b.escaped[k]);
-    if (!ring || this.aliveCount !== 1) return;
+    const c = this.containers.find((_, k) => !b.escaped[k]);
+    if (!c || this.aliveCount !== 1) return;
     const songLength = nt[nt.length - 1] - nt[0] + Math.max(0.25, nt[nt.length - 1] - nt[nt.length - 2]);
     let dt = 0;
     for (let j = i; dt < 1e-6 && j < i + nt.length; j++) {
       const a = nt[j % nt.length] + Math.floor(j / nt.length) * songLength;
       const z = nt[(j + 1) % nt.length] + Math.floor((j + 1) / nt.length) * songLength;
-      dt = z - a; // skip zero-length gaps (shouldn't happen: chords are one group)
+      dt = z - a;
     }
     const s0 = Math.hypot(b.vx, b.vy);
     if (s0 < 1e-6 || dt < 1e-6) return;
     const ux = b.vx / s0;
     const uy = b.vy / s0;
-    const px = b.x - ring.x;
-    const py = b.y - ring.y;
-    const R = this.innerRadius(ring) - b.r;
-    const pu = px * ux + py * uy;
-    const disc = pu * pu - (px * px + py * py - R * R);
-    if (disc < 0) return;
-    const dist = -pu + Math.sqrt(disc);
-    const speed = Math.max(150, Math.min(4000, dist / (dt * this.rhythmK)));
+    const want = dt * this.rhythmK;
+    let speed: number;
+    if (this.gx === 0 && this.gy === 0 && c.kind === 'ring') {
+      // Straight line to a circle: exact.
+      const px = b.x - c.x;
+      const py = b.y - c.y;
+      const R = this.innerRadius(c) - b.r;
+      const pu = px * ux + py * uy;
+      const disc = pu * pu - (px * px + py * py - R * R);
+      if (disc < 0) return;
+      speed = (-pu + Math.sqrt(disc)) / want;
+    } else {
+      // Gravity or a polygon: fly the ball's own path ahead at a spread of
+      // speeds. Flight time isn't monotonic in speed under gravity (launched
+      // upward, faster = a longer arc), so find every speed whose next wall hit
+      // lands on the note, and take the one closest to the current speed.
+      const limit = Math.min(4, want * 2.5 + 0.3);
+      const N = 24;
+      const speeds: number[] = [];
+      const err: number[] = [];
+      for (let k = 0; k < N; k++) {
+        const s = RHYTHM_MIN_SPEED * (RHYTHM_MAX_SPEED / RHYTHM_MIN_SPEED) ** (k / (N - 1));
+        speeds.push(s);
+        err.push(this.ghostTime(b, c, ux, uy, s, limit) - want);
+      }
+      let best = -1;
+      let bestCost = Infinity;
+      for (let k = 0; k < N - 1; k++) {
+        if (!Number.isFinite(err[k]) || !Number.isFinite(err[k + 1]) || err[k] * err[k + 1] > 0) continue;
+        // Bracketed: refine by bisection on the sign of the error.
+        let lo = speeds[k];
+        let hi = speeds[k + 1];
+        const loSign = Math.sign(err[k]);
+        for (let it = 0; it < 8; it++) {
+          const mid = Math.sqrt(lo * hi);
+          if (Math.sign(this.ghostTime(b, c, ux, uy, mid, limit) - want) === loSign) lo = mid;
+          else hi = mid;
+        }
+        const root = Math.sqrt(lo * hi);
+        const cost = Math.abs(Math.log(root / s0));
+        if (cost < bestCost) {
+          bestCost = cost;
+          best = root;
+        }
+      }
+      if (best < 0) {
+        // No exact solution: the closest arrival time wins.
+        let k0 = 0;
+        for (let k = 1; k < N; k++) if (Math.abs(err[k]) < Math.abs(err[k0])) k0 = k;
+        best = speeds[k0];
+      }
+      speed = best;
+    }
+    speed = Math.max(RHYTHM_MIN_SPEED, Math.min(RHYTHM_MAX_SPEED, speed));
     b.vx = ux * speed;
     b.vy = uy * speed;
     b.energy = this.energyOf(b);
+  }
+
+  /**
+   * Seconds until a ball launched from where it is now, in direction (ux, uy)
+   * at `speed`, next touches the container wall, under current gravity and
+   * the container's rotation (gaps ignored). Infinity if not within `limit`.
+   */
+  private ghostTime(b: Ball, c: Container, ux: number, uy: number, speed: number, limit: number): number {
+    const h = DT;
+    let x = b.x;
+    let y = b.y;
+    let vx = ux * speed;
+    let vy = uy * speed;
+    const half = c.thickness / 2;
+    const inner = this.innerRadius(c);
+    // Ignore the wall we're touching right now: wait until we've left it.
+    let left = false;
+    for (let t = h; t <= limit; t += h) {
+      vx += this.gx * h;
+      vy += this.gy * h;
+      x += vx * h;
+      y += vy * h;
+      let touching: boolean;
+      if (c.kind === 'ring') touching = Math.hypot(x - c.x, y - c.y) + b.r >= inner;
+      else {
+        const ang = c.angle + c.spin * t;
+        touching = false;
+        for (let k = 0; k < c.sides && !touching; k++) {
+          const a1 = ang + (k / c.sides) * TAU - Math.PI / 2;
+          const a2 = ang + ((k + 1) / c.sides) * TAU - Math.PI / 2;
+          const ax = c.x + c.radius * Math.cos(a1);
+          const ay = c.y + c.radius * Math.sin(a1);
+          const bx = c.x + c.radius * Math.cos(a2);
+          const by = c.y + c.radius * Math.sin(a2);
+          const abx = bx - ax;
+          const aby = by - ay;
+          let u = ((x - ax) * abx + (y - ay) * aby) / (abx * abx + aby * aby);
+          u = u < 0 ? 0 : u > 1 ? 1 : u;
+          touching = Math.hypot(x - (ax + u * abx), y - (ay + u * aby)) <= b.r + half;
+        }
+      }
+      if (!touching) left = true;
+      else if (left) return t;
+    }
+    return Infinity;
   }
 
   private escape(b: Ball, c: Container, idx: number): void {

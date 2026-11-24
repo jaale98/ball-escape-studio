@@ -14,7 +14,8 @@
     "test": "tsx scripts/determinism.ts",
     "schema": "tsx scripts/schema.ts",
     "eval:ai": "tsx scripts/ai-eval.ts",
-    "tournament": "tsx scripts/tournament.ts"
+    "tournament": "tsx scripts/tournament.ts",
+    "songs": "tsx scripts/songbook.ts"
   },
   "dependencies": {
     "mp4-muxer": "^5.2.2",

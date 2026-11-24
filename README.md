@@ -30,7 +30,8 @@ Every run is **deterministic**: the same scene and seed always produce exactly t
 - **Deterministic physics.** Fixed 240 Hz timestep, seeded randomness, no wall-clock time. A state hash proves two runs are identical.
 - **Built for the genre.** Spinning rings and polygons with exits, walls, pegs, counting zones, hit points, winners, timed events, and bounces that never lose energy.
 - **Live sliders.** Every number in a scene becomes a slider. Changes preview instantly, and **Save to file** writes them back to the JSON.
-- **Music from bounces.** Every bounce plays the next note of a melody: improvised pentatonic, *Ode to Joy*, *Für Elise*, or **any MIDI file**. Drag a `.mid` onto the studio to add it, pick it from the Music panel, and choose which tracks and channels play ("Melody only" finds the tune). **Rhythm lock** keeps every bounce in time with the song. There are synth instruments plus hit, pop and escape sounds.
+- **Music from bounces.** Every bounce plays the next note of a song. The built-in **songbook** has 27 public-domain pieces (Bach, Beethoven, Mozart, Grieg, Joplin, folk songs and nursery tunes, as simple melody-and-bass arrangements), plus an improvised pentatonic mode; drag any `.mid` onto the studio to add your own.
+- **Rhythm lock.** Every bounce lands exactly on the beat of the song, in any single-ball scene: rings or polygons, with or without gravity. After each bounce the engine flies the ball's next path ahead and sets its speed so it reaches the wall on the next note. **Find a seed that stays in time** in the Music tab picks the cleanest run in one click.
 - **Frame-perfect MP4 export.** Frames are rendered one by one, encoded with WebCodecs (H.264 + AAC), and muxed in the browser. A 30 s single-ball video exports in about 10 s, with no dropped frames, even in a background tab.
 - **Headless CLI.** `npm run sim` runs a scene in milliseconds, searches seed ranges for the best ending, and prints the event log, for you or for an AI agent.
 - **Editor autocomplete.** [`scene.schema.json`](scene.schema.json) gives VS Code completion and inline docs for every field.
@@ -47,9 +48,17 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173, pick a scene, press **Sound off** to turn sound on, drag some sliders or ask Claude for a change, and click **Export MP4**.
+Open http://localhost:5173. A short welcome card walks through it: pick a format, turn sound on, change it (ask Claude, or use the **Tune** and **Music** tabs), let the Director find the best run, and export.
 
-**Keyboard:** `Space` play/pause · `R` reroll seed · `M` sound · `Backspace` restart
+### The studio at a glance
+
+- **Scene switcher + Browse.** Pick a scene from the list, or **Browse** for a gallery with thumbnails, where you can open, build on (**New from this**), duplicate, rename or delete scenes. Remixes and tournament matches are grouped under the scene they came from. Deleted scenes go to `.studio/trash`.
+- **One save model.** Every change (sliders, seed, song, rhythm lock, a Director pick) is an *unsaved change* shown in a bar at the top. **Save** (⌘S) writes it into the scene file; **Discard** drops it. Switching scenes asks first.
+- **Tabs.** *Create* (ask Claude, the Critic, Director, export queue, Like/Dislike), *Tune* (seed and every number in the scene), *Music* (song, rhythm lock, parts), *History* (every version of the scene, and every export with Show in Finder / Export again / Open as scene), *Info* (live stats and the raw scene).
+- **Timeline.** Under the preview: progress with markers for near-misses, escapes, eliminations and the climax. Click or drag to jump (runs are deterministic, so it jumps to the exact frame); **Climax** (J) jumps to just before it.
+- **Export queue.** Exports render in the background, survive a page reload, and land in `exports/` with a caption and the exact scene.
+
+**Keyboard** (press `?` in the studio for the list): `Space` play/pause · `J` jump to climax · `M` sound · `R` new seed · `B` browse · `D` Director · `E` export · `⌘S` save · `Backspace` restart
 
 ## Scenes
 
@@ -124,7 +133,7 @@ The full schema with every default lives in [`src/engine/scene.ts`](src/engine/s
 | [`shrinking-gap`](scenes/shrinking-gap.json) | The exit narrows with every bounce | ring-escape + `zero-g` + `shrinking-gap` |
 | [`multiply`](scenes/multiply.json) | Every escape spawns two more | ring-escape + `multiply` |
 | [`gravity-flip`](scenes/gravity-flip.json) | Gravity reverses every 4 s | ring-escape + `gravity-flip` |
-| [`music-bounce`](scenes/music-bounce.json) | Each bounce plays the next note of a MIDI song | ring-escape + `speed-up` + `midi:minuet-in-g` |
+| [`music-bounce`](scenes/music-bounce.json) | A ring escape where every bounce is a note of the song, in time | ring-escape + `midi:minuet-in-g` + `rhythmLock` (with gravity) |
 | [`rhythm-bounce`](scenes/rhythm-bounce.json) | Every bounce lands in time with the song | music-bounce + `zero-g` + `rhythmLock` |
 | [`ball-race`](scenes/ball-race.json) | Four named balls, first one out wins | ring-escape + `race` |
 | [`nested-rings`](scenes/nested-rings.json) | Five counter-rotating rings | `nested` prefab |
@@ -181,7 +190,11 @@ Scripts are code: like any code, only run scene files you trust.
 
 ### Rhythm lock
 
-Set `"audio": { "melody": "midi:<song>", "rhythmLock": true }` on a zero-gravity, one-ball ring scene. After every bounce the ball's speed is set so that it reaches the wall exactly when the next note is due, so the song plays in time (100% of notes in the bundled preset). The tempo is chosen automatically, between half and double the song's own; `"tempo"` overrides it. Without rhythm lock, the Director's "In time with the song" story searches seeds for the best natural fit. Expect around 25–30% of notes on time there: free bounces are irregular.
+Turn it on in the **Music** tab, or set `"audio": { "melody": "midi:<song>", "rhythmLock": true }`. It works for any scene with one ball bouncing in a ring or polygon, with or without gravity (it can't work with several balls: their bounces can't all land on the beat, and the tab says so). After every bounce the engine flies the ball's next path ahead and sets its launch speed so it hits the wall exactly when the next note is due. Under gravity there can be several speeds that work; it picks the one closest to the current speed, so the motion stays smooth.
+
+Some paths can't hit a particular beat (a ball skimming along the wall, say), so not every seed stays in time. **Find a seed that stays in time** (or the Director's *In time with the song* story) tries 150 seeds and keeps the best; with it, ring escapes, gravity flips, polygons and the bouncing square typically land 85–100% of notes on time. The tempo is chosen automatically between half and double the song's own; the Tempo slider overrides it.
+
+The songbook lives in [`scripts/songbook.ts`](scripts/songbook.ts) in a compact note notation; `npm run songs` regenerates `songs/*.mid` and `songs/songs.json`.
 
 ## Finding the perfect seed
 

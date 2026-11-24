@@ -1,30 +1,34 @@
 import { songGroups } from './audio/midi';
 import { createMaster, playVoice, SoundMapper } from './audio/sound';
-import type { Scene } from './engine/scene';
-import { mergeSource, resolveScene } from './engine/source';
-import { DT, World } from './engine/world';
+import { caption, captionText } from './director/caption';
 import { hasScripts, preflight } from './director/check';
 import { critique } from './director/critic';
-import { scoreOne } from './director/pool';
-import { caption, captionText } from './director/caption';
+import { direct, scoreOne } from './director/pool';
 import { defaultTemplate, type RunScore } from './director/score';
+import type { Scene } from './engine/scene';
+import { mergeSource, resolveScene } from './engine/source';
+import { DT, rhythmLockStatus, World } from './engine/world';
 import { canExport, exportMp4 } from './export/mp4';
 import { renderStill } from './export/still';
 import { Renderer } from './render/renderer';
 import { entriesFrom, type SceneEntry, sceneFiles } from './scenes';
-import { loadSong, songFiles, songUrls } from './songs';
+import { loadSong, songFiles, songIndex, songUrls } from './songs';
+import { initAssistant } from './ui/assistant';
 import { initDirector } from './ui/director';
+import { initExports, refreshExports } from './ui/exports';
+import { closeGallery, initGallery, openGallery, refreshGallery } from './ui/gallery';
+import { initRating, refreshHistory } from './ui/history';
+import { ask } from './ui/modal';
 import { initMusic, refreshMusic } from './ui/music';
 import { enqueue, initQueue } from './ui/queue';
-import { initAssistant } from './ui/assistant';
-import { initRating, refreshHistory } from './ui/history';
 import { fmt, setPath, tunables } from './ui/sliders';
+import { initTimeline, jumpToClimax, setLength, setRun, setTime } from './ui/timeline';
 
 // Every JSON file in scenes/ is a scene. Edits arrive as hot updates (no page reload).
 let scenes: SceneEntry[] = entriesFrom(sceneFiles);
 let sources: Record<string, unknown> = Object.fromEntries(scenes.map((s) => [s.name, s.raw]));
 
-// MIDI files in songs/ can be used as melodies: "audio": { "melody": "midi:minuet-in-g" }.
+// MIDI files in songs/ can be melodies: "audio": { "melody": "midi:minuet-in-g" }.
 let songs: Record<string, string> = songUrls(songFiles);
 function songUrl(name: string): string {
   const url = songs[name.replace(/\.mid$/, '')];
@@ -66,30 +70,167 @@ let mapper: SoundMapper | null = null;
 let audioCursor = 0;
 let playing = true;
 let exporting = false;
-/** The Director view covers the stage: pause the main preview while it's open. */
+let seeking = false;
+/** An overlay covers the stage (Director, gallery): pause the main preview. */
 let directorOpen = false;
 let endedAt = 0;
 let audio: { ctx: AudioContext; master: AudioNode } | null = null;
 let soundOn = store.get('sound') === '1';
-
-function fillSceneList(selected: string): void {
-  sceneSelect.replaceChildren(...scenes.map((s) => new Option(s.name, s.name)));
-  sceneSelect.value = scenes.some((s) => s.name === selected) ? selected : (scenes[0]?.name ?? '');
-}
-fillSceneList(store.get('scene') ?? '');
-/** A scene Claude just wrote that should be shown as soon as it arrives. */
+/** A scene that should be shown as soon as it arrives (Claude or a gallery action made it). */
 let pendingSelect = '';
 
+// ---- Tabs ---------------------------------------------------------------------
+
+function showTab(tab: string): void {
+  for (const b of document.querySelectorAll<HTMLButtonElement>('.tabs button')) b.setAttribute('aria-selected', String(b.dataset.tab === tab));
+  for (const s of document.querySelectorAll<HTMLElement>('section.tab')) s.hidden = s.dataset.tab !== tab;
+  store.set('tab', tab);
+  if (tab === 'history') void refreshExports();
+}
+for (const b of document.querySelectorAll<HTMLButtonElement>('.tabs button')) b.addEventListener('click', () => showTab(b.dataset.tab!));
+showTab(store.get('tab') ?? 'create');
+
+// ---- Scene list -----------------------------------------------------------------
+
+/** Remixes and tournament matches are listed under the scene they came from. */
+function fillSceneList(selected: string): void {
+  const names = new Set(scenes.map((s) => s.name));
+  const parent = (n: string) => {
+    const m = /^(.+?)-(remix-\d+|cup.*)$/.exec(n);
+    return m && names.has(m[1]) ? m[1] : null;
+  };
+  const top = scenes.filter((s) => !parent(s.name));
+  const kids = scenes.filter((s) => parent(s.name));
+  const opt = (s: SceneEntry) => new Option(`${s.name}`, s.name);
+  sceneSelect.replaceChildren(...top.map(opt));
+  if (kids.length) {
+    const g = document.createElement('optgroup');
+    g.label = 'Remixes & matches';
+    g.append(...kids.map(opt));
+    sceneSelect.append(g);
+  }
+  sceneSelect.value = names.has(selected) ? selected : (top[0]?.name ?? '');
+  shownScene = sceneSelect.value;
+}
+let shownScene = '';
+fillSceneList(store.get('scene') ?? '');
+
 function currentEntry() {
-  return scenes.find((s) => s.name === sceneSelect.value);
+  return scenes.find((s) => s.name === shownScene);
 }
 
-/** Slider tweaks not yet saved to the file: dotted path -> value. */
+// ---- Unsaved changes ---------------------------------------------------------------
+
+/** Every change not yet saved to the file (sliders, seed, music, Director picks): dotted path -> value. */
 const overrides = new Map<string, unknown>();
 let loadToken = 0;
 
-/** Resolve the selected scene (extends, modifiers, prefabs, slider tweaks, MIDI) and restart. */
-async function loadScene(keepSeed: boolean, rebuildSliders = true): Promise<void> {
+function updateDirty(): void {
+  const n = overrides.size;
+  $('dirty-bar').hidden = n === 0;
+  const labels = [...overrides.keys()].map((p) => (p === 'seed' ? 'seed' : p.split('.').slice(-1)[0]));
+  $('dirty-text').textContent = n ? `${n} unsaved change${n === 1 ? '' : 's'}: ${[...new Set(labels)].slice(0, 4).join(', ')}${labels.length > 4 ? '…' : ''}` : '';
+  $('dirty-text').title = [...overrides.keys()].join('\n');
+}
+
+/** Set (or with undefined, clear) a change from any panel, and re-run the preview. */
+function setTweak(path: string, value: unknown, rebuild = true): void {
+  overrides.set(path, value);
+  updateDirty();
+  clearTimeout(sliderTimer);
+  sliderTimer = window.setTimeout(() => void loadScene(rebuild), rebuild ? 60 : 120);
+}
+
+/** Write all unsaved changes into the scene file (dev server only). */
+async function saveChanges(): Promise<boolean> {
+  const entry = currentEntry();
+  if (!entry || !overrides.size) return true;
+  const merged = mergeSource(entry.name, sources);
+  const child = structuredClone(entry.raw) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const inheritedMods = ((merged.modifiers as unknown[]) ?? []).length - ((child.modifiers as unknown[]) ?? []).length;
+  const skipped: string[] = [];
+  for (const [path, v] of overrides) {
+    const parts = path.split('.');
+    if (parts[0] === 'modifiers') {
+      const i = Number(parts[1]) - inheritedMods;
+      if (i < 0) {
+        skipped.push(path);
+        continue;
+      }
+      setPath(child, ['modifiers', String(i), ...parts.slice(2)].join('.'), v);
+      continue;
+    }
+    // A change to an inherited value copies that whole section into this file.
+    if (!(parts[0] in child)) child[parts[0]] = structuredClone(merged[parts[0]]);
+    setPath(child, path, v);
+  }
+  try {
+    const res = await fetch(`/__studio/scene?name=${encodeURIComponent(entry.name)}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(child, null, 2),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? `HTTP ${res.status}`);
+  } catch (err) {
+    $('save-msg').textContent = `Save failed: ${(err as Error).message}. Saving needs the dev server (npm run dev).`;
+    return false;
+  }
+  $('save-msg').textContent = skipped.length ? `Saved. Not saved (a modifier inherited from another scene): ${skipped.join(', ')}` : `Saved to scenes/${entry.name}.json.`;
+  setTimeout(() => ($('save-msg').textContent = ''), 4000);
+  // The file change arrives as a hot update, which clears the changes and reloads.
+  return true;
+}
+
+function discardChanges(): void {
+  overrides.clear();
+  updateDirty();
+  void loadScene();
+}
+
+/** Ask what to do with unsaved changes before leaving this scene. Resolves false to stay. */
+async function confirmLeave(): Promise<boolean> {
+  if (!overrides.size) return true;
+  const r = await ask({
+    title: `Save your changes to “${shownScene}”?`,
+    body: `You have ${overrides.size} unsaved change${overrides.size === 1 ? '' : 's'}.`,
+    buttons: [
+      { label: 'Save', value: 'save', primary: true },
+      { label: 'Discard', value: 'discard', danger: true },
+      { label: 'Cancel', value: 'cancel' },
+    ],
+  });
+  if (r.value === 'cancel') return false;
+  if (r.value === 'save' && !(await saveChanges())) return false;
+  overrides.clear();
+  updateDirty();
+  return true;
+}
+
+/** Switch scenes (asking about unsaved changes first). */
+async function openScene(name: string): Promise<void> {
+  if (name === shownScene) return;
+  if (!(await confirmLeave())) {
+    sceneSelect.value = shownScene;
+    return;
+  }
+  if (!sources[name]) {
+    pendingSelect = name; // not here yet: it arrives with the next hot update
+    return;
+  }
+  shownScene = name;
+  sceneSelect.value = name;
+  store.set('scene', name);
+  void loadScene();
+}
+
+window.addEventListener('beforeunload', (e) => {
+  if (overrides.size) e.preventDefault();
+});
+
+// ---- Loading a scene ---------------------------------------------------------------
+
+/** Resolve the shown scene (extends, modifiers, prefabs, changes, MIDI) and restart. */
+async function loadScene(rebuild = true): Promise<void> {
   const entry = currentEntry();
   if (!entry) return;
   const token = ++loadToken;
@@ -115,20 +256,17 @@ async function loadScene(keepSeed: boolean, rebuildSliders = true): Promise<void
       if (token !== loadToken) return;
       $('script-msg').textContent = scriptError ? `Script error: ${scriptError} (that script was switched off)` : '';
     } else $('script-msg').textContent = '';
-    // A UI seed is remembered per scene, but only while the file's own seed is
-    // unchanged: editing the seed in the file always wins.
-    const [fileSeed, uiSeed] = (store.get(`seed:${entry.name}`) ?? '').split(':').map(Number);
-    const remembered = fileSeed === resolved.seed && Number.isFinite(uiSeed) ? uiSeed : resolved.seed;
-    const seed = keepSeed && seedInput.value !== '' ? Number(seedInput.value) : remembered;
-    scene = { ...resolved, seed };
-    seedInput.value = String(seed);
+    scene = resolved;
+    seedInput.value = String(scene.seed);
     $('resolved-json').textContent = JSON.stringify({ ...scene, audio: { ...scene.audio, notes: scene.audio.notes ? `(${scene.audio.notes.length} note groups)` : undefined, noteTimes: undefined } }, null, 2);
-    refreshMusic(scene, Object.keys(songs), song);
+    refreshMusic(scene, Object.keys(songs), song, rhythmLockStatus(scene));
     errorBox.hidden = true;
-    if (rebuildSliders) {
+    if (rebuild) {
       buildSliders();
       void refreshHistory(entry.name);
     }
+    updateDirty();
+    setLength(scene.duration.max);
     restart();
     scheduleCritic();
   } catch (err) {
@@ -140,15 +278,7 @@ async function loadScene(keepSeed: boolean, rebuildSliders = true): Promise<void
   }
 }
 
-/** Set (or with undefined, clear) a tweak from any panel, and re-run the preview. */
-function setTweak(path: string, value: unknown): void {
-  overrides.set(path, value); // undefined = unset (dropped when saved)
-  updateTweakButtons();
-  clearTimeout(sliderTimer);
-  sliderTimer = window.setTimeout(() => void loadScene(true, true), 60);
-}
-
-// ---- Sliders ----------------------------------------------------------------
+// ---- Sliders (Tune tab) -------------------------------------------------------------
 
 let sliderTimer = 0;
 function buildSliders(): void {
@@ -189,56 +319,15 @@ function buildSliders(): void {
     input.addEventListener('input', () => {
       const v = Number(input.value);
       out.textContent = fmt(v, t.step);
-      overrides.set(t.path, v);
       row.classList.add('changed');
-      updateTweakButtons();
-      clearTimeout(sliderTimer);
-      sliderTimer = window.setTimeout(() => void loadScene(true, false), 120);
+      setTweak(t.path, v, false);
     });
     row.append(name, input, out);
     box.append(row);
   }
-  updateTweakButtons();
 }
 
-function updateTweakButtons(): void {
-  const n = overrides.size;
-  $<HTMLButtonElement>('save').disabled = n === 0;
-  $<HTMLButtonElement>('reset-tweaks').disabled = n === 0;
-  $('tweak-count').textContent = n ? `${n} unsaved ${n === 1 ? 'change' : 'changes'}` : 'Drag to tweak; changes preview instantly.';
-}
-
-/** Write slider tweaks into the scene file (dev server only). The page reloads with the saved file. */
-async function saveTweaks(): Promise<void> {
-  const entry = currentEntry();
-  if (!entry || !overrides.size) return;
-  const merged = mergeSource(entry.name, sources);
-  const child = structuredClone(entry.raw) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  const inheritedMods = ((merged.modifiers as unknown[]) ?? []).length - ((child.modifiers as unknown[]) ?? []).length;
-  const skipped: string[] = [];
-  for (const [path, v] of overrides) {
-    const parts = path.split('.');
-    if (parts[0] === 'modifiers') {
-      const i = Number(parts[1]) - inheritedMods;
-      if (i < 0) {
-        skipped.push(path);
-        continue;
-      }
-      setPath(child, ['modifiers', String(i), ...parts.slice(2)].join('.'), v);
-      continue;
-    }
-    // A tweak to an inherited value copies that whole section into this file.
-    if (!(parts[0] in child)) child[parts[0]] = structuredClone(merged[parts[0]]);
-    setPath(child, path, v);
-  }
-  const res = await fetch(`/__studio/scene?name=${encodeURIComponent(entry.name)}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(child, null, 2),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  $('tweak-count').textContent = skipped.length ? `Saved. Not saved (inherited modifier): ${skipped.join(', ')}` : 'Saved.';
-}
+// ---- Playback ----------------------------------------------------------------------
 
 function restart(): void {
   if (!scene) return;
@@ -248,19 +337,41 @@ function restart(): void {
   audioCursor = 0;
   endedAt = 0;
   renderer.render(world, 0);
+  setTime(0);
 }
 
-function setSeed(seed: number): void {
-  seedInput.value = String(seed);
-  const entry = currentEntry();
-  let fileSeed = 1;
+/**
+ * Jump to time t. Runs are deterministic, so this re-simulates from the start;
+ * the last half second is drawn frame by frame so trails and effects look right.
+ */
+async function seek(t: number): Promise<void> {
+  if (!scene || seeking) return;
+  seeking = true;
   try {
-    fileSeed = entry ? ((mergeSource(entry.name, sources).seed as number | undefined) ?? 1) : 1;
-  } catch {
-    /* unresolvable scene: the error box already says why */
+    restart();
+    const w = world!;
+    const r = renderer!;
+    const warm = Math.max(0, t - 0.5);
+    let n = 0;
+    while (!w.done && w.time < warm) {
+      w.step();
+      if (++n % 4000 === 0) {
+        $('tl-time').textContent = 'seeking…';
+        await new Promise((res) => setTimeout(res, 0));
+        if (w !== world) return; // replaced meanwhile
+      }
+    }
+    while (!w.done && w.time < t) {
+      for (let s = 0; s < 4 && !w.done; s++) w.step();
+      r.render(w, 1 / 60);
+    }
+    r.render(w, 0);
+    audioCursor = w.events.length; // don't replay the skipped sounds
+    if (w.done) endedAt = performance.now();
+    setTime(w.time);
+  } finally {
+    seeking = false;
   }
-  store.set(`seed:${sceneSelect.value}`, `${fileSeed}:${seed}`);
-  void loadScene(true, false);
 }
 
 function ensureAudio(): void {
@@ -288,6 +399,7 @@ function pumpAudio(): void {
 
 function updateStats(): void {
   if (!world) return;
+  setTime(world.time);
   $('s-time').textContent = `${world.time.toFixed(1)}s`;
   $('s-bounces').textContent = String(world.bounces);
   $('s-balls').textContent = String(world.aliveCount);
@@ -300,8 +412,7 @@ function updateStats(): void {
       : playing
         ? 'running'
         : 'paused';
-  if (world.done) $('s-hash').textContent = world.hash();
-  else $('s-hash').textContent = '— (shown when the run ends)';
+  $('s-hash').textContent = world.done ? world.hash() : '— (shown when the run ends)';
 }
 
 // Main loop: fixed 240 Hz physics, rendered at the display's refresh rate.
@@ -310,7 +421,7 @@ let acc = 0;
 function frame(now: number): void {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
-  if (world && renderer && !exporting && !directorOpen) {
+  if (world && renderer && !exporting && !directorOpen && !seeking) {
     let rdt = 0;
     if (playing && !world.done) {
       acc += dt;
@@ -331,48 +442,70 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 
-// --- Controls --------------------------------------------------------------
-
-sceneSelect.addEventListener('change', () => {
-  store.set('scene', sceneSelect.value);
-  seedInput.value = '';
-  overrides.clear();
-  void loadScene(false);
-});
-$('reset-tweaks').addEventListener('click', () => {
-  overrides.clear();
-  void loadScene(true);
-});
-$('save').addEventListener('click', () => {
-  saveTweaks().catch((err) => ($('tweak-count').textContent = `Save failed: ${(err as Error).message}`));
-});
-seedInput.addEventListener('change', () => setSeed(Math.trunc(Number(seedInput.value) || 0)));
-$('reroll').addEventListener('click', () => setSeed(Math.floor(Math.random() * 100000)));
-$('restart').addEventListener('click', () => restart());
-playBtn.addEventListener('click', () => {
-  playing = !playing;
-  playBtn.textContent = playing ? 'Pause' : 'Play';
+function setPlaying(p: boolean): void {
+  playing = p;
+  playBtn.textContent = playing ? '❚❚' : '▶';
+  playBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play');
   ensureAudio();
-});
-function syncSoundButton() {
-  soundBtn.textContent = soundOn ? 'Sound on' : 'Sound off';
 }
-soundBtn.addEventListener('click', () => {
-  soundOn = !soundOn;
+
+function syncSound(): void {
+  // Off: a clear call to action (bounces play music, so sound matters). On: a quiet icon.
+  soundBtn.textContent = soundOn ? '🔊' : '🔇 Turn on sound';
+  soundBtn.className = soundOn ? 'icon' : 'sound-off';
+  soundBtn.setAttribute('aria-label', soundOn ? 'Sound on (M to mute)' : 'Sound off (M to turn on)');
+}
+function toggleSound(on = !soundOn): void {
+  soundOn = on;
   store.set('sound', soundOn ? '1' : '0');
-  syncSoundButton();
+  syncSound();
   ensureAudio();
-});
-syncSoundButton();
+}
+
+// ---- Controls ------------------------------------------------------------------------
+
+sceneSelect.addEventListener('change', () => void openScene(sceneSelect.value));
+$('save').addEventListener('click', () => void saveChanges());
+$('discard').addEventListener('click', discardChanges);
+seedInput.addEventListener('change', () => setTweak('seed', Math.trunc(Number(seedInput.value) || 0)));
+$('reroll').addEventListener('click', () => setTweak('seed', Math.floor(Math.random() * 100000)));
+$('restart').addEventListener('click', () => restart());
+playBtn.addEventListener('click', () => setPlaying(!playing));
+soundBtn.addEventListener('click', () => toggleSound());
+syncSound();
 document.addEventListener('pointerdown', () => ensureAudio(), { once: true });
+initTimeline((t) => void seek(t));
+
+const overlayOpen = () => ['director', 'review', 'gallery', 'welcome', 'help', 'modal'].some((id) => !$(id).hidden);
 
 document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+    e.preventDefault();
+    void saveChanges();
+    return;
+  }
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === 'Escape') {
+    if (!$('help').hidden) $('help').hidden = true;
+    else if (!$('welcome').hidden) closeWelcome();
+    else if (!$('gallery').hidden) closeGallery();
+    return;
+  }
+  if (e.key === '?') {
+    $('help').hidden = false;
+    return;
+  }
+  if (overlayOpen()) return;
   if (e.code === 'Space') {
     e.preventDefault();
-    playBtn.click();
+    setPlaying(!playing);
   } else if (e.key === 'r') $('reroll').click();
-  else if (e.key === 'm') soundBtn.click();
+  else if (e.key === 'm') toggleSound();
+  else if (e.key === 'j') jumpToClimax();
+  else if (e.key === 'b') openGallery();
+  else if (e.key === 'd') $('open-director').click();
+  else if (e.key === 'e') exportBtn.click();
   else if (e.key === 'Backspace') restart();
 });
 
@@ -391,6 +524,30 @@ exportBtn.addEventListener('click', () => {
   $('export-msg').textContent = 'Added to the export queue below.';
 });
 
+// ---- Welcome and shortcuts --------------------------------------------------------------
+
+function closeWelcome(): void {
+  $('welcome').hidden = true;
+  store.set('welcomed', '1');
+}
+$('w-start').addEventListener('click', () => {
+  closeWelcome();
+  toggleSound(true);
+  setPlaying(true);
+  restart();
+});
+$('w-browse').addEventListener('click', () => {
+  closeWelcome();
+  openGallery();
+});
+$('w-close').addEventListener('click', closeWelcome);
+$('show-tips').addEventListener('click', () => ($('welcome').hidden = false));
+$('help-btn').addEventListener('click', () => ($('help').hidden = false));
+$('help-close').addEventListener('click', () => ($('help').hidden = true));
+if (!store.get('welcomed')) $('welcome').hidden = false;
+
+// ---- Automation hook --------------------------------------------------------------------
+
 // Expose a small hook for automated checks and Claude Code ("folder mode").
 (window as unknown as { studio: unknown }).studio = {
   get world() {
@@ -400,6 +557,8 @@ exportBtn.addEventListener('click', () => {
     return scene;
   },
   exportMp4: () => (scene ? exportMp4(scene) : Promise.reject(new Error('no scene'))),
+  seek: (t: number) => seek(t),
+  open: (name: string) => openScene(name),
   /**
    * Dev server only: save a frame to captures/<name>.png. With `seconds`, renders the
    * exact export frame at that time (deterministic); without it, saves the live preview.
@@ -413,7 +572,7 @@ exportBtn.addEventListener('click', () => {
   },
 };
 
-// ---- Critic -----------------------------------------------------------------
+// ---- Critic (and the timeline's markers) ---------------------------------------------------
 
 let criticTimer = 0;
 let criticToken = 0;
@@ -429,6 +588,7 @@ function scheduleCritic(): void {
       const loop = s.duration.trimStart > 0;
       const r = await scoreOne(s, loop ? { template: 'perfect-loop', target: s.duration.max - s.duration.trimStart } : { template: defaultTemplate(s), target: 30 });
       if (token !== criticToken) return;
+      setRun(r.length, r.markers, r.climax);
       const notes = critique(s, r);
       criticNotes = notes.filter((n) => n.level === 'warn').map((n) => n.text);
       $('critic-list').replaceChildren(
@@ -449,36 +609,61 @@ function scheduleCritic(): void {
 
 $('critic-fix').addEventListener('click', () => {
   if (!criticNotes.length) return;
+  showTab('create');
   const box = $<HTMLTextAreaElement>('ai-prompt');
   box.value = `The Critic flagged these problems with this scene:\n${criticNotes.map((n) => `- ${n}`).join('\n')}\nFix them while keeping the idea of the video. Re-check with npm run sim.`;
   $<HTMLButtonElement>('ai-send').click();
 });
 
-// ---- Hot scene updates, Claude, history, taste --------------------------------
+// ---- Hot updates: scenes and songs ----------------------------------------------------------
 
 window.addEventListener('songs-updated', (e) => {
   songs = (e as CustomEvent<Record<string, string>>).detail;
-  if (scene) void loadScene(true, true);
+  if (scene) void loadScene();
 });
 
-initMusic({ set: setTweak });
+initMusic({ set: (path, value) => setTweak(path, value) });
+
+// Rhythm lock: one click to find a seed whose bounces stay on the beat.
+$('rhythm-find').addEventListener('click', async () => {
+  if (!scene) return;
+  const btn = $<HTMLButtonElement>('rhythm-find');
+  btn.disabled = true;
+  btn.textContent = 'Trying seeds…';
+  try {
+    const search = direct(scene, { template: 'music-sync', target: 30 }, 150, 0, (done, total) => (btn.textContent = `Trying seeds… ${done}/${total}`));
+    const [best] = await search.done;
+    setTweak('seed', best.seed);
+    $('rhythm-why').textContent = `Seed ${best.seed}: ${best.facts.join(', ')}. Save to keep it.`;
+  } catch (err) {
+    $('rhythm-why').textContent = `Search failed: ${(err as Error).message}`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Find a seed that stays in time';
+  }
+});
 
 window.addEventListener('scenes-updated', (e) => {
   const next = (e as CustomEvent<SceneEntry[]>).detail;
   const before = sources;
   scenes = next;
   sources = Object.fromEntries(scenes.map((s) => [s.name, s.raw]));
-  const wanted = pendingSelect && sources[pendingSelect] ? pendingSelect : sceneSelect.value;
-  const switched = wanted !== sceneSelect.value;
+  let wanted = pendingSelect && sources[pendingSelect] ? pendingSelect : shownScene;
+  // The shown scene was renamed or deleted: go to the scene it built on, if any.
+  if (!sources[wanted]) {
+    const parent = (before[wanted] as { extends?: string } | undefined)?.extends;
+    wanted = parent && sources[parent] ? parent : (scenes[0]?.name ?? '');
+  }
+  const switched = wanted !== shownScene;
   if (wanted === pendingSelect) pendingSelect = '';
   fillSceneList(wanted);
   if (switched) store.set('scene', wanted);
-  const current = sceneSelect.value;
-  // Reload when the shown scene (or anything it extends) changed. The file is now the truth.
+  refreshGallery();
+  const current = shownScene;
+  // Reload when the shown scene (or anything it builds on) changed: the file is now the truth.
   if (switched || JSON.stringify(before[current]) !== JSON.stringify(sources[current]) || dependsOnChanged(current, before)) {
     overrides.clear();
-    if (switched) seedInput.value = '';
-    void loadScene(false);
+    void loadScene();
   }
 });
 
@@ -493,11 +678,13 @@ function dependsOnChanged(name: string, before: Record<string, unknown>): boolea
   return false;
 }
 
+// ---- Panels wired to the rest ----------------------------------------------------------------
+
 initAssistant({
   currentScene: () => currentEntry()?.name,
   onFile: (path) => {
     const m = /^scenes\/([\w-]+)\.json$/.exec(path);
-    if (m && m[1] !== sceneSelect.value) pendingSelect = m[1];
+    if (m && m[1] !== shownScene) pendingSelect = m[1];
   },
 });
 
@@ -512,7 +699,7 @@ initRating(() => {
     kinds,
     `gravity ${JSON.stringify(scene.world.gravity)}`,
     `ends on ${scene.duration.endOn}`,
-    `melody ${scene.audio.melody}/${scene.audio.instrument}`,
+    `melody ${scene.audio.melody}${songIndex[scene.audio.melody.slice(5)] ? ` (${songIndex[scene.audio.melody.slice(5)].title})` : ''}/${scene.audio.instrument}${scene.audio.rhythmLock ? ', rhythm lock' : ''}`,
     `seed ${scene.seed}`,
     world ? `ran ${world.time.toFixed(1)}s, ${world.bounces} bounces${world.done ? `, ended ${world.endReason}` : ''}` : '',
   ]
@@ -521,10 +708,56 @@ initRating(() => {
   return { name: entry.name, title: scene.overlay.title ?? scene.title, summary };
 });
 
-initQueue({
+const resumed = initQueue({
   setExporting: (busy) => {
     exporting = busy;
     if (!busy) restart();
+  },
+  onSaved: () => {
+    if (!$<HTMLElement>('history-list').closest('section')!.hidden) void refreshExports();
+  },
+});
+if (resumed) $('export-msg').textContent = `Resumed ${resumed} unfinished export${resumed === 1 ? '' : 's'} from last time.`;
+
+async function createScene(name: string, raw: unknown): Promise<string> {
+  const res = await fetch(`/__studio/scene?name=${encodeURIComponent(name)}&create=1`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(raw),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? `HTTP ${res.status}`);
+  return (await res.json()).name as string;
+}
+
+initExports({
+  reexport: (label, fileName, s) => {
+    enqueue(label, fileName, s, { caption: captionText(caption(s)), info: { scene: fileName, seed: s.seed, speedScale: s.world.speedScale, spinScale: s.world.spinScale } });
+    showTab('create');
+  },
+  openAsScene: async (name, s) => {
+    const { notes, noteTimes, ...audioRest } = s.audio;
+    void notes;
+    void noteTimes;
+    const made = await createScene(name, { $schema: '../scene.schema.json', ...s, audio: audioRest });
+    await openScene(made);
+  },
+});
+
+initGallery({
+  scenes: () => scenes,
+  sources: () => sources,
+  current: () => shownScene,
+  open: (name) => void openScene(name),
+  op: async (op, name, to) => {
+    if (op === 'delete' && name === shownScene && overrides.size) {
+      overrides.clear();
+      updateDirty();
+    }
+    const res = await fetch('/__studio/scene-op', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op, name, to }) });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}. Managing scenes needs the dev server (npm run dev).`);
+    if (op !== 'delete') pendingSelect = body.name;
+    return body.name as string;
   },
 });
 
@@ -537,7 +770,6 @@ initDirector({
   scene: () => scene,
   sceneName: () => currentEntry()?.name ?? '',
   use: (r) => {
-    setSeed(r.seed);
     setTweak('seed', r.seed);
     setTweak('world.speedScale', r.speed);
     setTweak('world.spinScale', r.spin);
@@ -569,19 +801,16 @@ initDirector({
     }
     return s;
   },
-  save: async (source) => {
-    const res = await fetch(`/__studio/scene?name=${encodeURIComponent(source.name)}&create=1`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ $schema: '../scene.schema.json', ...source.raw }),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return (await res.json()).name as string;
-  },
+  save: (source) => createScene(source.name, { $schema: '../scene.schema.json', ...source.raw }),
   setOpen: (open) => {
     directorOpen = open;
   },
+  audio: () => {
+    if (!soundOn) return null;
+    ensureAudio();
+    return audio;
+  },
 });
 
-void loadScene(false);
+void loadScene();
 requestAnimationFrame(frame);
