@@ -1,8 +1,15 @@
 {
   "$schema": "../scene.schema.json",
-  "extends": "ring-escape",
   "title": "Bouncing square",
   "seed": 243,
+  "duration": {
+    "max": 60,
+    "endOn": "firstEscape",
+    "tail": 2.5
+  },
+  "world": {
+    "gravity": 900
+  },
   "entities": [
     {
       "type": "ring",
@@ -29,9 +36,11 @@
     "ringColor": "#fff0b3"
   },
   "audio": {
+    "melody": "pentatonic",
     "instrument": "marimba"
   },
   "overlay": {
-    "title": "Can a square escape?"
+    "title": "Can a square escape?",
+    "counter": "bounces"
   }
 }

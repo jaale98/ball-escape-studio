@@ -1,13 +1,14 @@
 {
   "$schema": "../scene.schema.json",
-  "extends": "ring-escape",
   "title": "Ball race",
   "seed": 88,
-  "modifiers": [
-    "race"
-  ],
   "duration": {
+    "max": 60,
+    "endOn": "firstEscape",
     "tail": 3
+  },
+  "world": {
+    "gravity": 900
   },
   "entities": [
     {
@@ -46,11 +47,15 @@
     "trail": 0.8
   },
   "audio": {
+    "melody": "pentatonic",
     "instrument": "marimba"
   },
   "overlay": {
     "title": "First one out wins",
-    "subtitle": "Pick your color",
-    "counter": "bounces"
-  }
+    "counter": "bounces",
+    "subtitle": "Pick your color"
+  },
+  "modifiers": [
+    "race"
+  ]
 }

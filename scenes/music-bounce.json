@@ -1,8 +1,15 @@
 {
   "$schema": "../scene.schema.json",
-  "extends": "ring-escape",
   "title": "Music bounce",
   "seed": 23,
+  "duration": {
+    "max": 60,
+    "endOn": "firstEscape",
+    "tail": 2.5
+  },
+  "world": {
+    "gravity": 900
+  },
   "entities": [
     {
       "type": "ring",
@@ -23,16 +30,20 @@
       "color": "#ffd23f"
     }
   ],
+  "style": {
+    "trail": 0.85
+  },
   "audio": {
     "melody": "midi:minuet-in-g",
+    "instrument": "bell",
     "parts": [
       0
     ],
-    "rhythmLock": true,
-    "instrument": "bell"
+    "rhythmLock": true
   },
   "overlay": {
     "title": "Every bounce is a note",
+    "counter": "bounces",
     "subtitle": "Minuet in G, in time"
   }
 }

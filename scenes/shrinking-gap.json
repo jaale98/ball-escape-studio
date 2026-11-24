@@ -1,16 +1,15 @@
 {
   "$schema": "../scene.schema.json",
-  "extends": "ring-escape",
   "title": "Shrinking gap",
   "seed": 260,
-  "modifiers": [
-    "zero-g",
-    {
-      "use": "shrinking-gap",
-      "amount": 1.5,
-      "min": 3
-    }
-  ],
+  "duration": {
+    "max": 60,
+    "endOn": "firstEscape",
+    "tail": 2.5
+  },
+  "world": {
+    "gravity": 900
+  },
   "entities": [
     {
       "type": "ring",
@@ -32,15 +31,24 @@
     }
   ],
   "style": {
+    "trail": 0.9,
     "background": "#030812",
-    "ringColor": "#9fe8ff",
-    "trail": 0.9
+    "ringColor": "#9fe8ff"
   },
   "audio": {
     "melody": "ode-to-joy",
     "instrument": "marimba"
   },
   "overlay": {
-    "title": "The exit closes every bounce"
-  }
+    "title": "The exit closes every bounce",
+    "counter": "bounces"
+  },
+  "modifiers": [
+    "zero-g",
+    {
+      "use": "shrinking-gap",
+      "amount": 1.5,
+      "min": 3
+    }
+  ]
 }

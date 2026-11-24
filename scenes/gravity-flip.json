@@ -1,14 +1,15 @@
 {
   "$schema": "../scene.schema.json",
-  "extends": "ring-escape",
   "title": "Gravity flip",
   "seed": 101,
-  "modifiers": [
-    {
-      "use": "gravity-flip",
-      "every": 4
-    }
-  ],
+  "duration": {
+    "max": 60,
+    "endOn": "firstEscape",
+    "tail": 2.5
+  },
+  "world": {
+    "gravity": 900
+  },
   "entities": [
     {
       "type": "ring",
@@ -29,10 +30,21 @@
       "color": "#7cff6b"
     }
   ],
+  "style": {
+    "trail": 0.85
+  },
   "audio": {
+    "melody": "pentatonic",
     "instrument": "marimba"
   },
   "overlay": {
-    "title": "Gravity flips every 4 seconds"
-  }
+    "title": "Gravity flips every 4 seconds",
+    "counter": "bounces"
+  },
+  "modifiers": [
+    {
+      "use": "gravity-flip",
+      "every": 4
+    }
+  ]
 }

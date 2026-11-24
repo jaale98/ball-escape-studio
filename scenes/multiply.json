@@ -1,15 +1,14 @@
 {
   "$schema": "../scene.schema.json",
-  "extends": "ring-escape",
   "title": "Multiply on escape",
   "seed": 5,
-  "modifiers": [
-    "multiply"
-  ],
   "duration": {
-    "max": 40
+    "max": 40,
+    "endOn": "firstEscape",
+    "tail": 2.5
   },
   "world": {
+    "gravity": 900,
     "maxBalls": 160
   },
   "entities": [
@@ -35,9 +34,15 @@
     "trail": 0.75
   },
   "audio": {
+    "melody": "pentatonic",
+    "instrument": "pluck",
     "volume": 0.55
   },
   "overlay": {
-    "title": "Every escape makes 2 more"
-  }
+    "title": "Every escape makes 2 more",
+    "counter": "bounces"
+  },
+  "modifiers": [
+    "multiply"
+  ]
 }
