@@ -70,6 +70,8 @@ let world: World | null = null;
 let renderer: Renderer | null = null;
 let mapper: SoundMapper | null = null;
 let audioCursor = 0;
+/** Notes sent to the speakers so far (diagnostics: window.studio.audioInfo()). */
+let voicesPlayed = 0;
 let playing = true;
 let exporting = false;
 let seeking = false;
@@ -272,6 +274,7 @@ async function loadScene(rebuild = true): Promise<void> {
     }
     updateDirty();
     setLength(scene.duration.max);
+    applyVolume();
     restart();
     scheduleCritic();
   } catch (err) {
@@ -379,13 +382,24 @@ async function seek(t: number): Promise<void> {
   }
 }
 
+/**
+ * Start (or resume) audio. Browsers only allow this during a click or key
+ * press, so it is called from every user gesture until audio is running.
+ */
 function ensureAudio(): void {
-  if (!soundOn || !scene) return;
+  if (!soundOn) return;
   if (!audio) {
     const ctx = new AudioContext({ latencyHint: 'interactive' });
-    audio = { ctx, master: createMaster(ctx, scene.audio.volume) };
+    audio = { ctx, master: createMaster(ctx, scene?.audio.volume ?? 0.7) };
+    ctx.onstatechange = () => syncSound();
   }
-  if (audio.ctx.state === 'suspended') void audio.ctx.resume();
+  if (audio.ctx.state !== 'running') void audio.ctx.resume().then(syncSound, syncSound);
+  syncSound();
+}
+
+/** Each scene has its own volume. */
+function applyVolume(): void {
+  if (audio && scene) (audio.master as GainNode).gain.value = scene.audio.volume;
 }
 
 function pumpAudio(): void {
@@ -398,7 +412,10 @@ function pumpAudio(): void {
   const now = audio.ctx.currentTime + 0.03;
   for (; audioCursor < events.length; audioCursor++) {
     const v = mapper.map(events[audioCursor]);
-    if (v) playVoice(audio.ctx, audio.master, v, now, scene.audio.instrument);
+    if (v) {
+      playVoice(audio.ctx, audio.master, v, now, scene.audio.instrument);
+      voicesPlayed++;
+    }
   }
 }
 
@@ -455,12 +472,20 @@ function setPlaying(p: boolean): void {
 }
 
 function syncSound(): void {
-  // Off: a clear call to action (bounces play music, so sound matters). On: a quiet icon.
-  soundBtn.textContent = soundOn ? '🔊' : '🔇 Turn on sound';
-  soundBtn.className = soundOn ? 'icon' : 'sound-off';
-  soundBtn.setAttribute('aria-label', soundOn ? 'Sound on (M to mute)' : 'Sound off (M to turn on)');
+  // Off: a clear call to action (bounces play music, so sound matters). On and
+  // playing: a quiet icon. On but blocked by the browser (no click since the
+  // page loaded): say so, because otherwise it looks on while staying silent.
+  const blocked = soundOn && (!audio || audio.ctx.state !== 'running');
+  soundBtn.textContent = !soundOn ? '🔇 Turn on sound' : blocked ? '🔈 Click to start sound' : '🔊';
+  soundBtn.className = soundOn && !blocked ? 'icon' : 'sound-off';
+  soundBtn.setAttribute('aria-label', !soundOn ? 'Sound off (M to turn on)' : blocked ? 'Sound is on but the browser is waiting for a click' : 'Sound on (M to mute)');
 }
 function toggleSound(on = !soundOn): void {
+  // Clicking the button while the browser is blocking audio starts it rather than muting.
+  if (on === false && soundOn && (!audio || audio.ctx.state !== 'running')) {
+    ensureAudio();
+    return;
+  }
   soundOn = on;
   store.set('sound', soundOn ? '1' : '0');
   syncSound();
@@ -478,7 +503,8 @@ $('restart').addEventListener('click', () => restart());
 playBtn.addEventListener('click', () => setPlaying(!playing));
 soundBtn.addEventListener('click', () => toggleSound());
 syncSound();
-document.addEventListener('pointerdown', () => ensureAudio(), { once: true });
+// Any click or key press can start audio (browsers require one after every page load).
+for (const ev of ['pointerdown', 'keydown', 'touchend']) document.addEventListener(ev, () => soundOn && (!audio || audio.ctx.state !== 'running') && ensureAudio(), true);
 initTimeline((t) => void seek(t));
 
 const overlayOpen = () => ['director', 'review', 'gallery', 'welcome', 'help', 'modal'].some((id) => !$(id).hidden);
@@ -563,6 +589,7 @@ if (!store.get('welcomed')) $('welcome').hidden = false;
   },
   exportMp4: () => (scene ? exportMp4(scene) : Promise.reject(new Error('no scene'))),
   seek: (t: number) => seek(t),
+  audioInfo: () => ({ soundOn, playing, state: audio?.ctx.state ?? 'none', sampleRate: audio?.ctx.sampleRate, voicesPlayed, events: world?.events.length ?? 0, cursor: audioCursor, done: world?.done, exporting, directorOpen, seeking }),
   open: (name: string) => openScene(name),
   /**
    * Dev server only: save a frame to captures/<name>.png. With `seconds`, renders the
