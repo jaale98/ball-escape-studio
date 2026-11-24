@@ -719,6 +719,17 @@
               ],
               "default": "auto",
               "description": "Ball drawing: webgl handles thousands of balls; auto picks it for crowd scenes."
+            },
+            "backgroundImage": {
+              "type": "string",
+              "description": "A picture from images/ filling the background (cropped to fit)."
+            },
+            "backgroundDim": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.45,
+              "description": "How much to darken the background picture so balls stand out."
             }
           },
           "additionalProperties": false,
@@ -819,6 +830,59 @@
             },
             "subtitle": {
               "type": "string"
+            },
+            "font": {
+              "type": "string",
+              "enum": [
+                "sans",
+                "rounded",
+                "serif",
+                "mono",
+                "condensed"
+              ],
+              "default": "sans"
+            },
+            "textColor": {
+              "type": "string",
+              "default": "#ffffff"
+            },
+            "titleSize": {
+              "type": "number",
+              "minimum": 20,
+              "maximum": 200,
+              "default": 76
+            },
+            "subtitleSize": {
+              "type": "number",
+              "minimum": 14,
+              "maximum": 120,
+              "default": 40
+            },
+            "titleY": {
+              "type": "number",
+              "minimum": 60,
+              "maximum": 1800,
+              "default": 250,
+              "description": "Where the title sits (px from the top of the 1920 frame)."
+            },
+            "counterSize": {
+              "type": "number",
+              "minimum": 16,
+              "maximum": 160,
+              "default": 52
+            },
+            "counterY": {
+              "type": "number",
+              "minimum": 100,
+              "maximum": 1900,
+              "description": "Where the counter and timer sit. Default: near the bottom."
+            },
+            "labelSize": {
+              "type": "number",
+              "minimum": 10,
+              "maximum": 80,
+              "default": 26,
+              "description": "Size of the names under balls."
             },
             "timer": {
               "type": "boolean",
@@ -1215,6 +1279,28 @@
                           "type": "string"
                         },
                         "description": "Per-ball names (teams, countries), cycled. Shown under each ball."
+                      },
+                      "image": {
+                        "type": "string",
+                        "description": "A picture from images/ (file name, e.g. \"cat.png\") cropped into the ball."
+                      },
+                      "images": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Per-ball pictures from images/, cycled."
+                      },
+                      "emoji": {
+                        "type": "string",
+                        "description": "An emoji drawn on the ball (e.g. \"🍕\"; flags like \"🇧🇷\" work on Mac)."
+                      },
+                      "emojis": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Per-ball emoji, cycled."
                       },
                       "hp": {
                         "type": "number",

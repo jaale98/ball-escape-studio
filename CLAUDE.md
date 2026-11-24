@@ -30,7 +30,8 @@ Reaching for code is the last resort. If a format truly needs a new engine capab
 - A ball must fit its exit to escape: the ring gap's arc length (radius × width in radians) has to exceed the ball's diameter plus the ring thickness.
 - Modifiers set what their format needs (for example `multiply` forces `endOn: never`). Later modifiers and explicit rules still apply on top.
 - `extends` merges objects key by key but replaces arrays: a child that sets `entities` must list all of them.
-- Overlay titles should be short hooks ("Can it escape?", "5 rings. 1 ball.").
+- Overlay titles should be short hooks ("Can it escape?", "5 rings. 1 ball."). Text style lives in `overlay` (font, textColor, titleSize, titleY, counterSize, counterY, labelSize).
+- Pictures live in `images/` and are referenced by file name: ball `image` / `images` (per ball, cycled), `style.backgroundImage` (+ `backgroundDim`). Emoji: ball `emoji` / `emojis` (flag emoji render on Mac; on Windows they show as letters). Never invent image file names: list `images/` first.
 - Songs: `"melody": "midi:<name>"`. The songbook (`songs/songs.json` lists titles; source in `scripts/songbook.ts`, regenerate with `npm run songs`) has 27 public-domain pieces; songbook songs put the melody in part 0 and the bass in part 1, so use `"parts": [0]` for the tune alone. Users can drop their own `.mid` files into `songs/`.
 - `audio.rhythmLock: true` keeps every bounce on the beat. It needs exactly one ball and a ring or polygon (gravity is fine); `rhythmLockStatus()` in `src/engine/world.ts` says whether it applies. Pick the seed with `npm run sim -- <name> --director music-sync`, since not every seed stays in time.
 - Keep `keepEnergy: true` for bouncing formats; use `keepEnergy: false` with restitution below 1 and some `friction` for things that settle (Plinko).

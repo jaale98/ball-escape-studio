@@ -27,6 +27,7 @@
 
       <nav class="tabs" role="tablist">
         <button role="tab" data-tab="create">Create</button>
+        <button role="tab" data-tab="look">Look</button>
         <button role="tab" data-tab="tune">Tune</button>
         <button role="tab" data-tab="music">Music</button>
         <button role="tab" data-tab="history">History</button>
@@ -78,6 +79,49 @@
           <input id="rate-note" type="text" placeholder="Why? (optional, Claude reads this)" />
           <p id="rate-msg" class="muted"></p>
         </div>
+      </section>
+
+      <!-- Look: text, colours, pictures and emoji -->
+      <section class="tab" data-tab="look" hidden>
+        <h3>Text</h3>
+        <label class="field"><span>Title</span><input id="l-title" type="text" placeholder="No title" /></label>
+        <label class="field"><span>Subtitle</span><input id="l-subtitle" type="text" placeholder="No subtitle" /></label>
+        <div class="row">
+          <label class="field"><span>Font</span>
+            <select id="l-font"><option value="sans">Clean</option><option value="rounded">Rounded</option><option value="serif">Serif</option><option value="mono">Mono</option><option value="condensed">Bold condensed</option></select>
+          </label>
+          <label class="field color-field"><span>Text color</span><input id="l-textColor" type="color" /></label>
+        </div>
+        <div class="look-sliders">
+          <label class="slider"><span>Title size</span><input id="l-titleSize" type="range" min="30" max="160" step="2" /><output></output></label>
+          <label class="slider"><span>Title position</span><input id="l-titleY" type="range" min="80" max="1500" step="10" /><output></output></label>
+          <label class="slider"><span>Subtitle size</span><input id="l-subtitleSize" type="range" min="16" max="100" step="2" /><output></output></label>
+          <label class="slider"><span>Counter size</span><input id="l-counterSize" type="range" min="20" max="120" step="2" /><output></output></label>
+          <label class="slider"><span>Counter position</span><input id="l-counterY" type="range" min="300" max="1880" step="10" /><output></output></label>
+          <label class="slider"><span>Name size</span><input id="l-labelSize" type="range" min="12" max="70" step="1" /><output></output></label>
+        </div>
+        <label class="field"><span>Counter</span>
+          <select id="l-counter"><option value="none">None</option><option value="bounces">Bounces</option><option value="balls">Balls left</option><option value="escaped">Escaped</option></select>
+        </label>
+        <div class="toggles">
+          <label class="check"><input id="l-timer" type="checkbox" /> Timer</label>
+          <label class="check"><input id="l-winner" type="checkbox" /> Winner banner</label>
+          <label class="check"><input id="l-showHp" type="checkbox" /> Hit points on balls</label>
+          <label class="check"><input id="l-zones" type="checkbox" /> Bin counts</label>
+        </div>
+
+        <h3>Colors &amp; background</h3>
+        <div class="row">
+          <label class="field color-field"><span>Background</span><input id="l-background" type="color" /></label>
+          <label class="field color-field"><span>Rings &amp; walls</span><input id="l-ringColor" type="color" /></label>
+        </div>
+        <label class="field"><span>Background picture</span><select id="l-bgImage"></select></label>
+        <label class="slider" id="l-dim-row"><span>Darken picture</span><input id="l-backgroundDim" type="range" min="0" max="0.9" step="0.05" /><output></output></label>
+
+        <h3>Balls</h3>
+        <p class="muted">Names, emoji and photos for each ball. Drop pictures anywhere on the studio to add them to <code>images/</code>.</p>
+        <div id="l-balls"></div>
+        <p id="look-msg" class="muted"></p>
       </section>
 
       <!-- Tune: seed and every number in the scene -->
@@ -155,6 +199,7 @@
       </section>
 
       <pre id="error" class="error" hidden></pre>
+      <p id="image-msg" class="msg error-text"></p>
       <p id="script-msg" class="msg error-text"></p>
     </aside>
 

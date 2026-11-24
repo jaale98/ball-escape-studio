@@ -8,6 +8,7 @@
  *   POST /__studio/history/restore   { name, id } write an old version back (as a new version)
  *   POST /__studio/rate              { name, rating, title, summary, note? } append to .studio/taste.md
  *   POST /__studio/song?name=        add a MIDI file to songs/
+ *   POST /__studio/image?name=       add a picture to images/ (never overwrites)
  *   POST /__studio/export?name=      save an MP4 to exports/
  *   POST /__studio/export-meta       caption, scene and log row for an export
  *   GET  /__studio/exports           past exports (from exports/log.csv)
@@ -134,6 +135,21 @@ export function studioPlugin(): Plugin {
         pendingLabels.set(file, params.get('create') ? 'created by a batch' : 'slider tweaks saved');
         writeFileSync(file, `${JSON.stringify(parsed, null, 2)}\n`);
         send(res, 200, { file: `scenes/${name}.json`, name });
+      });
+
+      server.middlewares.use('/__studio/image', async (req, res) => {
+        if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
+        const raw = new URL(req.url ?? '', 'http://x').searchParams.get('name') ?? '';
+        const m = /^([a-zA-Z0-9_-]{1,60})\.(png|jpe?g|webp|gif|svg)$/i.exec(raw);
+        if (!m) return send(res, 400, { error: 'Pictures must be PNG, JPG, WebP, GIF or SVG.' });
+        const body = await readBody(req);
+        if (body.length > 12_000_000) return send(res, 413, { error: 'Picture too large (12 MB max).' });
+        const dir = resolve(root, 'images');
+        mkdirSync(dir, { recursive: true });
+        let name = `${m[1]}.${m[2].toLowerCase()}`;
+        for (let i = 2; existsSync(join(dir, name)); i++) name = `${m[1]}-${i}.${m[2].toLowerCase()}`;
+        writeFileSync(join(dir, name), body);
+        send(res, 200, { name });
       });
 
       server.middlewares.use('/__studio/song', async (req, res) => {

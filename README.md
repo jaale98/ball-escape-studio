@@ -54,7 +54,7 @@ Open http://localhost:5173. A short welcome card walks through it: pick a format
 
 - **Scene switcher + Browse.** Pick a scene from the list, or **Browse** for a gallery with thumbnails, where you can open, build on (**New from this**), duplicate, rename or delete scenes. Remixes and tournament matches are grouped under the scene they came from. Deleted scenes go to `.studio/trash`.
 - **One save model.** Every change (sliders, seed, song, rhythm lock, a Director pick) is an *unsaved change* shown in a bar at the top. **Save** (⌘S) writes it into the scene file; **Discard** drops it. Switching scenes asks first.
-- **Tabs.** *Create* (ask Claude, the Critic, Director, export queue, Like/Dislike), *Tune* (seed and every number in the scene), *Music* (song, rhythm lock, parts), *History* (every version of the scene, and every export with Show in Finder / Export again / Open as scene), *Info* (live stats and the raw scene).
+- **Tabs.** *Create* (ask Claude, the Critic, Director, export queue, Like/Dislike), *Look* (text, colors, background picture, and names, emoji and photos per ball), *Tune* (seed and every number in the scene), *Music* (song, rhythm lock, parts), *History* (every version of the scene, and every export with Show in Finder / Export again / Open as scene), *Info* (live stats and the raw scene).
 - **Timeline.** Under the preview: progress with markers for near-misses, escapes, eliminations and the climax. Click or drag to jump (runs are deterministic, so it jumps to the exact frame); **Climax** (J) jumps to just before it.
 - **Export queue.** Exports render in the background, survive a page reload, and land in `exports/` with a caption and the exact scene.
 
@@ -118,9 +118,9 @@ Most formats are a base scene plus a twist. This is the whole `multiply` preset:
 | `timeline` | Do the same actions `at` a time or `every` N seconds (spawners, gravity flips…) |
 | `duration` | Length cap and what ends the run: `firstEscape`, `allEscaped`, `lastStanding`, `never`; `trimStart` for loops |
 | `world` | Gravity (number or `[x, y]`), energy keeping, restitution, friction, ball cap |
-| `style` | Background, palette, ring color, trail length, glow, paint, hp rings |
+| `style` | Background color or picture, palette, ring color, trail length, glow, paint, hp rings |
 | `audio` | Melody (`pentatonic`, `ode-to-joy`, `fur-elise`, `midi:<file>`) or inline `notes`, chords, transpose, instrument, sound effects |
-| `overlay` | Title, subtitle, counter, timer, winner banner, zone counts |
+| `overlay` | Title, subtitle, font, text color, sizes and positions, counter, timer, winner banner, zone counts |
 
 The full schema with every default lives in [`src/engine/scene.ts`](src/engine/scene.ts) and [`scene.schema.json`](scene.schema.json).
 
@@ -187,6 +187,25 @@ A rule (or timeline entry) can run JavaScript instead of, or as well as, built-i
 Scripts get `ctx.ball`, `ctx.other`, `ctx.container`, `ctx.world` (`balls()`, `spawn()`, `do(action)`, `gravity(x, y)`, `end()`), seeded `ctx.rng`, and a persistent `ctx.state`. `Math.random`, `Date`, timers and network access aren't available, so runs stay deterministic. The full reference is in [`src/engine/script.ts`](src/engine/script.ts). The studio runs scripted scenes headless in a Worker first, so a script that loops forever fails there instead of freezing the page.
 
 Scripts are code: like any code, only run scene files you trust.
+
+### Text, photos and emoji
+
+The **Look** tab covers everything visible that isn't physics:
+
+- **Text:** title and subtitle (empty = none), font (clean, rounded, serif, mono, bold condensed), text color, and the size and position of the title, counter and ball names. Switches for the timer, the winner banner, hit points and bin counts, and a counter picker (bounces, balls left, escaped, none).
+- **Colors and background:** background and ring colors, and a **background picture** (cropped to fill, with a darken slider so balls stay readable).
+- **Balls:** for each ball, a name, an **emoji** (🍕, 🔥… flags like 🇧🇷 render on Mac; the country battle uses them) and a **photo**. Photos are cropped into the ball's shape and turn with it; the winner banner shows the winner's photo or emoji.
+
+Drop pictures (PNG, JPG, WebP, GIF, SVG) anywhere on the studio to add them to `images/`. In a scene file:
+
+```json
+{ "type": "ball", "count": 2, "labels": ["Cat", "Dog"], "images": ["cat.jpg", "dog.jpg"] },
+{ "type": "ball", "emoji": "🍕" }
+```
+```json
+"style": { "backgroundImage": "sky.jpg", "backgroundDim": 0.4 },
+"overlay": { "title": "Cat vs Dog", "font": "condensed", "titleSize": 96, "titleY": 220, "timer": false }
+```
 
 ### Rhythm lock
 

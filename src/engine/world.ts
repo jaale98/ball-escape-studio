@@ -60,6 +60,9 @@ export interface Ball {
   /** Drawn shape (collisions use the circle) and its rotation. */
   shape: 'circle' | 'square' | 'triangle' | 'hexagon' | 'star';
   rot: number;
+  /** Picture (from images/) or emoji drawn on the ball. Visual only. */
+  image?: string;
+  emoji?: string;
   weapon?: Weapon;
 }
 
@@ -442,6 +445,8 @@ export class World {
       lastDamageStep: -Infinity,
       alive: true,
       frozen: !!spec.frozen,
+      image: spec.images?.[index % spec.images.length] ?? spec.image,
+      emoji: spec.emojis?.[index % spec.emojis.length] ?? spec.emoji,
       shape: spec.shape ?? 'circle',
       rot: 0,
       // Blades of a group start fanned out evenly, not all pointing the same way.
@@ -492,7 +497,7 @@ export class World {
     const n = Math.min(32, Math.max(1, Math.ceil(travel / (0.3 * b.r))));
     const h = DT / n;
     const e = this.scene.world.restitution;
-    if (b.shape !== 'circle') b.rot += (b.vx / b.r) * DT * 0.6;
+    if (b.shape !== 'circle' || b.image || b.emoji) b.rot += (b.vx / b.r) * DT * 0.6;
     for (let k = 0; k < n && b.alive; k++) {
       b.vx += this.gx * h;
       b.vy += this.gy * h;

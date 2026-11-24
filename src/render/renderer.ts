@@ -1,6 +1,7 @@
 import { Rng } from '../engine/rng';
 import { HEIGHT, PHYSICS_HZ, type Scene, WIDTH } from '../engine/scene';
 import type { Ball, Container, World } from '../engine/world';
+import { getImage } from '../images';
 import { GlBallLayer } from './gl';
 
 interface Particle {
@@ -16,7 +17,23 @@ interface Particle {
 
 /** A ball the WebGL layer can draw alone (no shape, weapon, label or hp). */
 function isPlain(b: Ball): boolean {
-  return b.shape === 'circle' && !b.weapon && !b.label && b.hp === undefined;
+  return b.shape === 'circle' && !b.weapon && !b.label && b.hp === undefined && !b.image && !b.emoji;
+}
+
+const FONTS: Record<string, string> = {
+  sans: '-apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif',
+  rounded: 'ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Nunito", -apple-system, sans-serif',
+  serif: 'Georgia, "Times New Roman", serif',
+  mono: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+  condensed: 'Impact, "Haettenschweiler", "Arial Narrow Bold", "Oswald", sans-serif',
+};
+
+/** Draw an image to cover a w×h box centred on (cx, cy), like CSS object-fit: cover. */
+function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: number, cy: number, w: number, h: number): void {
+  const s = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+  const dw = img.naturalWidth * s;
+  const dh = img.naturalHeight * s;
+  ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
 }
 
 const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif';
@@ -74,8 +91,6 @@ export class Renderer {
       this.paint.height = canvas.height;
       const p = this.paint.getContext('2d')!;
       p.setTransform(this.scale, 0, 0, this.scale, 0, 0);
-      p.fillStyle = scene.style.background;
-      p.fillRect(0, 0, WIDTH, HEIGHT);
     }
   }
 
@@ -86,7 +101,17 @@ export class Renderer {
     this.consumeEvents(world);
     ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
 
-    // Background, or the paint layer with this frame's paint added.
+    // Background (colour, or picture darkened by backgroundDim), then the paint layer.
+    ctx.fillStyle = style.background;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    const bg = getImage(style.backgroundImage);
+    if (bg) {
+      drawCover(ctx, bg, WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT);
+      if (style.backgroundDim > 0) {
+        ctx.fillStyle = `rgba(0,0,0,${style.backgroundDim})`;
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      }
+    }
     if (this.paint) {
       const p = this.paint.getContext('2d')!;
       if (dt > 0) {
@@ -101,9 +126,6 @@ export class Renderer {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.drawImage(this.paint, 0, 0);
       ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
-    } else {
-      ctx.fillStyle = style.background;
-      ctx.fillRect(0, 0, WIDTH, HEIGHT);
     }
 
     this.recordHistory(world, dt);
@@ -292,6 +314,30 @@ export class Renderer {
       this.shapePath(b);
       ctx.fill();
       ctx.shadowBlur = 0;
+      // A photo fills the ball's shape and turns with it.
+      const img = getImage(b.image);
+      if (img) {
+        ctx.save();
+        ctx.clip();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(b.rot);
+        drawCover(ctx, img, 0, 0, b.r * 2.2, b.r * 2.2);
+        ctx.restore();
+        ctx.beginPath();
+        this.shapePath(b);
+      }
+      if (b.emoji) {
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(b.rot);
+        ctx.font = `${Math.round(b.r * 1.55)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(b.emoji, 0, b.r * 0.08);
+        ctx.restore();
+        ctx.beginPath();
+        this.shapePath(b);
+      }
       ctx.lineWidth = Math.max(2, b.r * 0.12);
       ctx.strokeStyle = 'rgba(255,255,255,0.85)';
       if (b.frozen) ctx.setLineDash([b.r * 0.35, b.r * 0.25]);
@@ -313,7 +359,7 @@ export class Renderer {
         ctx.beginPath();
         ctx.arc(b.x, b.y, ring, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
         ctx.stroke();
-        if (b.r >= 16) {
+        if (b.r >= 16 && !b.image && !b.emoji) {
           ctx.fillStyle = '#0b0b10';
           ctx.font = `800 ${Math.round(b.r * 0.9)}px ${FONT}`;
           ctx.textAlign = 'center';
@@ -323,12 +369,13 @@ export class Renderer {
         }
       }
       if (b.label) {
-        ctx.font = `700 26px ${FONT}`;
+        const ov = this.scene.overlay;
+        ctx.font = `700 ${ov.labelSize}px ${FONTS[ov.font]}`;
         ctx.textAlign = 'center';
         ctx.shadowColor = 'rgba(0,0,0,0.85)';
         ctx.shadowBlur = 8;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(b.label, b.x, b.y + b.r + (hasHp ? 48 : 32));
+        ctx.fillStyle = ov.textColor;
+        ctx.fillText(b.label, b.x, b.y + b.r + (hasHp ? 22 : 6) + ov.labelSize);
         ctx.shadowBlur = 0;
       }
     }
@@ -481,16 +528,18 @@ export class Renderer {
     ctx.textBaseline = 'alphabetic';
     ctx.shadowColor = 'rgba(0,0,0,0.6)';
     ctx.shadowBlur = 16;
-    ctx.fillStyle = '#ffffff';
-    let y = 250;
+    ctx.fillStyle = overlay.textColor;
+    const font = FONTS[overlay.font];
+    let y = overlay.titleY;
     if (overlay.title) {
-      ctx.font = `800 76px ${FONT}`;
-      y = this.fillWrapped(overlay.title, WIDTH / 2, y, 940, 88) + 70;
+      ctx.font = `800 ${overlay.titleSize}px ${font}`;
+      y = this.fillWrapped(overlay.title, WIDTH / 2, y, 940, overlay.titleSize * 1.16) + overlay.subtitleSize * 1.75;
     }
     if (overlay.subtitle) {
-      ctx.font = `500 40px ${FONT}`;
-      ctx.fillStyle = 'rgba(255,255,255,0.8)';
-      this.fillWrapped(overlay.subtitle, WIDTH / 2, y, 900, 50);
+      ctx.font = `500 ${overlay.subtitleSize}px ${font}`;
+      ctx.globalAlpha = 0.8;
+      this.fillWrapped(overlay.subtitle, WIDTH / 2, y, 900, overlay.subtitleSize * 1.25);
+      ctx.globalAlpha = 1;
     }
 
     const parts: string[] = [];
@@ -502,9 +551,9 @@ export class Renderer {
       parts.push(`${Math.floor(secs / 60)}:${(secs % 60).toFixed(1).padStart(4, '0')}`);
     }
     if (parts.length) {
-      ctx.font = `700 52px ${FONT}`;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(parts.join('   ·   '), WIDTH / 2, world.zones.length && overlay.zones ? 1830 : 1700);
+      ctx.font = `700 ${overlay.counterSize}px ${font}`;
+      ctx.fillStyle = overlay.textColor;
+      ctx.fillText(parts.join('   ·   '), WIDTH / 2, overlay.counterY ?? (world.zones.length && overlay.zones ? 1830 : 1700));
     }
     ctx.shadowBlur = 0;
 
@@ -516,12 +565,26 @@ export class Renderer {
       ctx.globalAlpha = a;
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
       ctx.fillRect(0, HEIGHT / 2 - 140, WIDTH, 280);
+      const br = 48 * (0.6 + 0.4 * a);
       ctx.fillStyle = w.color;
       ctx.beginPath();
-      ctx.arc(WIDTH / 2, HEIGHT / 2 - 45, 48 * (0.6 + 0.4 * a), 0, Math.PI * 2);
+      ctx.arc(WIDTH / 2, HEIGHT / 2 - 45, br, 0, Math.PI * 2);
       ctx.fill();
+      // The winner's photo or emoji, if it has one.
+      const wimg = getImage(w.image);
+      if (wimg) {
+        ctx.save();
+        ctx.clip();
+        drawCover(ctx, wimg, WIDTH / 2, HEIGHT / 2 - 45, br * 2, br * 2);
+        ctx.restore();
+      } else if (w.emoji) {
+        ctx.font = `${Math.round(br * 1.35)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(w.emoji, WIDTH / 2, HEIGHT / 2 - 41);
+        ctx.textBaseline = 'alphabetic';
+      }
       ctx.fillStyle = '#ffffff';
-      ctx.font = `900 72px ${FONT}`;
+      ctx.font = `900 72px ${FONTS[this.scene.overlay.font]}`;
       ctx.fillText(w.label ? `${w.label} wins!` : 'Winner!', WIDTH / 2, HEIGHT / 2 + 85);
       ctx.globalAlpha = 1;
     }

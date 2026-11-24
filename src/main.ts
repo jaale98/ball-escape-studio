@@ -11,6 +11,7 @@ import { DT, rhythmLockStatus, World } from './engine/world';
 import { canExport, exportMp4 } from './export/mp4';
 import { renderStill } from './export/still';
 import { Renderer } from './render/renderer';
+import { ensureImages } from './images';
 import { entriesFrom, type SceneEntry, sceneFiles } from './scenes';
 import { loadSong, songFiles, songIndex, songUrls } from './songs';
 import { initAssistant } from './ui/assistant';
@@ -19,6 +20,7 @@ import { initExports, refreshExports } from './ui/exports';
 import { closeGallery, initGallery, openGallery, refreshGallery } from './ui/gallery';
 import { initRating, refreshHistory } from './ui/history';
 import { ask } from './ui/modal';
+import { initLook, refreshLook } from './ui/look';
 import { initMusic, refreshMusic } from './ui/music';
 import { enqueue, initQueue } from './ui/queue';
 import { fmt, setPath, tunables } from './ui/sliders';
@@ -249,7 +251,9 @@ async function loadScene(rebuild = true): Promise<void> {
         resolved.audio.noteTimes = times;
       }
     }
+    const missingImages = await ensureImages(resolved);
     if (token !== loadToken) return;
+    $('image-msg').textContent = missingImages.length ? `Missing pictures (not in images/): ${missingImages.join(', ')}` : '';
     // Scripted scenes run headless in a Worker first: a runaway script fails there, not here.
     if (hasScripts(resolved)) {
       const scriptError = await preflight(resolved);
@@ -260,6 +264,7 @@ async function loadScene(rebuild = true): Promise<void> {
     seedInput.value = String(scene.seed);
     $('resolved-json').textContent = JSON.stringify({ ...scene, audio: { ...scene.audio, notes: scene.audio.notes ? `(${scene.audio.notes.length} note groups)` : undefined, noteTimes: undefined } }, null, 2);
     refreshMusic(scene, Object.keys(songs), song, rhythmLockStatus(scene));
+    if (rebuild) refreshLook(scene, mergedSource());
     errorBox.hidden = true;
     if (rebuild) {
       buildSliders();
@@ -617,12 +622,26 @@ $('critic-fix').addEventListener('click', () => {
 
 // ---- Hot updates: scenes and songs ----------------------------------------------------------
 
+window.addEventListener('images-updated', () => {
+  if (scene) void loadScene();
+});
+
 window.addEventListener('songs-updated', (e) => {
   songs = (e as CustomEvent<Record<string, string>>).detail;
   if (scene) void loadScene();
 });
 
 initMusic({ set: (path, value) => setTweak(path, value) });
+initLook({ set: (path, value, rebuild) => setTweak(path, value, rebuild) });
+
+/** The shown scene's source after extends, with unsaved changes applied (what the Look and Tune tabs edit). */
+function mergedSource(): Record<string, unknown> {
+  const entry = currentEntry();
+  if (!entry) return {};
+  const merged = mergeSource(entry.name, sources);
+  for (const [path, v] of overrides) setPath(merged, path, v);
+  return merged;
+}
 
 // Rhythm lock: one click to find a seed whose bounces stay on the beat.
 $('rhythm-find').addEventListener('click', async () => {
@@ -799,6 +818,7 @@ initDirector({
       s.audio.notes = groups;
       s.audio.noteTimes = times;
     }
+    await ensureImages(s);
     return s;
   },
   save: (source) => createScene(source.name, { $schema: '../scene.schema.json', ...source.raw }),

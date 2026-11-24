@@ -1,5 +1,6 @@
 import { FPS, type Scene, STEPS_PER_FRAME } from '../engine/scene';
 import { World } from '../engine/world';
+import { ensureImages } from '../images';
 import { Renderer } from '../render/renderer';
 import { tick } from './mp4';
 
@@ -10,6 +11,7 @@ import { tick } from './mp4';
  * frames: one long synchronous burst of GPU canvas work can come back blank.
  */
 export async function renderStill(scene: Scene, seconds: number, scale = 1): Promise<HTMLCanvasElement> {
+  await ensureImages(scene);
   const canvas = document.createElement('canvas');
   const world = new World(scene);
   const renderer = new Renderer(canvas, scene, { scale, glow: scale >= 0.5 });

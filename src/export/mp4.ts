@@ -2,6 +2,7 @@ import { ArrayBufferTarget, Muxer } from 'mp4-muxer';
 import { createMaster, playVoice, SoundMapper } from '../audio/sound';
 import { FPS, HEIGHT, type Scene, STEPS_PER_FRAME, WIDTH } from '../engine/scene';
 import { World } from '../engine/world';
+import { ensureImages } from '../images';
 import { Renderer } from '../render/renderer';
 
 const SAMPLE_RATE = 48000;
@@ -53,8 +54,9 @@ export const tick = () =>
 export async function exportMp4(scene: Scene, onProgress: ExportProgress = () => {}): Promise<ExportResult> {
   const t0 = performance.now();
 
-  // 1. Headless pre-pass.
+  // 1. Headless pre-pass (and make sure every picture the scene uses is loaded).
   onProgress('simulate', 0);
+  await ensureImages(scene);
   const pre = new World(scene).runToEnd();
   const frames = Math.ceil(pre.stepCount / STEPS_PER_FRAME);
   // trimStart: simulate and draw from 0 (trails warm up), encode from here on.
