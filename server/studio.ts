@@ -109,19 +109,27 @@ export function studioPlugin(): Plugin {
 
       server.middlewares.use('/__studio/scene', async (req, res) => {
         if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
-        const name = new URL(req.url ?? '', 'http://x').searchParams.get('name') ?? '';
+        const params = new URL(req.url ?? '', 'http://x').searchParams;
+        let name = params.get('name') ?? '';
         if (!NAME.test(name)) return send(res, 400, { error: 'bad scene name' });
-        const file = join(scenesDir(), `${name}.json`);
-        if (!existsSync(file)) return send(res, 404, { error: `no scene ${name}` });
+        let file = join(scenesDir(), `${name}.json`);
+        if (params.get('create')) {
+          // New scene (batch remixes, tournament matches): never overwrite.
+          const base = name;
+          for (let i = 2; existsSync(file); i++) {
+            name = `${base}-${i}`;
+            file = join(scenesDir(), `${name}.json`);
+          }
+        } else if (!existsSync(file)) return send(res, 404, { error: `no scene ${name}` });
         let parsed: unknown;
         try {
           parsed = JSON.parse((await readBody(req)).toString('utf8'));
         } catch {
           return send(res, 400, { error: 'body is not JSON' });
         }
-        pendingLabels.set(file, 'slider tweaks saved');
+        pendingLabels.set(file, params.get('create') ? 'created by a batch' : 'slider tweaks saved');
         writeFileSync(file, `${JSON.stringify(parsed, null, 2)}\n`);
-        send(res, 200, { file: `scenes/${name}.json` });
+        send(res, 200, { file: `scenes/${name}.json`, name });
       });
 
       server.middlewares.use('/__studio/song', async (req, res) => {
@@ -134,6 +142,23 @@ export function studioPlugin(): Plugin {
         mkdirSync(resolve(root, 'songs'), { recursive: true });
         writeFileSync(resolve(root, 'songs', `${name}.mid`), body);
         send(res, 200, { file: `songs/${name}.mid` });
+      });
+
+      server.middlewares.use('/__studio/export-meta', async (req, res) => {
+        if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
+        const file = new URL(req.url ?? '', 'http://x').searchParams.get('file') ?? '';
+        const m = /^exports\/([a-zA-Z0-9_.-]+)\.mp4$/.exec(file);
+        if (!m) return send(res, 400, { error: 'bad file' });
+        const { caption, scene, info } = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+        const dir = resolve(root, 'exports');
+        if (caption) writeFileSync(join(dir, `${m[1]}.txt`), String(caption));
+        if (scene) writeFileSync(join(dir, `${m[1]}.scene.json`), `${JSON.stringify(scene, null, 2)}\n`);
+        const log = join(dir, 'log.csv');
+        if (!existsSync(log)) writeFileSync(log, 'time,file,scene,seed,speedScale,spinScale,score,seconds,winner\n');
+        const i = info ?? {};
+        const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        appendFileSync(log, [new Date().toISOString(), `${m[1]}.mp4`, i.scene, i.seed, i.speedScale, i.spinScale, i.score, i.seconds, i.winner].map(cell).join(',') + '\n');
+        send(res, 200, { ok: true });
       });
 
       server.middlewares.use('/__studio/export', async (req, res) => {

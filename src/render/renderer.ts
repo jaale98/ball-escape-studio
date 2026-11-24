@@ -1,6 +1,7 @@
 import { Rng } from '../engine/rng';
 import { HEIGHT, PHYSICS_HZ, type Scene, WIDTH } from '../engine/scene';
-import type { Container, World } from '../engine/world';
+import type { Ball, Container, World } from '../engine/world';
+import { GlBallLayer } from './gl';
 
 interface Particle {
   x: number;
@@ -11,6 +12,11 @@ interface Particle {
   maxLife: number;
   size: number;
   color: string;
+}
+
+/** A ball the WebGL layer can draw alone (no shape, weapon, label or hp). */
+function isPlain(b: Ball): boolean {
+  return b.shape === 'circle' && !b.weapon && !b.label && b.hp === undefined;
 }
 
 const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif';
@@ -35,6 +41,8 @@ export class Renderer {
   private banner = 0;
   private readonly scale: number;
   private readonly glowAllowed: boolean;
+  /** WebGL layer for plain balls and trails in crowd scenes (null = Canvas 2D only). */
+  private gl: GlBallLayer | null = null;
 
   /**
    * @param opts.scale  draw at this fraction of 1080x1920 (mini previews use ~0.25)
@@ -51,6 +59,15 @@ export class Renderer {
     canvas.height = Math.round(HEIGHT * this.scale);
     this.ctx = canvas.getContext('2d', { alpha: false })!;
     this.rng = new Rng(scene.seed, 'fx');
+    const startBalls = scene.entities.reduce((n, e) => n + (e.type === 'ball' ? e.count : 0), 0);
+    const crowd = scene.world.maxBalls >= 400 || startBalls >= 80;
+    if (scene.style.renderer === 'webgl' || (scene.style.renderer === 'auto' && crowd)) {
+      try {
+        this.gl = GlBallLayer.create(this.scale);
+      } catch {
+        this.gl = null; // fall back to Canvas 2D
+      }
+    }
     if (scene.style.paint) {
       this.paint = document.createElement('canvas');
       this.paint.width = canvas.width;
@@ -89,12 +106,14 @@ export class Renderer {
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
     }
 
-    this.drawTrails(world, dt);
+    this.recordHistory(world, dt);
+    if (!this.gl) this.drawTrails();
     const glow = style.glow && this.glowAllowed && world.aliveCount <= 60;
     this.drawZones(world);
     this.drawSolids(world, glow);
     this.drawContainers(world, glow);
-    this.drawBalls(world, glow);
+    if (this.gl) this.drawGl(world);
+    this.drawBalls(world, glow, !!this.gl);
     this.drawParticles(dt);
 
     // Decay flashes.
@@ -111,15 +130,36 @@ export class Renderer {
 
   // ---- layers -------------------------------------------------------------
 
-  private drawTrails(world: World, dt: number): void {
+  private recordHistory(world: World, dt: number): void {
+    const trail = this.scene.style.trail;
+    if (trail <= 0 || dt <= 0) return;
+    this.history.push(world.balls.filter((b) => b.alive && !b.frozen).map((b) => ({ x: b.x, y: b.y, r: b.r, color: b.color })));
+    const keep = Math.min(60, Math.ceil(Math.log(0.03) / Math.log(trail)));
+    if (this.history.length > keep) this.history.splice(0, this.history.length - keep);
+  }
+
+  /** Crowd mode: trails and plain balls in one WebGL draw, composited into the 2D canvas. */
+  private drawGl(world: World): void {
+    const gl = this.gl!;
+    const trail = this.scene.style.trail;
+    gl.begin();
+    const n = this.history.length;
+    for (let i = 0; i < n - 1; i++) {
+      const a = 0.5 * trail ** (n - 1 - i);
+      for (const p of this.history[i]) gl.add(p.x, p.y, p.r * 0.85, p.color, a, false);
+    }
+    const glow = this.scene.style.glow && world.aliveCount <= 600;
+    for (const b of world.balls) if (b.alive && isPlain(b)) gl.add(b.x, b.y, b.r, b.color, b.frozen ? 0.55 : 1, glow);
+    const { ctx } = this;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(gl.flush(), 0, 0);
+    ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+  }
+
+  private drawTrails(): void {
     const { ctx } = this;
     const trail = this.scene.style.trail;
     if (trail <= 0) return;
-    if (dt > 0) {
-      this.history.push(world.balls.filter((b) => b.alive).map((b) => ({ x: b.x, y: b.y, r: b.r, color: b.color })));
-      const keep = Math.min(60, Math.ceil(Math.log(0.03) / Math.log(trail)));
-      if (this.history.length > keep) this.history.splice(0, this.history.length - keep);
-    }
     const n = this.history.length;
     for (let i = 0; i < n - 1; i++) {
       ctx.globalAlpha = 0.5 * trail ** (n - 1 - i);
@@ -236,23 +276,28 @@ export class Renderer {
     ctx.globalAlpha = 1;
   }
 
-  private drawBalls(world: World, glow: boolean): void {
+  private drawBalls(world: World, glow: boolean, skipPlain: boolean): void {
     const { ctx } = this;
     const showHp = this.scene.style.showHp;
     for (const b of world.balls) {
-      if (!b.alive) continue;
-      if (glow) {
+      if (!b.alive || (skipPlain && isPlain(b))) continue;
+      if (b.weapon) this.drawWeapon(b);
+      if (glow && !b.frozen) {
         ctx.shadowBlur = 28;
         ctx.shadowColor = b.color;
       }
+      ctx.globalAlpha = b.frozen ? 0.55 : 1;
       ctx.fillStyle = b.color;
       ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      this.shapePath(b);
       ctx.fill();
       ctx.shadowBlur = 0;
       ctx.lineWidth = Math.max(2, b.r * 0.12);
       ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      if (b.frozen) ctx.setLineDash([b.r * 0.35, b.r * 0.25]);
       ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
 
       const hasHp = showHp && b.hp !== undefined && !!b.maxHp;
       if (hasHp) {
@@ -289,6 +334,66 @@ export class Renderer {
     }
   }
 
+  private shapePath(b: Ball): void {
+    const { ctx } = this;
+    if (b.shape === 'circle') {
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      return;
+    }
+    const pts: [number, number][] = [];
+    if (b.shape === 'star') {
+      for (let k = 0; k < 10; k++) {
+        const rr = k % 2 ? b.r * 0.48 : b.r * 1.08;
+        const a = b.rot + (k / 10) * Math.PI * 2 - Math.PI / 2;
+        pts.push([b.x + rr * Math.cos(a), b.y + rr * Math.sin(a)]);
+      }
+    } else {
+      const sides = b.shape === 'square' ? 4 : b.shape === 'triangle' ? 3 : 6;
+      // Size the polygon so its area roughly matches the collision circle.
+      const rr = b.r * (sides === 3 ? 1.25 : sides === 4 ? 1.1 : 1.03);
+      for (let k = 0; k < sides; k++) {
+        const a = b.rot + (k / sides) * Math.PI * 2 - Math.PI / 2 + (sides === 4 ? Math.PI / 4 : 0);
+        pts.push([b.x + rr * Math.cos(a), b.y + rr * Math.sin(a)]);
+      }
+    }
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (const [x, y] of pts.slice(1)) ctx.lineTo(x, y);
+    ctx.closePath();
+  }
+
+  private drawWeapon(b: Ball): void {
+    const { ctx } = this;
+    const w = b.weapon!;
+    const ca = Math.cos(w.angle);
+    const sa = Math.sin(w.angle);
+    const x1 = b.x + ca * b.r * 0.6;
+    const y1 = b.y + sa * b.r * 0.6;
+    const x2 = b.x + ca * (b.r + w.length);
+    const y2 = b.y + sa * (b.r + w.length);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+    ctx.lineWidth = w.width + 4;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.strokeStyle = w.color ?? '#e9ecf5';
+    ctx.lineWidth = w.width;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    // Guard across the blade near the ball.
+    const gx = b.x + ca * (b.r + 4);
+    const gy = b.y + sa * (b.r + 4);
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = w.width * 0.9;
+    ctx.beginPath();
+    ctx.moveTo(gx - sa * w.width * 1.6, gy + ca * w.width * 1.6);
+    ctx.lineTo(gx + sa * w.width * 1.6, gy - ca * w.width * 1.6);
+    ctx.stroke();
+  }
+
   private drawParticles(dt: number): void {
     const { ctx } = this;
     for (const p of this.particles) {
@@ -309,9 +414,25 @@ export class Renderer {
 
   private consumeEvents(world: World): void {
     const ballColor = (id: number) => world.balls[id]?.color ?? '#ffffff';
+    // In crowds, per-bounce sparks would be noise (and slow): keep only the big moments.
+    const crowd = world.aliveCount > 150;
     for (; this.cursor < world.events.length; this.cursor++) {
       const e = world.events[this.cursor];
+      if (crowd && (e.type === 'bounce' || e.type === 'spawn' || e.type === 'hit')) {
+        if (e.type === 'bounce' && e.ring >= 0) this.flash.set(`c${e.ring}`, { amount: 0.6, color: ballColor(e.ball) });
+        continue;
+      }
       switch (e.type) {
+        case 'strike':
+          this.burst(e.x, e.y, '#ffffff', 14, 520);
+          this.burst(e.x, e.y, ballColor(e.ball), 10, 420);
+          break;
+        case 'clash':
+          this.burst(e.x, e.y, '#fff3b0', 22, 640);
+          break;
+        case 'wake':
+          this.burst(e.x, e.y, ballColor(e.ball), 10, 300);
+          break;
         case 'bounce':
           if (e.ring >= 0) this.flash.set(`c${e.ring}`, { amount: 1, color: ballColor(e.ball) });
           if (e.solid >= 0) this.flash.set(`s${e.solid}`, { amount: 1, color: ballColor(e.ball) });

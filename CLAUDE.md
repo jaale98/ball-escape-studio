@@ -17,6 +17,10 @@ When you are running from the studio's prompt box, extra instructions are append
 
 If `.studio/taste.md` exists, read it: it lists videos the user liked or disliked (with their notes). Lean toward what they liked.
 
+When a format needs behaviour the built-in actions can't express, write a rule `script` (API in `src/engine/script.ts`) before touching engine code. Keep scripts short, deterministic (use `ctx.rng`, never `Math.random`), and set velocities directly: the engine re-bases energy after a script runs.
+
+Other tools: `npm run tournament -- <battle-scene> "A,B,C,D"` writes a knockout bracket as scene files. The Director's `perfect-loop` story prints a ready-to-paste loop window. The studio's Critic panel lists problems with the current run; fix those first when asked to "improve" a scene.
+
 Reaching for code is the last resort. If a format truly needs a new engine capability, add it as a general primitive (entity, action, rule event, or modifier), then express the format as a scene file.
 
 ## Scene conventions
@@ -44,7 +48,8 @@ Reaching for code is the last resort. If a format truly needs a new engine capab
 - `src/render/renderer.ts`: Canvas 2D drawing, trails, paint, particles, labels, hp, overlays.
 - `src/audio/sound.ts`: event-to-sound mapping and Web Audio synth. `midi.ts`: MIDI reader.
 - `src/export/`: `mp4.ts` (WebCodecs + mp4-muxer frame-by-frame export), `still.ts` (deterministic single frames).
-- `src/director/score.ts`: Director scoring and story templates (shared by the studio and the CLI). `pool.ts` / `worker.ts`: Web Worker search.
+- `src/director/score.ts`: Director scoring and story templates (shared by the studio and the CLI). `pool.ts` / `worker.ts`: Web Worker search. `critic.ts`, `remix.ts`, `tournament.ts`, `caption.ts`, `check.ts` / `preflight.ts` (script preflight).
+- `src/engine/script.ts`: custom rule scripts (compile + the `ctx` API). `src/render/gl.ts`: WebGL crowd layer.
 - `src/ui/`: `sliders.ts`, `music.ts` (song + part picker, MIDI drop), `director.ts` (variant grid), `review.ts` (swipe review), `queue.ts` (export queue), `player.ts` (mini previews). `src/main.ts`: studio UI; `window.studio` exposes `world`, `scene`, `exportMp4()`, `capture()`.
 - `scripts/`: `sim.ts` (headless runner and seed search), `determinism.ts` (`npm test`), `schema.ts`, `make-midi.ts`.
 - `server/studio.ts`: dev-only endpoints (captures, Save to file, the AI prompt box, version history, ratings). `server/claude.ts`: runs `claude -p` on the user's plan and turns its stream into studio events.

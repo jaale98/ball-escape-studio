@@ -1,0 +1,60 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Weapon battle",
+  "seed": 62,
+  "duration": {
+    "max": 75,
+    "endOn": "lastStanding",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 500
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 450,
+      "thickness": 14,
+      "spin": 0.3,
+      "gaps": []
+    },
+    {
+      "type": "ball",
+      "count": 4,
+      "radius": 34,
+      "speed": 800,
+      "spread": 250,
+      "hp": 10,
+      "labels": [
+        "Sword",
+        "Spear",
+        "Dagger",
+        "Axe"
+      ],
+      "colors": [
+        "#ff4d6d",
+        "#4dd4ff",
+        "#ffd23f",
+        "#7cff6b"
+      ],
+      "weapon": {
+        "length": 80,
+        "width": 9,
+        "spin": 4,
+        "damage": 1
+      }
+    }
+  ],
+  "style": {
+    "trail": 0.6
+  },
+  "audio": {
+    "melody": "pentatonic",
+    "instrument": "pluck",
+    "volume": 0.6
+  },
+  "overlay": {
+    "title": "Which weapon wins?",
+    "counter": "balls"
+  }
+}

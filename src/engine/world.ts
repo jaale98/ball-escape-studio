@@ -1,15 +1,20 @@
 import { Rng } from './rng';
-import { type Action, type BallSpec, gravityVec, HEIGHT, PHYSICS_HZ, type Scene, WIDTH } from './scene';
+import { type Action, ActionSchema, type BallSpec, gravityVec, HEIGHT, PHYSICS_HZ, type Scene, WIDTH } from './scene';
+import { compileScript, type ScriptContext, type ScriptFn } from './script';
 
 export const DT = 1 / PHYSICS_HZ;
 const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
 /** Minimum normal speed (px/s) for a contact to count as a bounce event. */
 const BOUNCE_THRESHOLD = 20;
+/** The same, for scenes without energy keeping (piles of resting balls). */
+const SETTLE_THRESHOLD = 90;
 /** Minimum closing speed (px/s) for a ball-ball contact to count as a hit. */
 const HIT_THRESHOLD = 40;
 /** After taking damage a ball can't be damaged again for this long (pinned balls would otherwise trade hits every step). */
 const DAMAGE_COOLDOWN = Math.round(0.25 * PHYSICS_HZ);
+/** Above this many balls, ball-ball collisions use a spatial hash. */
+const HASH_THRESHOLD = 48;
 
 export interface Ball {
   id: number;
@@ -33,6 +38,23 @@ export interface Ball {
   inZone: boolean[];
   /** Energy budget held constant when world.keepEnergy is on. */
   energy: number;
+  /** Still and weightless until another ball hits it. */
+  frozen: boolean;
+  /** Drawn shape (collisions use the circle) and its rotation. */
+  shape: 'circle' | 'square' | 'triangle' | 'hexagon' | 'star';
+  rot: number;
+  weapon?: Weapon;
+}
+
+export interface Weapon {
+  length: number;
+  width: number;
+  spin: number;
+  damage: number;
+  /** Current angle, radians. */
+  angle: number;
+  color?: string;
+  lastClashStep: number;
 }
 
 export interface Gap {
@@ -91,7 +113,7 @@ export interface Zone {
   count: number;
 }
 
-export type SimEventType = 'bounce' | 'escape' | 'spawn' | 'hit' | 'eliminate' | 'zone' | 'exit' | 'gravity';
+export type SimEventType = 'bounce' | 'escape' | 'spawn' | 'hit' | 'eliminate' | 'zone' | 'exit' | 'gravity' | 'strike' | 'clash' | 'wake';
 
 export interface SimEvent {
   step: number;
@@ -115,6 +137,15 @@ interface TimelineState {
   startStep: number;
   untilStep: number;
   actions: Action[];
+  script?: ScriptFn;
+  where: string;
+}
+
+type RuleEvent = 'bounce' | 'escape' | 'hit' | 'eliminate' | 'strike' | 'wake';
+interface RuleEntry {
+  actions: Action[];
+  script?: ScriptFn;
+  where: string;
 }
 
 /** Wrap an angle to (-PI, PI]. */
@@ -123,6 +154,23 @@ function wrap(a: number): number {
 }
 
 const BALL_ACTIONS = new Set(['grow', 'speedUp', 'damage']);
+
+/** Shortest distance between two segments. */
+function segmentDistance(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, dx: number, dy: number): number {
+  const cross = (ux: number, uy: number, vx: number, vy: number) => ux * vy - uy * vx;
+  const d1 = cross(bx - ax, by - ay, cx - ax, cy - ay);
+  const d2 = cross(bx - ax, by - ay, dx - ax, dy - ay);
+  const d3 = cross(dx - cx, dy - cy, ax - cx, ay - cy);
+  const d4 = cross(dx - cx, dy - cy, bx - cx, by - cy);
+  if (d1 * d2 < 0 && d3 * d4 < 0) return 0;
+  const pt = (px: number, py: number, x1: number, y1: number, x2: number, y2: number) => {
+    const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
+    let t = l2 ? ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+  };
+  return Math.min(pt(ax, ay, cx, cy, dx, dy), pt(bx, by, cx, cy, dx, dy), pt(cx, cy, ax, ay, bx, by), pt(dx, dy, ax, ay, bx, by));
+}
 
 /**
  * The deterministic simulation. Same scene + same seed = identical run,
@@ -150,6 +198,8 @@ export class World {
   endReason = '';
   gx: number;
   gy: number;
+  /** First error thrown by a custom rule script (that script is then disabled). */
+  scriptError = '';
 
   private endStep = Infinity;
   private filled = false;
@@ -159,21 +209,33 @@ export class World {
   private startingBalls = 0;
   private readonly rngSpawn: Rng;
   private readonly template: BallSpec;
-  private readonly rules: Record<'bounce' | 'escape' | 'hit' | 'eliminate', Action[]>;
+  private readonly rules: Record<RuleEvent, RuleEntry[]>;
   private readonly timeline: TimelineState[];
+  private readonly rngScript: Rng;
+  private readonly scriptState: Record<string, unknown> = {};
+  private maxR = 0;
+  /** During a hit's rules: true when the ball the rules run for was the one struck. */
+  private defending = true;
 
   constructor(scene: Scene) {
     this.scene = scene;
     this.rngSpawn = new Rng(scene.seed, 'spawn');
     [this.gx, this.gy] = gravityVec(scene.world.gravity);
-    const rulesFor = (on: string) => scene.rules.filter((r) => r.on === on).flatMap((r) => r.do);
-    this.rules = { bounce: rulesFor('bounce'), escape: rulesFor('escape'), hit: rulesFor('hit'), eliminate: rulesFor('eliminate') };
-    this.timeline = scene.timeline.map((t) => ({
+    this.rngScript = new Rng(scene.seed, 'script');
+    const rulesFor = (on: RuleEvent): RuleEntry[] =>
+      scene.rules
+        .map((r, i) => ({ r, i }))
+        .filter(({ r }) => r.on === on)
+        .map(({ r, i }) => ({ actions: r.do ?? [], script: r.script ? compileScript(r.script, `rules.${i}`) : undefined, where: `rules.${i}` }));
+    this.rules = { bounce: rulesFor('bounce'), escape: rulesFor('escape'), hit: rulesFor('hit'), eliminate: rulesFor('eliminate'), strike: rulesFor('strike'), wake: rulesFor('wake') };
+    this.timeline = scene.timeline.map((t, i) => ({
       atStep: t.at !== undefined ? Math.round(t.at * PHYSICS_HZ) : undefined,
       everySteps: t.every !== undefined ? Math.max(1, Math.round(t.every * PHYSICS_HZ)) : undefined,
       startStep: Math.round(t.start * PHYSICS_HZ),
       untilStep: t.until !== undefined ? Math.round(t.until * PHYSICS_HZ) : Infinity,
-      actions: t.do,
+      actions: t.do ?? [],
+      script: t.script ? compileScript(t.script, `timeline.${i}`) : undefined,
+      where: `timeline.${i}`,
     }));
 
     for (const e of scene.entities) {
@@ -217,8 +279,17 @@ export class World {
     const ballSpecs = scene.entities.filter((e): e is BallSpec => e.type === 'ball');
     this.template = ballSpecs[0] ?? { type: 'ball', radius: 22, speed: 800, count: 1 };
     for (const spec of ballSpecs) {
+      const cx = spec.x ?? this.containers[0]?.x ?? WIDTH / 2;
+      const cy = spec.y ?? this.containers[0]?.y ?? HEIGHT / 2;
+      // Grid: a square block centred on (x, y), never overlapping.
+      const cols = Math.ceil(Math.sqrt(spec.count));
+      const gap = Math.max(spec.radius * 2.6, ((spec.spread ?? 40) * 2) / Math.max(1, cols - 1));
       for (let i = 0; i < spec.count; i++) {
-        this.spawnBall(spec, i, spec.x, spec.y, spec.spread ?? (spec.count > 1 ? 40 : 0));
+        if (spec.arrange === 'grid' && spec.count > 1) {
+          const gx = cx + ((i % cols) - (cols - 1) / 2) * gap;
+          const gy = cy + (Math.floor(i / cols) - (Math.ceil(spec.count / cols) - 1) / 2) * gap;
+          this.spawnBall(spec, i, gx, gy, 0);
+        } else this.spawnBall(spec, i, spec.x, spec.y, spec.spread ?? (spec.count > 1 ? 40 : 0));
       }
     }
     this.startingBalls = this.balls.length;
@@ -267,9 +338,10 @@ export class World {
     const n = this.balls.length;
     for (let i = 0; i < n; i++) {
       const b = this.balls[i];
-      if (b.alive) this.integrate(b);
+      if (b.alive && !b.frozen) this.integrate(b);
     }
     this.collideBalls();
+    this.strikes();
     this.countZones();
 
     this.stepCount++;
@@ -356,13 +428,23 @@ export class World {
       maxHp: spec.hp,
       lastDamageStep: -Infinity,
       alive: true,
+      frozen: !!spec.frozen,
+      shape: spec.shape ?? 'circle',
+      rot: 0,
+      // Blades of a group start fanned out evenly, not all pointing the same way.
+      weapon: spec.weapon ? { ...spec.weapon, angle: spec.weapon.angle * DEG + (index * TAU) / Math.max(1, spec.count), lastClashStep: -Infinity } : undefined,
       escaped: this.containers.map((c) => Math.hypot(cx - c.x, cy - c.y) >= this.innerRadius(c)),
       everEscaped: [],
       inZone: this.zones.map(() => false),
       energy: 0,
     };
     ball.everEscaped = [...ball.escaped];
+    if (ball.frozen) {
+      ball.vx = 0;
+      ball.vy = 0;
+    }
     ball.energy = this.energyOf(ball);
+    this.maxR = Math.max(this.maxR, ball.r);
     this.balls.push(ball);
     this.emit('spawn', ball);
     return ball;
@@ -397,6 +479,7 @@ export class World {
     const n = Math.min(32, Math.max(1, Math.ceil(travel / (0.3 * b.r))));
     const h = DT / n;
     const e = this.scene.world.restitution;
+    if (b.shape !== 'circle') b.rot += (b.vx / b.r) * DT * 0.6;
     for (let k = 0; k < n && b.alive; k++) {
       b.vx += this.gx * h;
       b.vy += this.gy * h;
@@ -577,47 +660,182 @@ export class World {
   }
 
   private collideBalls(): void {
-    const e = this.scene.world.restitution;
     const balls = this.balls;
+    // Layer = how many containers a ball has escaped; only same-layer balls touch.
+    const layer = new Int32Array(balls.length);
+    for (let i = 0; i < balls.length; i++) {
+      let n = 0;
+      for (const v of balls[i].escaped) if (v) n++;
+      layer[i] = n;
+    }
+    if (balls.length <= HASH_THRESHOLD) {
+      for (let i = 0; i < balls.length; i++) {
+        const a = balls[i];
+        if (!a.alive) continue;
+        for (let j = i + 1; j < balls.length && a.alive; j++) if (layer[i] === layer[j]) this.collidePair(a, balls[j]);
+      }
+      return;
+    }
+    // Large crowds: a uniform grid; each ball tests the 9 cells around it, in a
+    // fixed order, against balls with a higher index (deterministic).
+    const cell = Math.max(8, 2 * this.maxR + 2);
+    const grid = new Map<number, number[]>();
+    const cx = new Int32Array(balls.length);
+    const cy = new Int32Array(balls.length);
+    for (let i = 0; i < balls.length; i++) {
+      const b = balls[i];
+      if (!b.alive) continue;
+      cx[i] = Math.floor(b.x / cell);
+      cy[i] = Math.floor(b.y / cell);
+      const k = cx[i] * 100003 + cy[i];
+      const list = grid.get(k);
+      if (list) list.push(i);
+      else grid.set(k, [i]);
+    }
     for (let i = 0; i < balls.length; i++) {
       const a = balls[i];
       if (!a.alive) continue;
+      for (let dx = -1; dx <= 1 && a.alive; dx++) {
+        for (let dy = -1; dy <= 1 && a.alive; dy++) {
+          const list = grid.get((cx[i] + dx) * 100003 + cy[i] + dy);
+          if (!list) continue;
+          for (const j of list) if (j > i && layer[i] === layer[j] && a.alive) this.collidePair(a, balls[j]);
+        }
+      }
+    }
+  }
+
+  private collidePair(a: Ball, b: Ball): void {
+    if (!b.alive || (a.frozen && b.frozen)) return;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const rr = a.r + b.r;
+    const d2 = dx * dx + dy * dy;
+    if (d2 >= rr * rr || d2 === 0) return;
+    const e = this.scene.world.restitution;
+    // A moving ball wakes a frozen one on a real impact; the frozen one then
+    // takes part normally. (A graze or a resting touch doesn't wake it.)
+    let woke: Ball | null = a.frozen ? a : b.frozen ? b : null;
+    const waker = woke === a ? b : woke === b ? a : null;
+    if (woke) {
+      const closing = (b.vx - a.vx) * dx + (b.vy - a.vy) * dy;
+      if (closing / Math.sqrt(d2) > -HIT_THRESHOLD) return;
+      woke.frozen = false;
+    }
+    const d = Math.sqrt(d2);
+    const nx = dx / d;
+    const ny = dy / d;
+    const ma = a.r * a.r;
+    const mb = b.r * b.r;
+    const overlap = rr - d;
+    a.x -= (nx * overlap * mb) / (ma + mb);
+    a.y -= (ny * overlap * mb) / (ma + mb);
+    b.x += (nx * overlap * ma) / (ma + mb);
+    b.y += (ny * overlap * ma) / (ma + mb);
+    const rvn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+    // Who was charging whom: each ball's speed toward the other, before the impact.
+    const aIn = a.vx * nx + a.vy * ny;
+    const bIn = -(b.vx * nx + b.vy * ny);
+    if (rvn < 0) {
+      const imp = (-(1 + e) * rvn) / (1 / ma + 1 / mb);
+      a.vx -= (imp * nx) / ma;
+      a.vy -= (imp * ny) / ma;
+      b.vx += (imp * nx) / mb;
+      b.vy += (imp * ny) / mb;
+      for (const x of [a, b]) {
+        if (x === woke) x.energy = this.energyOf(x); // its energy budget starts now
+        else this.restoreEnergy(x);
+      }
+      if (woke && waker) {
+        this.emit('wake', woke, -1, -1, -1, -rvn);
+        this.runRules('wake', woke, null, -rvn, waker);
+      }
+      if (-rvn > (this.scene.world.keepEnergy ? HIT_THRESHOLD : SETTLE_THRESHOLD * 2)) {
+        this.emit('hit', a, -1, -1, -1, -rvn, (a.x + b.x) / 2, (a.y + b.y) / 2);
+        this.defending = aIn < bIn;
+        this.runRules('hit', a, null, -rvn, b);
+        this.defending = bIn < aIn;
+        this.runRules('hit', b, null, -rvn, a);
+        this.defending = true;
+      }
+    }
+  }
+
+  /** Spinning weapons: strike other balls, and clash (both reverse) when two blades cross. */
+  private strikes(): void {
+    const armed = this.balls.filter((b) => b.alive && b.weapon);
+    if (!armed.length) return;
+    const e = this.scene.world.restitution;
+    for (const a of armed) a.weapon!.angle = wrap(a.weapon!.angle + a.weapon!.spin * DT);
+    const blade = (a: Ball): [number, number, number, number] => {
+      const w = a.weapon!;
+      const ca = Math.cos(w.angle);
+      const sa = Math.sin(w.angle);
+      return [a.x + ca * a.r, a.y + sa * a.r, a.x + ca * (a.r + w.length), a.y + sa * (a.r + w.length)];
+    };
+    // Clashes.
+    for (let i = 0; i < armed.length; i++) {
+      for (let j = i + 1; j < armed.length; j++) {
+        const a = armed[i];
+        const b = armed[j];
+        const wa = a.weapon!;
+        const wb = b.weapon!;
+        if (this.stepCount - Math.max(wa.lastClashStep, wb.lastClashStep) < DAMAGE_COOLDOWN) continue;
+        const [ax1, ay1, ax2, ay2] = blade(a);
+        const [bx1, by1, bx2, by2] = blade(b);
+        if (segmentDistance(ax1, ay1, ax2, ay2, bx1, by1, bx2, by2) < (wa.width + wb.width) / 2) {
+          wa.spin = -wa.spin;
+          wb.spin = -wb.spin;
+          wa.lastClashStep = wb.lastClashStep = this.stepCount;
+          this.emit('clash', a, -1, -1, -1, 1000, (ax2 + bx2) / 2, (ay2 + by2) / 2);
+        }
+      }
+    }
+    // Strikes.
+    for (const a of armed) {
+      if (!a.alive) continue;
+      const w = a.weapon!;
+      const [x1, y1, x2, y2] = blade(a);
       const layerA = a.escaped.reduce((n, v) => n + (v ? 1 : 0), 0);
-      for (let j = i + 1; j < balls.length && a.alive; j++) {
-        const b = balls[j];
-        if (!b.alive) continue;
-        const dx = b.x - a.x;
-        const dy = b.y - a.y;
-        const rr = a.r + b.r;
+      for (const b of this.balls) {
+        if (b === a || !b.alive) continue;
+        if (b.escaped.reduce((n, v) => n + (v ? 1 : 0), 0) !== layerA) continue;
+        const abx = x2 - x1;
+        const aby = y2 - y1;
+        let t = ((b.x - x1) * abx + (b.y - y1) * aby) / (abx * abx + aby * aby);
+        t = t < 0 ? 0 : t > 1 ? 1 : t;
+        const px = x1 + t * abx;
+        const py = y1 + t * aby;
+        const dx = b.x - px;
+        const dy = b.y - py;
+        const min = b.r + w.width / 2;
         const d2 = dx * dx + dy * dy;
-        if (d2 >= rr * rr || d2 === 0) continue;
-        // Only balls in the same layer touch, so they never collide through a wall.
-        const layerB = b.escaped.reduce((n, v) => n + (v ? 1 : 0), 0);
-        if (layerA !== layerB) continue;
+        if (d2 >= min * min || d2 < 1e-12) continue;
         const d = Math.sqrt(d2);
         const nx = dx / d;
         const ny = dy / d;
-        const ma = a.r * a.r;
-        const mb = b.r * b.r;
-        const overlap = rr - d;
-        a.x -= (nx * overlap * mb) / (ma + mb);
-        a.y -= (ny * overlap * mb) / (ma + mb);
-        b.x += (nx * overlap * ma) / (ma + mb);
-        b.y += (ny * overlap * ma) / (ma + mb);
-        const rvn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
-        if (rvn < 0) {
-          const imp = (-(1 + e) * rvn) / (1 / ma + 1 / mb);
-          a.vx -= (imp * nx) / ma;
-          a.vy -= (imp * ny) / ma;
-          b.vx += (imp * nx) / mb;
-          b.vy += (imp * ny) / mb;
-          this.restoreEnergy(a);
-          this.restoreEnergy(b);
-          if (-rvn > HIT_THRESHOLD) {
-            this.emit('hit', a, -1, -1, -1, -rvn, (a.x + b.x) / 2, (a.y + b.y) / 2);
-            this.applyActions(this.rules.hit, a, null, -rvn);
-            this.applyActions(this.rules.hit, b, null, -rvn);
-          }
+        b.x = px + nx * min;
+        b.y = py + ny * min;
+        if (b.frozen) {
+          b.frozen = false;
+          b.energy = 0;
+        }
+        // The blade point moves with the ball and its rotation.
+        const arm = a.r + t * w.length;
+        const pvx = a.vx - w.spin * arm * Math.sin(w.angle);
+        const pvy = a.vy + w.spin * arm * Math.cos(w.angle);
+        const vn = (b.vx - pvx) * nx + (b.vy - pvy) * ny;
+        if (vn < 0) {
+          b.vx -= (1 + e) * vn * nx;
+          b.vy -= (1 + e) * vn * ny;
+          if (b.energy === 0) b.energy = this.energyOf(b);
+          else this.restoreEnergy(b);
+        }
+        if (this.stepCount - b.lastDamageStep >= DAMAGE_COOLDOWN) {
+          this.emit('strike', a, -1, -1, -1, Math.abs(vn), px, py);
+          if (w.damage > 0) this.damage(b, w.damage, true);
+          this.runRules('strike', a, null, Math.abs(vn), b);
+          if (b.hp === undefined) b.lastDamageStep = this.stepCount; // still rate-limit strike events
         }
       }
     }
@@ -640,10 +858,12 @@ export class World {
 
   private onBounce(b: Ball, c: Container | null, solid: number, strength: number): void {
     this.restoreEnergy(b);
-    if (strength < BOUNCE_THRESHOLD) return;
+    // Settling scenes (no energy keeping) have balls resting in piles: only real
+    // impacts count as bounces, or every jostle would become an event and a note.
+    if (strength < (this.scene.world.keepEnergy ? BOUNCE_THRESHOLD : SETTLE_THRESHOLD)) return;
     this.bounces++;
     this.emit('bounce', b, c ? c.id : -1, solid, -1, strength);
-    this.applyActions(this.rules.bounce, b, c, strength);
+    this.runRules('bounce', b, c, strength, null);
     if (this.rhythmK > 0) this.lockToRhythm(b, this.bounces - 1);
   }
 
@@ -694,7 +914,24 @@ export class World {
       if (this.scene.duration.endOn === 'firstEscape' && this.startingBalls > 1) this.winner = b.id;
     }
     this.emit('escape', b, idx, -1, -1, Math.hypot(b.vx, b.vy));
-    this.applyActions(this.rules.escape, b, c, 0);
+    this.runRules('escape', b, c, 0, null);
+  }
+
+  /** Take hp (respecting the damage cooldown) and eliminate at zero. */
+  private damage(b: Ball, amount: number, force: boolean): void {
+    if (!b.alive || b.hp === undefined) return;
+    if (!force && this.stepCount - b.lastDamageStep < DAMAGE_COOLDOWN) return;
+    b.lastDamageStep = this.stepCount;
+    b.hp -= amount;
+    if (b.hp <= 1e-9) {
+      // In a last-standing battle the final ball always survives, even
+      // when the last two knock each other out in the same hit.
+      if (this.scene.duration.endOn === 'lastStanding' && this.aliveCount <= 1) b.hp = Math.min(b.maxHp ?? 1, 0.5);
+      else {
+        b.hp = 0;
+        this.eliminate(b);
+      }
+    }
   }
 
   private eliminate(b: Ball): void {
@@ -702,7 +939,7 @@ export class World {
     b.alive = false;
     this.eliminations++;
     this.emit('eliminate', b);
-    this.applyActions(this.rules.eliminate, b, null, 0);
+    this.runRules('eliminate', b, null, 0, null);
   }
 
   private runTimeline(): void {
@@ -716,6 +953,74 @@ export class World {
         for (const b of this.balls.slice()) if (b.alive) this.applyActions(ballActions, b, null, 0);
       }
       if (worldActions.length) this.applyActions(worldActions, null, null, 0);
+      if (t.script) this.runScript(t, 'timeline', null, null, 0, null);
+    }
+  }
+
+  private runRules(on: RuleEvent, b: Ball, c: Container | null, impact: number, other: Ball | null): void {
+    for (const r of this.rules[on]) {
+      if (r.actions.length) this.applyActions(r.actions, b, c, impact);
+      if (r.script) this.runScript(r, on, b, c, impact, other);
+    }
+  }
+
+  private runScript(owner: { script?: ScriptFn; where: string }, event: string, b: Ball | null, c: Container | null, impact: number, other: Ball | null): void {
+    const fn = owner.script;
+    if (!fn) return;
+    const world = this;
+    const ctx: ScriptContext = {
+      event,
+      time: this.time,
+      ball: b,
+      other,
+      container: c,
+      state: this.scriptState,
+      rng: { next: () => this.rngScript.next(), range: (a, z) => this.rngScript.range(a, z), int: (n) => this.rngScript.int(n) },
+      world: {
+        balls: () => world.balls.filter((x) => x.alive),
+        spawn: (o = {}) => {
+          const spec: BallSpec = { ...world.template, labels: undefined, colors: undefined, color: o.color, radius: o.radius ?? world.template.radius };
+          return world.spawnBall(spec, 0, o.x, o.y, o.spread ?? 0, o.speed, o.direction);
+        },
+        do: (action) => {
+          const parsed = ActionSchema.safeParse(action);
+          if (!parsed.success) throw new Error(`world.do: ${parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`);
+          world.applyActions([parsed.data], b, c, impact);
+        },
+        gravity: (x, y) => {
+          world.gx = x;
+          world.gy = y;
+          world.gravityChanged();
+        },
+        end: () => {
+          if (world.endStep === Infinity) {
+            world.endReason = 'script';
+            world.endStep = world.stepCount + Math.round(world.scene.duration.tail * PHYSICS_HZ);
+          }
+        },
+        get time() {
+          return world.time;
+        },
+        get bounces() {
+          return world.bounces;
+        },
+      },
+    };
+    try {
+      fn(ctx);
+      // Scripts may set velocities directly: re-base energy budgets so the
+      // change sticks (and frozen balls stay still).
+      for (const x of [b, other]) {
+        if (!x) continue;
+        if (x.frozen) {
+          x.vx = 0;
+          x.vy = 0;
+        }
+        x.energy = this.energyOf(x);
+      }
+    } catch (err) {
+      if (!this.scriptError) this.scriptError = `${owner.where}: ${(err as Error).message}`;
+      owner.script = undefined; // a broken script is switched off, not retried every event
     }
   }
 
@@ -763,19 +1068,7 @@ export class World {
           break;
         }
         case 'damage':
-          if (b && b.alive && b.hp !== undefined && this.stepCount - b.lastDamageStep >= DAMAGE_COOLDOWN) {
-            b.lastDamageStep = this.stepCount;
-            b.hp -= act.amount + (act.perSpeed * impact) / 1000;
-            if (b.hp <= 1e-9) {
-              // In a last-standing battle the final ball always survives, even
-              // when the last two knock each other out in the same hit.
-              if (this.scene.duration.endOn === 'lastStanding' && this.aliveCount <= 1) b.hp = Math.min(b.maxHp ?? 1, 0.5);
-              else {
-                b.hp = 0;
-                this.eliminate(b);
-              }
-            }
-          }
+          if (b && (act.when === 'always' || this.defending)) this.damage(b, act.amount + (act.perSpeed * impact) / 1000, false);
           break;
         case 'setGravity':
           [this.gx, this.gy] = gravityVec(act.gravity);

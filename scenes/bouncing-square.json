@@ -1,0 +1,37 @@
+{
+  "$schema": "../scene.schema.json",
+  "extends": "ring-escape",
+  "title": "Bouncing square",
+  "seed": 243,
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 430,
+      "thickness": 14,
+      "spin": 0.9,
+      "gaps": [
+        {
+          "at": 0,
+          "width": 30
+        }
+      ]
+    },
+    {
+      "type": "ball",
+      "radius": 34,
+      "speed": 950,
+      "shape": "square",
+      "color": "#ffd23f"
+    }
+  ],
+  "style": {
+    "trail": 0.75,
+    "ringColor": "#fff0b3"
+  },
+  "audio": {
+    "instrument": "marimba"
+  },
+  "overlay": {
+    "title": "Can a square escape?"
+  }
+}

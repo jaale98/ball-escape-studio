@@ -77,7 +77,7 @@ export const MODIFIERS: Record<string, ModifierDef> = {
     params: { hp: { default: 10, description: 'starting hp per ball' }, damage: { default: 1, description: 'hp lost per hit' } },
     apply: (s, p) => {
       for (const b of balls(s)) b.hp ??= p.hp;
-      list(s, 'rules').push({ on: 'hit', do: [{ do: 'damage', amount: p.damage }] });
+      list(s, 'rules').push({ on: 'hit', do: [{ do: 'damage', amount: p.damage, when: 'defending' }] });
       obj(s, 'duration').endOn = 'lastStanding';
       obj(s, 'overlay').counter = 'balls';
     },

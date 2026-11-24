@@ -68,3 +68,19 @@ export function direct(scene: Scene, opts: DirectorOptions, count: number, vary:
     },
   };
 }
+
+/** Score a single run (the scene's own seed) off the main thread. */
+export function scoreOne(scene: Scene, opts: DirectorOptions): Promise<RunScore> {
+  return new Promise((resolve, reject) => {
+    const w = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+    w.onmessage = (e: MessageEvent<{ results: RunScore[] }>) => {
+      w.terminate();
+      resolve(e.data.results[0]);
+    };
+    w.onerror = (e) => {
+      w.terminate();
+      reject(new Error(e.message));
+    };
+    w.postMessage({ id: 0, scene, jobs: [{ seed: scene.seed, speed: 1, spin: 1 }], opts });
+  });
+}

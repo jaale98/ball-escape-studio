@@ -59,6 +59,11 @@
         <div class="wide"><span>State hash</span><b id="s-hash" class="mono">—</b></div>
       </section>
 
+      <section class="critic" aria-label="Critic">
+        <div class="critic-head"><b>Critic</b><button id="critic-fix" class="link" hidden>Fix with Claude</button></div>
+        <ol id="critic-list"></ol>
+      </section>
+
       <div class="row buttons">
         <button id="open-director" title="Search hundreds of runs for the best story">Director</button>
         <button id="export" class="primary">Export MP4</button>
@@ -124,6 +129,7 @@
         <pre id="resolved-json"></pre>
       </details>
       <pre id="error" class="error" hidden></pre>
+      <p id="script-msg" class="msg error-text"></p>
     </aside>
 
     <main class="stage">
@@ -140,11 +146,20 @@
           <button id="d-close">Close</button>
         </header>
         <p id="d-desc" class="muted"></p>
+        <div class="director-bar batch-bar">
+          <b>Batch</b>
+          <label>Remixes <select id="b-count"><option>4</option><option selected>8</option><option>12</option></select></label>
+          <button id="b-remix" title="New looks and sounds of this scene, each auto-directed">Make remixes</button>
+          <label>Bracket <input id="b-entrants" type="text" value="Brazil, Japan, France, Canada, Italy, Mexico, Kenya, Sweden" /></label>
+          <button id="b-tournament">Build tournament</button>
+        </div>
         <div id="d-progress" class="progress" hidden><div id="d-bar"></div><span id="d-label"></span></div>
         <div id="d-grid" class="variant-grid"></div>
         <footer class="row buttons director-foot">
           <button id="d-review">Review one by one</button>
           <button id="d-queue-top">Export top 3</button>
+          <button id="d-queue-all">Export all</button>
+          <button id="d-save-all">Save all as scenes</button>
         </footer>
       </section>
 

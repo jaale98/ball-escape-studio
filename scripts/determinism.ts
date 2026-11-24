@@ -11,7 +11,8 @@ for (const name of Object.keys(sources)) {
     const b = new World(scene).runToEnd();
     const same = a.hash() === b.hash() && a.events.length === b.events.length && a.stepCount === b.stepCount;
     const sane = a.balls.every((ball) => Number.isFinite(ball.x) && Number.isFinite(ball.y) && Number.isFinite(ball.vx));
-    const ok = same && sane;
+    const ok = same && sane && !a.scriptError;
+    if (a.scriptError) console.log(`      script error: ${a.scriptError}`);
     if (!ok) failed++;
     console.log(`${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(20)} ${a.endReason.padEnd(12)} ${a.time.toFixed(2).padStart(6)}s  hash ${a.hash()}${sane ? '' : '  (non-finite state)'}`);
   } catch (err) {

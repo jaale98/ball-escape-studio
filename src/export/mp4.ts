@@ -57,11 +57,14 @@ export async function exportMp4(scene: Scene, onProgress: ExportProgress = () =>
   onProgress('simulate', 0);
   const pre = new World(scene).runToEnd();
   const frames = Math.ceil(pre.stepCount / STEPS_PER_FRAME);
-  const seconds = frames / FPS;
+  // trimStart: simulate and draw from 0 (trails warm up), encode from here on.
+  const startFrame = Math.min(frames - 1, Math.round(scene.duration.trimStart * FPS));
+  const seconds = (frames - startFrame) / FPS;
+  const fullSeconds = frames / FPS;
 
   // 2. Soundtrack, rendered faster than real time.
   onProgress('audio', 0);
-  const actx = new OfflineAudioContext(2, Math.ceil(seconds * SAMPLE_RATE) + SAMPLE_RATE, SAMPLE_RATE);
+  const actx = new OfflineAudioContext(2, Math.ceil(fullSeconds * SAMPLE_RATE) + SAMPLE_RATE, SAMPLE_RATE);
   const master = createMaster(actx, scene.audio.volume);
   const mapper = new SoundMapper(scene);
   for (const e of pre.events) {
@@ -95,8 +98,13 @@ export async function exportMp4(scene: Scene, onProgress: ExportProgress = () =>
     if (encodeError) throw encodeError;
     if (i > 0) for (let s = 0; s < STEPS_PER_FRAME; s++) world.step();
     renderer.render(world, i === 0 ? 0 : 1 / FPS);
-    const frame = new VideoFrame(canvas, { timestamp: Math.round(i * frameUs), duration: Math.round(frameUs) });
-    venc.encode(frame, { keyFrame: i % (FPS * 2) === 0 });
+    if (i < startFrame) {
+      if (i % 30 === 0) await tick();
+      continue;
+    }
+    const k = i - startFrame;
+    const frame = new VideoFrame(canvas, { timestamp: Math.round(k * frameUs), duration: Math.round(frameUs) });
+    venc.encode(frame, { keyFrame: k % (FPS * 2) === 0 });
     frame.close();
     while (venc.encodeQueueSize > 6) await tick();
     if (i % 15 === 0) {
@@ -116,9 +124,10 @@ export async function exportMp4(scene: Scene, onProgress: ExportProgress = () =>
     error: (e) => (encodeError = e),
   });
   aenc.configure({ codec: 'mp4a.40.2', sampleRate: SAMPLE_RATE, numberOfChannels: 2, bitrate: 192_000 });
-  const total = Math.min(audio.length, Math.ceil(seconds * SAMPLE_RATE));
-  const left = audio.getChannelData(0);
-  const right = audio.getChannelData(1);
+  const offset = Math.round((startFrame / FPS) * SAMPLE_RATE);
+  const total = Math.min(audio.length - offset, Math.ceil(seconds * SAMPLE_RATE));
+  const left = audio.getChannelData(0).subarray(offset);
+  const right = audio.getChannelData(1).subarray(offset);
   for (let start = 0; start < total; start += 1024) {
     const n = Math.min(1024, total - start);
     const data = new Float32Array(n * 2);

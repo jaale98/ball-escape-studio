@@ -2,19 +2,17 @@
  * Swipe review: candidates one at a time, full size. Keep (→ / swipe right)
  * sends it to the export queue; Discard (← / swipe left) moves on.
  */
-import { applyVariation, type RunScore } from '../director/score';
-import type { Scene } from '../engine/scene';
+import type { GridItem } from './director';
 import { Player } from './player';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 export interface ReviewHooks {
-  keep(r: RunScore): void;
+  keep(item: GridItem): void;
   exit(): void;
 }
 
-let list: RunScore[] = [];
-let base: Scene | null = null;
+let list: GridItem[] = [];
 let index = 0;
 let kept = 0;
 let player: Player | null = null;
@@ -22,9 +20,8 @@ let raf = 0;
 let hooks: ReviewHooks;
 let wired = false;
 
-export function startReview(candidates: RunScore[], scene: Scene, h: ReviewHooks): void {
+export function startReview(candidates: GridItem[], h: ReviewHooks): void {
   list = candidates;
-  base = scene;
   hooks = h;
   index = 0;
   kept = 0;
@@ -42,11 +39,12 @@ export function startReview(candidates: RunScore[], scene: Scene, h: ReviewHooks
 }
 
 function show(): void {
-  if (!base || index >= list.length) return finish();
-  const r = list[index];
-  player = new Player($<HTMLCanvasElement>('r-canvas'), applyVariation(base, r), 0.5);
+  if (index >= list.length) return finish();
+  const it = list[index];
+  const r = it.r;
+  player = new Player($<HTMLCanvasElement>('r-canvas'), it.scene, 0.5);
   $('r-count').textContent = `${index + 1} / ${list.length} · kept ${kept}`;
-  $('r-meta').textContent = `score ${r.score.toFixed(0)} · seed ${r.seed}${r.speed !== 1 || r.spin !== 1 ? ` · speed ×${r.speed} spin ×${r.spin}` : ''} · ${r.facts.join(', ')}`;
+  $('r-meta').textContent = `${it.title} · seed ${r.seed}${r.speed !== 1 || r.spin !== 1 ? ` · speed ×${r.speed} spin ×${r.spin}` : ''} · ${r.facts.join(', ')}`;
 }
 
 function decide(keep: boolean): void {

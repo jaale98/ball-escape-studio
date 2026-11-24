@@ -1,0 +1,74 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Crowd pour",
+  "seed": 1,
+  "duration": {
+    "max": 40,
+    "endOn": "never"
+  },
+  "world": {
+    "gravity": 1100,
+    "keepEnergy": false,
+    "restitution": 0.35,
+    "friction": 0.15,
+    "maxBalls": 2000
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 420,
+      "thickness": 14,
+      "spin": 0.45,
+      "gaps": [
+        {
+          "at": 90,
+          "width": 4.5
+        }
+      ]
+    },
+    {
+      "type": "ball",
+      "count": 0,
+      "radius": 7,
+      "speed": 120
+    }
+  ],
+  "timeline": [
+    {
+      "every": 0.05,
+      "until": 17,
+      "do": [
+        {
+          "do": "spawn",
+          "count": 6,
+          "x": 540,
+          "y": 700,
+          "spread": 70,
+          "speed": 120,
+          "direction": 90
+        }
+      ]
+    }
+  ],
+  "style": {
+    "trail": 0.5,
+    "palette": [
+      "#ff4d6d",
+      "#ff9f1c",
+      "#ffd23f",
+      "#7cff6b",
+      "#4dd4ff",
+      "#c77dff"
+    ]
+  },
+  "audio": {
+    "melody": "pentatonic",
+    "instrument": "marimba",
+    "volume": 0.45,
+    "escapeSound": false
+  },
+  "overlay": {
+    "title": "2,000 balls. One tiny gap.",
+    "counter": "escaped"
+  }
+}

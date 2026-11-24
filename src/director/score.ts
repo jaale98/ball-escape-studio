@@ -8,7 +8,7 @@
 import { PHYSICS_HZ, type Scene } from '../engine/scene';
 import { type RingContainer, World } from '../engine/world';
 
-export type Template = 'slow-burn' | 'last-second' | 'chaos' | 'comeback' | 'music-sync';
+export type Template = 'slow-burn' | 'last-second' | 'chaos' | 'comeback' | 'music-sync' | 'perfect-loop';
 
 export const TEMPLATES: Record<Template, { label: string; description: string }> = {
   'slow-burn': { label: 'Slow burn', description: 'Climax near the target, with near-misses building toward it and no dead stretches.' },
@@ -16,7 +16,19 @@ export const TEMPLATES: Record<Template, { label: string; description: string }>
   chaos: { label: 'Chaos', description: 'As busy as possible: lots of hits, lots of balls.' },
   comeback: { label: 'Comeback', description: 'Races and battles: the lead changes hands and the winner was behind at halftime.' },
   'music-sync': { label: 'In time with the song', description: 'Bounces land on the MIDI song’s note timing.' },
+  'perfect-loop': {
+    label: 'Perfect loop',
+    description: 'Finds a stretch whose last frame matches its first, so the video loops seamlessly on replay (target = loop length). Best with one ball and no gravity.',
+  },
 };
+
+/** Pick a sensible story for a scene. */
+export function defaultTemplate(scene: Scene): Template {
+  if (scene.audio.rhythmLock || (scene.audio.noteTimes && scene.audio.melody.startsWith('midi:'))) return 'music-sync';
+  if (scene.duration.endOn === 'lastStanding') return 'comeback';
+  if (scene.duration.endOn === 'never') return 'chaos';
+  return 'slow-burn';
+}
 
 export interface Variation {
   seed: number;
@@ -38,6 +50,10 @@ export interface RunScore extends Variation {
   signals: Record<string, number>;
   /** Short human-readable facts. */
   facts: string[];
+  /** Raw measurements (for the Critic). */
+  stats: { deadTime: number; nearMisses: number; bounceRate: number; leadChanges: number; peakBalls: number; capped: boolean; scriptError: string };
+  /** Perfect loops: the seamless stretch found. */
+  loop?: { from: number; to: number; error: number };
 }
 
 export interface DirectorOptions {
@@ -47,8 +63,40 @@ export interface DirectorOptions {
 }
 
 /** The scene with this variation applied. */
-export function applyVariation(scene: Scene, v: Variation): Scene {
-  return { ...scene, seed: v.seed, world: { ...scene.world, speedScale: scene.world.speedScale * v.speed, spinScale: scene.world.spinScale * v.spin } };
+export function applyVariation(scene: Scene, v: Variation & { loop?: RunScore['loop'] }): Scene {
+  const out: Scene = { ...scene, seed: v.seed, world: { ...scene.world, speedScale: scene.world.speedScale * v.speed, spinScale: scene.world.spinScale * v.spin } };
+  if (v.loop) {
+    // Export exactly the seamless stretch; no timer (it would jump on replay).
+    out.duration = { ...scene.duration, max: v.loop.to, trimStart: v.loop.from, endOn: 'never', tail: 0 };
+    out.overlay = { ...scene.overlay, timer: false };
+  }
+  return out;
+}
+
+/** Loop search: compare the state every few steps against a warmed-up anchor. */
+const LOOP_ANCHOR = 2;
+const LOOP_MIN = 6;
+function snapshot(w: World): number[] {
+  const s: number[] = [];
+  for (const b of w.balls) if (b.alive) s.push(b.id, b.x, b.y, b.vx, b.vy, b.r);
+  for (const c of w.containers) if (c.kind === 'poly' || c.gaps.length) s.push(-1, Math.cos(c.angle) * c.radius, Math.sin(c.angle) * c.radius);
+  return s;
+}
+/** Visual distance between two snapshots, in px (velocity counts as px per 1/4 s). */
+function snapDistance(a: number[], b: number[]): number {
+  if (a.length !== b.length) return Infinity;
+  let d = 0;
+  for (let i = 0; i < a.length; ) {
+    if (a[i] !== b[i]) return Infinity; // different balls alive
+    if (a[i] === -1) {
+      d = Math.max(d, Math.hypot(a[i + 1] - b[i + 1], a[i + 2] - b[i + 2]));
+      i += 3;
+    } else {
+      d = Math.max(d, Math.hypot(a[i + 1] - b[i + 1], a[i + 2] - b[i + 2]) + Math.hypot(a[i + 3] - b[i + 3], a[i + 4] - b[i + 4]) / 4 + Math.abs(a[i + 5] - b[i + 5]));
+      i += 6;
+    }
+  }
+  return d;
 }
 
 const gauss = (x: number, sigma: number) => Math.exp(-0.5 * (x / sigma) ** 2);
@@ -60,7 +108,8 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
   const w = new World(scene);
   const startingBalls = w.balls.length;
   const T = opts.target;
-  const endsOnClimax = scene.duration.endOn !== 'never';
+  // A scene whose script can end it (world.end()) has a climax too.
+  const endsOnClimax = scene.duration.endOn !== 'never' || /world\.end\(/.test(JSON.stringify(scene.rules) + JSON.stringify(scene.timeline));
 
   // Signals gathered while stepping.
   const nearMisses: number[] = []; // times
@@ -79,9 +128,21 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
 
   let cursor = 0;
   const sampleEvery = Math.round(PHYSICS_HZ / 4);
+  const looping = opts.template === 'perfect-loop';
+  let anchor: number[] | null = null;
+  let bestLoop = { to: -1, error: Infinity };
   while (!w.done) {
     w.step();
     const t = w.time;
+    if (looping) {
+      if (w.stepCount === Math.round(LOOP_ANCHOR * PHYSICS_HZ)) anchor = snapshot(w);
+      else if (anchor && t >= LOOP_ANCHOR + LOOP_MIN && w.stepCount % 2 === 0) {
+        const err = snapDistance(anchor, snapshot(w));
+        // Prefer loops near the target length: small penalty for distance from it.
+        const cost = err + Math.abs(t - LOOP_ANCHOR - T) * 0.3;
+        if (cost < bestLoop.error + Math.abs(bestLoop.to - LOOP_ANCHOR - T) * 0.3 || bestLoop.to < 0) bestLoop = { to: t, error: err };
+      }
+    }
     for (; cursor < w.events.length; cursor++) {
       const e = w.events[cursor];
       if (e.type === 'bounce' || e.type === 'hit' || e.type === 'escape' || e.type === 'eliminate') {
@@ -126,7 +187,7 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
   let climax = -1;
   if (w.endReason === 'escaped') climax = w.firstEscapeStep / PHYSICS_HZ;
   else if (w.endReason === 'lastStanding') climax = lastEliminationAt;
-  else if (w.endReason === 'allEscaped' || w.endReason === 'filled') climax = w.time - scene.duration.tail;
+  else if (w.endReason === 'allEscaped' || w.endReason === 'filled' || w.endReason === 'script') climax = w.time - scene.duration.tail;
   const failed = endsOnClimax && climax < 0;
 
   const timing = climax < 0 ? (endsOnClimax ? 0 : 0.5) : gauss(climax - T, 0.15 * T);
@@ -172,11 +233,21 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
       Object.assign(signals, { rhythm: rhythm.score });
       weights = { rhythm: 4, timing: 1, pacing: 1 };
       break;
+    case 'perfect-loop': {
+      const seamless = bestLoop.to > 0 ? Math.exp(-bestLoop.error / 12) : 0;
+      const length = bestLoop.to > 0 ? gauss(bestLoop.to - LOOP_ANCHOR - T, 0.3 * T) : 0;
+      Object.assign(signals, { seamless, length });
+      delete signals.timing;
+      weights = { seamless: 4, length: 1, pacing: 1 };
+      break;
+    }
   }
   const total = Object.values(weights).reduce((a, b) => a + b, 0);
   let score = Object.entries(weights).reduce((s, [k, wt]) => s + wt * (signals[k] ?? 0), 0) / total;
-  if (failed) score *= 0.2;
-  else if (climax > 0 && climax < 0.35 * T) score *= 0.5;
+  if (opts.template !== 'perfect-loop') {
+    if (failed) score *= 0.2;
+    else if (climax > 0 && climax < 0.35 * T) score *= 0.5;
+  }
 
   const facts: string[] = [];
   if (climax >= 0) facts.push(`climax ${climax.toFixed(1)}s`);
@@ -186,6 +257,11 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
   if (leadChanges) facts.push(`${leadChanges} lead changes`);
   if (winnerBall) facts.push(`${winnerBall.label ?? `ball ${winnerBall.id}`} wins`);
   if (opts.template === 'music-sync' && rhythm.checked) facts.push(`${Math.round(rhythm.score * 100)}% of ${rhythm.checked} notes on time`);
+  const loop = looping && bestLoop.to > 0 ? { from: LOOP_ANCHOR, to: Math.round(bestLoop.to * 1000) / 1000, error: bestLoop.error } : undefined;
+  if (looping) {
+    facts.length = 0;
+    facts.push(loop ? `${(loop.to - loop.from).toFixed(1)}s loop, seam ${loop.error.toFixed(1)}px` : 'no loop found');
+  }
 
   return {
     ...v,
@@ -196,6 +272,16 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
     winner: winnerBall ? (winnerBall.label ?? `ball ${winnerBall.id}`) : '',
     signals,
     facts,
+    stats: {
+      deadTime,
+      nearMisses: nearMisses.length,
+      bounceRate: bounceTimes.length / Math.max(1, w.time),
+      leadChanges,
+      peakBalls,
+      capped: peakBalls >= scene.world.maxBalls,
+      scriptError: w.scriptError,
+    },
+    loop,
   };
 }
 

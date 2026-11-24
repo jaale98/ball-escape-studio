@@ -64,6 +64,7 @@ if (director) {
   }
   const top = results[0];
   console.log(`\nBest: "seed": ${top.seed}${top.speed !== 1 || top.spin !== 1 ? `, "world": { "speedScale": ${top.speed}, "spinScale": ${top.spin} }` : ''}`);
+  if (top.loop) console.log(`Loop: "duration": { "max": ${top.loop.to}, "trimStart": ${top.loop.from}, "endOn": "never", "tail": 0 }, "overlay": { "timer": false }`);
   console.log(`Signals: ${Object.entries(top.signals).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(', ')}`);
   process.exit(0);
 }
@@ -108,6 +109,7 @@ if (seeds) {
   console.log(`escapes      ${r.escapes}`);
   console.log(`balls alive  ${r.balls} of ${r.world.balls.length}`);
   if (r.world.zones.length) console.log(`zones        ${r.world.zones.map((z) => z.count).join(' ')}`);
+  if (r.world.scriptError) console.log(`script error ${r.world.scriptError}`);
   console.log(`state hash   ${r.hash}`);
   console.log(`sim time     ${r.ms.toFixed(1)} ms`);
 }

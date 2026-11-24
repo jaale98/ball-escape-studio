@@ -41,6 +41,12 @@
               "minimum": 0,
               "default": 2,
               "description": "Seconds to keep rolling after the ending event."
+            },
+            "trimStart": {
+              "type": "number",
+              "minimum": 0,
+              "default": 0,
+              "description": "Export skips this many seconds (the simulation still runs from 0). Perfect loops use it."
             }
           },
           "additionalProperties": false,
@@ -120,9 +126,11 @@
                   "bounce",
                   "escape",
                   "hit",
-                  "eliminate"
+                  "eliminate",
+                  "strike",
+                  "wake"
                 ],
-                "description": "bounce = ball hits a wall; hit = two balls collide; eliminate = a ball runs out of hp."
+                "description": "bounce = ball hits a wall; hit = two balls collide; eliminate = a ball runs out of hp; strike = a weapon hits a ball; wake = a frozen ball is woken."
               },
               "do": {
                 "type": "array",
@@ -247,6 +255,15 @@
                           "type": "number",
                           "default": 0,
                           "description": "Extra damage per 1000 px/s of impact."
+                        },
+                        "when": {
+                          "type": "string",
+                          "enum": [
+                            "always",
+                            "defending"
+                          ],
+                          "default": "always",
+                          "description": "On a hit: \"defending\" damages only the ball that was struck (the one coming in slower), so two equal balls never trade damage."
                         }
                       },
                       "required": [
@@ -356,11 +373,14 @@
                   ]
                 },
                 "minItems": 1
+              },
+              "script": {
+                "type": "string",
+                "description": "JavaScript run on each event, with `ctx` (see src/engine/script.ts): ctx.ball, ctx.other, ctx.container, ctx.world, ctx.rng, ctx.state. Must be deterministic."
               }
             },
             "required": [
-              "on",
-              "do"
+              "on"
             ],
             "additionalProperties": false
           },
@@ -515,6 +535,15 @@
                           "type": "number",
                           "default": 0,
                           "description": "Extra damage per 1000 px/s of impact."
+                        },
+                        "when": {
+                          "type": "string",
+                          "enum": [
+                            "always",
+                            "defending"
+                          ],
+                          "default": "always",
+                          "description": "On a hit: \"defending\" damages only the ball that was struck (the one coming in slower), so two equal balls never trade damage."
                         }
                       },
                       "required": [
@@ -625,11 +654,12 @@
                 },
                 "minItems": 1,
                 "description": "Ball actions (grow, speedUp, damage) apply to every live ball."
+              },
+              "script": {
+                "type": "string",
+                "description": "JavaScript run each time this fires, with `ctx` (ctx.ball is null)."
               }
             },
-            "required": [
-              "do"
-            ],
             "additionalProperties": false
           },
           "default": []
@@ -679,6 +709,16 @@
             "showHp": {
               "type": "boolean",
               "default": true
+            },
+            "renderer": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "canvas",
+                "webgl"
+              ],
+              "default": "auto",
+              "description": "Ball drawing: webgl handles thousands of balls; auto picks it for crowd scenes."
             }
           },
           "additionalProperties": false,
@@ -1180,6 +1220,67 @@
                         "type": "number",
                         "exclusiveMinimum": 0,
                         "description": "Hit points. Balls without hp cannot be damaged."
+                      },
+                      "frozen": {
+                        "type": "boolean",
+                        "description": "Starts still and weightless; wakes up when another ball hits it (chain reactions)."
+                      },
+                      "arrange": {
+                        "type": "string",
+                        "enum": [
+                          "random",
+                          "grid"
+                        ],
+                        "default": "random",
+                        "description": "With count > 1: scatter randomly within spread, or lay out in a tidy grid that never overlaps."
+                      },
+                      "shape": {
+                        "type": "string",
+                        "enum": [
+                          "circle",
+                          "square",
+                          "triangle",
+                          "hexagon",
+                          "star"
+                        ],
+                        "description": "How the ball is drawn (it spins as it moves). Collisions still use its circle."
+                      },
+                      "weapon": {
+                        "type": "object",
+                        "properties": {
+                          "length": {
+                            "type": "number",
+                            "exclusiveMinimum": 0,
+                            "default": 70,
+                            "description": "px beyond the ball’s edge."
+                          },
+                          "width": {
+                            "type": "number",
+                            "exclusiveMinimum": 0,
+                            "default": 8
+                          },
+                          "spin": {
+                            "type": "number",
+                            "default": 4,
+                            "description": "rad/s. Weapons that clash reverse direction."
+                          },
+                          "damage": {
+                            "type": "number",
+                            "minimum": 0,
+                            "default": 1,
+                            "description": "hp taken from a ball the weapon strikes."
+                          },
+                          "angle": {
+                            "type": "number",
+                            "default": 0,
+                            "description": "Starting angle in degrees."
+                          },
+                          "color": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "description": "A spinning blade attached to the ball: strikes damage and knock back other balls."
                       }
                     },
                     "required": [

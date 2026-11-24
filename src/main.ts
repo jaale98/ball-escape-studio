@@ -3,7 +3,11 @@ import { createMaster, playVoice, SoundMapper } from './audio/sound';
 import type { Scene } from './engine/scene';
 import { mergeSource, resolveScene } from './engine/source';
 import { DT, World } from './engine/world';
-import { type RunScore } from './director/score';
+import { hasScripts, preflight } from './director/check';
+import { critique } from './director/critic';
+import { scoreOne } from './director/pool';
+import { caption, captionText } from './director/caption';
+import { defaultTemplate, type RunScore } from './director/score';
 import { canExport, exportMp4 } from './export/mp4';
 import { renderStill } from './export/still';
 import { Renderer } from './render/renderer';
@@ -105,6 +109,12 @@ async function loadScene(keepSeed: boolean, rebuildSliders = true): Promise<void
       }
     }
     if (token !== loadToken) return;
+    // Scripted scenes run headless in a Worker first: a runaway script fails there, not here.
+    if (hasScripts(resolved)) {
+      const scriptError = await preflight(resolved);
+      if (token !== loadToken) return;
+      $('script-msg').textContent = scriptError ? `Script error: ${scriptError} (that script was switched off)` : '';
+    } else $('script-msg').textContent = '';
     // A UI seed is remembered per scene, but only while the file's own seed is
     // unchanged: editing the seed in the file always wins.
     const [fileSeed, uiSeed] = (store.get(`seed:${entry.name}`) ?? '').split(':').map(Number);
@@ -120,6 +130,7 @@ async function loadScene(keepSeed: boolean, rebuildSliders = true): Promise<void
       void refreshHistory(entry.name);
     }
     restart();
+    scheduleCritic();
   } catch (err) {
     if (token !== loadToken) return;
     scene = null;
@@ -373,7 +384,10 @@ if (!canExport()) {
 exportBtn.addEventListener('click', () => {
   if (!scene) return;
   const name = currentEntry()?.name ?? 'scene';
-  enqueue(`${name} · seed ${scene.seed}`, `${name}-seed${scene.seed}`, scene);
+  enqueue(`${name} · seed ${scene.seed}`, `${name}-seed${scene.seed}`, scene, {
+    caption: captionText(caption(scene)),
+    info: { scene: name, seed: scene.seed, speedScale: scene.world.speedScale, spinScale: scene.world.spinScale },
+  });
   $('export-msg').textContent = 'Added to the export queue below.';
 });
 
@@ -398,6 +412,47 @@ exportBtn.addEventListener('click', () => {
     return res.json();
   },
 };
+
+// ---- Critic -----------------------------------------------------------------
+
+let criticTimer = 0;
+let criticToken = 0;
+let criticNotes: string[] = [];
+function scheduleCritic(): void {
+  clearTimeout(criticTimer);
+  criticTimer = window.setTimeout(async () => {
+    if (!scene) return;
+    const token = ++criticToken;
+    const s = scene;
+    $('critic-list').innerHTML = '<li class="muted">Checking…</li>';
+    try {
+      const loop = s.duration.trimStart > 0;
+      const r = await scoreOne(s, loop ? { template: 'perfect-loop', target: s.duration.max - s.duration.trimStart } : { template: defaultTemplate(s), target: 30 });
+      if (token !== criticToken) return;
+      const notes = critique(s, r);
+      criticNotes = notes.filter((n) => n.level === 'warn').map((n) => n.text);
+      $('critic-list').replaceChildren(
+        ...notes.map((n) => {
+          const li = document.createElement('li');
+          li.className = n.level;
+          li.textContent = n.text;
+          return li;
+        }),
+      );
+      $<HTMLButtonElement>('critic-fix').hidden = criticNotes.length === 0;
+    } catch (err) {
+      $('critic-list').innerHTML = '';
+      console.warn('critic failed', err);
+    }
+  }, 400);
+}
+
+$('critic-fix').addEventListener('click', () => {
+  if (!criticNotes.length) return;
+  const box = $<HTMLTextAreaElement>('ai-prompt');
+  box.value = `The Critic flagged these problems with this scene:\n${criticNotes.map((n) => `- ${n}`).join('\n')}\nFix them while keeping the idea of the video. Re-check with npm run sim.`;
+  $<HTMLButtonElement>('ai-send').click();
+});
 
 // ---- Hot scene updates, Claude, history, taste --------------------------------
 
@@ -486,11 +541,42 @@ initDirector({
     setTweak('seed', r.seed);
     setTweak('world.speedScale', r.speed);
     setTweak('world.spinScale', r.spin);
+    if (r.loop) {
+      setTweak('duration.max', r.loop.to);
+      setTweak('duration.trimStart', r.loop.from);
+      setTweak('duration.endOn', 'never');
+      setTweak('duration.tail', 0);
+      setTweak('overlay.timer', false);
+    }
   },
-  keep: (r) => {
-    if (!scene) return;
-    const variant = { ...scene, seed: r.seed, world: { ...scene.world, speedScale: scene.world.speedScale * r.speed, spinScale: scene.world.spinScale * r.spin } };
-    enqueue(`${currentEntry()?.name ?? 'scene'} · seed ${r.seed} · score ${r.score.toFixed(0)}`, variantName(r), variant);
+  keep: (item) => {
+    const name = item.source?.name ?? currentEntry()?.name ?? 'scene';
+    const r = item.r;
+    const c = caption(item.scene, r.facts, r.winner);
+    enqueue(`${item.source ? item.title : `${name} · seed ${r.seed}`}${r.score ? ` · score ${r.score.toFixed(0)}` : ''}`, item.source ? name : variantName(r), item.scene, {
+      caption: captionText(c),
+      info: { scene: name, seed: r.seed, speedScale: item.scene.world.speedScale, spinScale: item.scene.world.spinScale, score: r.score, winner: r.winner },
+    });
+  },
+  sources: () => sources,
+  resolve: async (name, extra) => {
+    const s = resolveScene(name, { ...sources, ...extra });
+    if (s.audio.melody.startsWith('midi:') && !s.audio.notes) {
+      const song = await loadSong(songUrl(s.audio.melody.slice(5)));
+      const { groups, times } = songGroups(song, s.audio.parts);
+      s.audio.notes = groups;
+      s.audio.noteTimes = times;
+    }
+    return s;
+  },
+  save: async (source) => {
+    const res = await fetch(`/__studio/scene?name=${encodeURIComponent(source.name)}&create=1`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ $schema: '../scene.schema.json', ...source.raw }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return (await res.json()).name as string;
   },
   setOpen: (open) => {
     directorOpen = open;

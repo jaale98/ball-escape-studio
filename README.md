@@ -19,9 +19,13 @@ Every run is **deterministic**: the same scene and seed always produce exactly t
 
 ## Features
 
-- **14 formats out of the box:** ring escape, nested rings, multiply, grow on bounce, shrinking gap, ball race, battle royale, country battle, Plinko, hexagon escape, paint the ring, gravity flip, music bounce, and rhythm bounce. Each one is just a scene file.
+- **19 formats out of the box**, covering every format in the original catalog: ring escape, nested rings, multiply, grow on bounce, shrinking gap, ball race, battle royale, country battle, weapon battle, Plinko, hexagon escape, bouncing square, paint the ring, gravity flip, chain reaction, eternal loop, music bounce, rhythm bounce, and a 2,000-ball crowd. Each one is just a scene file.
 - **The Director.** Simulates hundreds of runs in a fraction of a second, scores each for the story you want (slow burn, last-second escape, chaos, comeback, in time with the song), and shows the best nine playing side by side. Use one, swipe through them, or export the best.
-- **Swipe review and an export queue.** Keep (→) or discard (←) candidates one by one; kept videos render in the background and land in `exports/`.
+- **Swipe review and an export queue.** Keep (→) or discard (←) candidates one by one; kept videos render in the background and land in `exports/` with a caption, the exact scene, and a line in `exports/log.csv`.
+- **Batch production.** One click makes 4–12 remixes of a scene (new palette, instrument, melody and feel), each auto-directed. **Tournaments** turn any battle into a knockout bracket: every match becomes a scene with a close fight and a winner that advances.
+- **The Critic.** Plain-language notes on the current run ("the climax comes at 6s, early for a short", "a 5s stretch where nothing happens", "one ball leads the whole battle"), with a **Fix with Claude** button.
+- **Custom rule scripts.** When built-in actions aren't enough, a rule can run a few lines of JavaScript, deterministic and checked in a Worker before it runs.
+- **Crowds.** Thousands of balls with WebGL rendering and spatial-hash collisions.
 - **A small scene language.** Scenes can `extend` other scenes, stack named `modifiers` (`"multiply"`, `"battle"`, `"gravity-flip"`…), and use prefabs (`nested` rings, a `pegboard`, `bins`). Most new formats need no code at all.
 - **Deterministic physics.** Fixed 240 Hz timestep, seeded randomness, no wall-clock time. A state hash proves two runs are identical.
 - **Built for the genre.** Spinning rings and polygons with exits, walls, pegs, counting zones, hit points, winners, timed events, and bounces that never lose energy.
@@ -100,10 +104,10 @@ Most formats are a base scene plus a twist. This is the whole `multiply` preset:
 
 | Section | What it controls |
 | --- | --- |
-| `entities` | `ring` (radius, spin, gaps), `polygon` (sides, open sides, exit `gap`), `wall`, `peg`, `zone` (counts balls entering), `ball` (radius, speed, count, colors, labels, hp), and prefabs: `nested`, `pegboard`, `bins` |
-| `rules` | On `bounce`, `escape`, `hit` or `eliminate`: `grow`, `shrinkGap`, `speedUp`, `spawn`, `damage`, `spinUp`, `reverseSpin`, gravity changes |
+| `entities` | `ring` (radius, spin, gaps), `polygon` (sides, open sides, exit `gap`), `wall`, `peg`, `zone` (counts balls entering), `ball` (radius, speed, count, colors, labels, hp, `weapon`, `shape`, `frozen`, `arrange`), and prefabs: `nested`, `pegboard`, `bins` |
+| `rules` | On `bounce`, `escape`, `hit`, `eliminate`, `strike` or `wake`: `grow`, `shrinkGap`, `speedUp`, `spawn`, `damage`, `spinUp`, `reverseSpin`, gravity changes, or a `script` |
 | `timeline` | Do the same actions `at` a time or `every` N seconds (spawners, gravity flips…) |
-| `duration` | Length cap and what ends the run: `firstEscape`, `allEscaped`, `lastStanding`, `never` |
+| `duration` | Length cap and what ends the run: `firstEscape`, `allEscaped`, `lastStanding`, `never`; `trimStart` for loops |
 | `world` | Gravity (number or `[x, y]`), energy keeping, restitution, friction, ball cap |
 | `style` | Background, palette, ring color, trail length, glow, paint, hp rings |
 | `audio` | Melody (`pentatonic`, `ode-to-joy`, `fur-elise`, `midi:<file>`) or inline `notes`, chords, transpose, instrument, sound effects |
@@ -129,6 +133,11 @@ The full schema with every default lives in [`src/engine/scene.ts`](src/engine/s
 | [`hexagon-escape`](scenes/hexagon-escape.json) | A spinning hexagon with a narrow exit | `polygon` |
 | [`plinko`](scenes/plinko.json) | Balls rain through pegs into counted bins | `pegboard` + `bins` + timeline spawner |
 | [`paint-the-ring`](scenes/paint-the-ring.json) | Which color covers more? | closed ring + `paint` + `zero-g` |
+| [`weapon-battle`](scenes/weapon-battle.json) | Four balls with spinning blades; strikes cost hp, clashing blades bounce | ball `weapon` |
+| [`bouncing-square`](scenes/bouncing-square.json) | A spinning square tries to escape | ring-escape + ball `shape` |
+| [`chain-reaction`](scenes/chain-reaction.json) | One moving ball passes its motion along a grid of frozen balls | `frozen` balls + `arrange: grid` + a `wake` rule script |
+| [`eternal-loop`](scenes/eternal-loop.json) | A seamless loop found by the Director | `trimStart` loop window |
+| [`crowd-pour`](scenes/crowd-pour.json) | 2,000 balls drain through a gap two balls wide | timeline spawner, WebGL crowd |
 
 ## The Director
 
@@ -141,8 +150,34 @@ Click **Director** in the studio. Pick a story, set when the climax should land,
 | Chaos | As many hits and balls as possible |
 | Comeback | Races and battles where the lead changes and the winner was behind at halftime |
 | In time with the song | Bounces that follow the MIDI song's note timing |
+| Perfect loop | A stretch whose last frame matches its first (sets the loop window for export) |
 
 The best nine play side by side. **Use** makes one the scene's seed (plus `world.speedScale` / `world.spinScale` tweaks; **Save to file** keeps them). **Export** queues it, and **Review one by one** opens the swipe view.
+
+### Batch production
+
+In the Director's **Batch** row:
+
+- **Make remixes** builds 4–12 versions of the scene (new palette, background, instrument, melody, and a little speed and spin) and directs each one. **Save** keeps a remix as its own scene file; **Export** queues it.
+- **Build tournament** (battle scenes) runs a knockout bracket for the names you list. Each match is a one-on-one battle that extends your scene, with a seed picked for a close fight near your target length. Winners advance, and **Save all as scenes** writes the bracket to `scenes/`. From the terminal:
+
+```bash
+npm run tournament -- country-battle "Brazil,Japan,France,Canada,Italy,Mexico,Kenya,Sweden" --name world-cup
+```
+
+Every queued export saves `exports/<name>.mp4`, `<name>.txt` (hook, caption, hashtags), `<name>.scene.json` (the exact scene, to remake or extend it later), and a row in `exports/log.csv`.
+
+### Custom rule scripts
+
+A rule (or timeline entry) can run JavaScript instead of, or as well as, built-in actions:
+
+```json
+{ "on": "wake", "script": "ctx.other.frozen = true; ctx.ball.color = ctx.other.color;" }
+```
+
+Scripts get `ctx.ball`, `ctx.other`, `ctx.container`, `ctx.world` (`balls()`, `spawn()`, `do(action)`, `gravity(x, y)`, `end()`), seeded `ctx.rng`, and a persistent `ctx.state`. `Math.random`, `Date`, timers and network access aren't available, so runs stay deterministic. The full reference is in [`src/engine/script.ts`](src/engine/script.ts). The studio runs scripted scenes headless in a Worker first, so a script that loops forever fails there instead of freezing the page.
+
+Scripts are code: like any code, only run scene files you trust.
 
 ### Rhythm lock
 
@@ -202,7 +237,7 @@ scenes/*.json ─► resolveScene: extends ─► modifiers ─► prefabs ─�
 - **`src/render/`** draws a world onto a 1080×1920 canvas. Effects are driven only by the event log and a seeded RNG, so the export matches the preview.
 - **`src/audio/`** maps events to notes, reads MIDI files, and synthesizes sound with Web Audio. The same code drives live playback and the offline mixdown.
 - **`src/export/`** handles the frame-by-frame MP4 encoder and deterministic still frames.
-- **`src/director/`** holds the Director: run scoring and story templates (`score.ts`, also used by the CLI) and the Web Worker pool.
+- **`src/director/`** holds the Director: run scoring and story templates (`score.ts`, also used by the CLI), the Web Worker pool, the Critic, remixes, tournaments, captions, and the script preflight.
 - **`src/ui/`** holds the sliders, prompt box, history, music panel, Director view, swipe review, and export queue.
 - **`server/`** holds the dev-server endpoints, including the Claude Code runner (`claude.ts`) and scene history.
 
@@ -214,7 +249,7 @@ Export runs the scene twice: a headless pass that learns the length and every ev
 2. **Scene language:** inheritance, modifiers, prefabs, sliders, MIDI, 13 formats (done)
 3. **AI through Claude Code:** prompt box on your own plan, version history and undo, taste notes (done)
 4. **The Director:** story-scored seed search in Web Workers, variant grid, swipe review, export queue, MIDI upload / part picker, rhythm lock (done)
-5. **Full studio:** WebGL crowds, custom rule scripts, batch production and series tools
+5. **Full studio:** all 16 catalog formats, custom rule scripts, WebGL crowds, perfect loops, the Critic, remixes, tournaments, captions and run logs (done)
 
 ## License
 

@@ -1,0 +1,48 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Eternal loop",
+  "seed": 2,
+  "duration": {
+    "max": 12.5,
+    "trimStart": 2,
+    "endOn": "never",
+    "tail": 0
+  },
+  "world": {
+    "gravity": 0,
+    "speedScale": 1.051,
+    "spinScale": 1.019
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 440,
+      "thickness": 12,
+      "spin": 0.4,
+      "gaps": []
+    },
+    {
+      "type": "ball",
+      "radius": 30,
+      "speed": 1000,
+      "x": 620,
+      "y": 900,
+      "color": "#4dd4ff"
+    }
+  ],
+  "style": {
+    "trail": 0.95,
+    "ringColor": "#bfefff",
+    "background": "#040912"
+  },
+  "audio": {
+    "melody": "pentatonic",
+    "instrument": "bell",
+    "volume": 0.6
+  },
+  "overlay": {
+    "title": "It never ends",
+    "counter": "none",
+    "timer": false
+  }
+}

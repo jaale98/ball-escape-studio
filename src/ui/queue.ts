@@ -14,6 +14,8 @@ interface Item {
   progress: number;
   detail: string;
   url?: string;
+  /** Written next to the video: caption text and run info. */
+  meta?: { caption: string; info: Record<string, unknown> };
 }
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -30,8 +32,8 @@ export function initQueue(hooks: { setExporting(busy: boolean): void }): void {
   });
 }
 
-export function enqueue(label: string, fileName: string, scene: Scene): void {
-  items.push({ id: nextId++, label, fileName: fileName.replace(/[^a-zA-Z0-9_.-]+/g, '-'), scene: structuredClone(scene), status: 'queued', progress: 0, detail: '' });
+export function enqueue(label: string, fileName: string, scene: Scene, meta?: Item['meta']): void {
+  items.push({ id: nextId++, label, fileName: fileName.replace(/[^a-zA-Z0-9_.-]+/g, '-'), scene: structuredClone(scene), status: 'queued', progress: 0, detail: '', meta });
   draw();
   void process();
 }
@@ -55,6 +57,12 @@ async function process(): Promise<void> {
         if (res?.ok) {
           const { file } = await res.json();
           item.detail = `${file} · ${result.seconds.toFixed(1)}s · ${(result.blob.size / 1e6).toFixed(1)} MB`;
+          // Sidecars: caption (.txt), the exact scene (.scene.json), and a line in exports/log.csv.
+          await fetch(`/__studio/export-meta?file=${encodeURIComponent(file)}`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ caption: item.meta?.caption ?? '', scene: item.scene, info: { ...item.meta?.info, seconds: Number(result.seconds.toFixed(2)) } }),
+          }).catch(() => {});
         } else {
           const a = document.createElement('a');
           a.href = item.url;

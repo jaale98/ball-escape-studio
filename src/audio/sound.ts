@@ -71,6 +71,14 @@ export class SoundMapper {
     }
     if (e.type === 'escape' && audio.escapeSound) return { time, kind: 'escape', midi: [72], gain: 1, pan };
     if (e.type === 'eliminate') return { time, kind: 'pop', midi: [], gain: 1, pan };
+    if (e.type === 'strike' && audio.hitSound) return { time, kind: 'hit', midi: [], gain: 1, pan };
+    if (e.type === 'clash' && audio.hitSound) return { time, kind: 'note', midi: [96, 103], gain: 0.5, pan };
+    if (e.type === 'wake') {
+      this.recent = this.recent.filter((t) => t > time - 0.06);
+      if (this.recent.length >= 4) return null;
+      this.recent.push(time);
+      return { time, kind: 'note', midi: this.nextNote(), gain: 0.6, pan };
+    }
     if (e.type === 'hit' && audio.hitSound) {
       this.recentHits = this.recentHits.filter((t) => t > time - 0.05);
       if (this.recentHits.length >= 3) return null;

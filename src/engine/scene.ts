@@ -99,6 +99,21 @@ export const BallSchema = z
     colors: z.array(z.string()).optional().describe('Per-ball colors, cycled.'),
     labels: z.array(z.string()).optional().describe('Per-ball names (teams, countries), cycled. Shown under each ball.'),
     hp: z.number().positive().optional().describe('Hit points. Balls without hp cannot be damaged.'),
+    frozen: z.boolean().optional().describe('Starts still and weightless; wakes up when another ball hits it (chain reactions).'),
+    arrange: z.enum(['random', 'grid']).default('random').describe('With count > 1: scatter randomly within spread, or lay out in a tidy grid that never overlaps.'),
+    shape: z.enum(['circle', 'square', 'triangle', 'hexagon', 'star']).optional().describe('How the ball is drawn (it spins as it moves). Collisions still use its circle.'),
+    weapon: z
+      .object({
+        length: z.number().positive().default(70).describe('px beyond the ball’s edge.'),
+        width: z.number().positive().default(8),
+        spin: z.number().default(4).describe('rad/s. Weapons that clash reverse direction.'),
+        damage: z.number().nonnegative().default(1).describe('hp taken from a ball the weapon strikes.'),
+        angle: z.number().default(0).describe('Starting angle in degrees.'),
+        color: z.string().optional(),
+      })
+      .strict()
+      .optional()
+      .describe('A spinning blade attached to the ball: strikes damage and knock back other balls.'),
   })
   .strict();
 
@@ -119,7 +134,14 @@ export const ActionSchema = z.discriminatedUnion('do', [
       direction: z.number().optional(),
     })
     .strict(),
-  z.object({ do: z.literal('damage'), amount: z.number().default(1), perSpeed: z.number().default(0).describe('Extra damage per 1000 px/s of impact.') }).strict(),
+  z
+    .object({
+      do: z.literal('damage'),
+      amount: z.number().default(1),
+      perSpeed: z.number().default(0).describe('Extra damage per 1000 px/s of impact.'),
+      when: z.enum(['always', 'defending']).default('always').describe('On a hit: "defending" damages only the ball that was struck (the one coming in slower), so two equal balls never trade damage.'),
+    })
+    .strict(),
   z.object({ do: z.literal('setGravity'), gravity: z.union([z.number(), Vec]) }).strict(),
   z.object({ do: z.literal('flipGravity') }).strict(),
   z.object({ do: z.literal('rotateGravity'), degrees: z.number().default(90) }).strict(),
@@ -129,8 +151,14 @@ export const ActionSchema = z.discriminatedUnion('do', [
 
 export const RuleSchema = z
   .object({
-    on: z.enum(['bounce', 'escape', 'hit', 'eliminate']).describe('bounce = ball hits a wall; hit = two balls collide; eliminate = a ball runs out of hp.'),
-    do: z.array(ActionSchema).min(1),
+    on: z
+      .enum(['bounce', 'escape', 'hit', 'eliminate', 'strike', 'wake'])
+      .describe('bounce = ball hits a wall; hit = two balls collide; eliminate = a ball runs out of hp; strike = a weapon hits a ball; wake = a frozen ball is woken.'),
+    do: z.array(ActionSchema).min(1).optional(),
+    script: z
+      .string()
+      .optional()
+      .describe('JavaScript run on each event, with `ctx` (see src/engine/script.ts): ctx.ball, ctx.other, ctx.container, ctx.world, ctx.rng, ctx.state. Must be deterministic.'),
   })
   .strict();
 
@@ -140,7 +168,8 @@ export const TimelineSchema = z
     every: z.number().positive().optional().describe('Fire repeatedly with this period (seconds).'),
     start: z.number().nonnegative().default(0).describe('With every: first firing time.'),
     until: z.number().nonnegative().optional().describe('With every: stop after this time.'),
-    do: z.array(ActionSchema).min(1).describe('Ball actions (grow, speedUp, damage) apply to every live ball.'),
+    do: z.array(ActionSchema).min(1).optional().describe('Ball actions (grow, speedUp, damage) apply to every live ball.'),
+    script: z.string().optional().describe('JavaScript run each time this fires, with `ctx` (ctx.ball is null).'),
   })
   .strict();
 
@@ -156,6 +185,7 @@ export const SceneSchema = z
         max: z.number().positive().default(60).describe('Hard cap in seconds.'),
         endOn: z.enum(['firstEscape', 'allEscaped', 'lastStanding', 'never']).default('firstEscape'),
         tail: z.number().nonnegative().default(2).describe('Seconds to keep rolling after the ending event.'),
+        trimStart: z.number().nonnegative().default(0).describe('Export skips this many seconds (the simulation still runs from 0). Perfect loops use it.'),
       })
       .strict()
       .default({}),
@@ -183,6 +213,7 @@ export const SceneSchema = z
         glow: z.boolean().default(true),
         paint: z.boolean().default(false).describe('Balls leave permanent paint on the background.'),
         showHp: z.boolean().default(true),
+        renderer: z.enum(['auto', 'canvas', 'webgl']).default('auto').describe('Ball drawing: webgl handles thousands of balls; auto picks it for crowd scenes.'),
       })
       .strict()
       .default({}),
@@ -245,6 +276,10 @@ export function parseScene(input: unknown): Scene {
   }
   for (const [i, t] of result.data.timeline.entries()) {
     if ((t.at === undefined) === (t.every === undefined)) throw new Error(`Invalid scene:\ntimeline.${i}: set exactly one of "at" or "every"`);
+    if (!t.do && !t.script) throw new Error(`Invalid scene:\ntimeline.${i}: needs "do" or "script"`);
+  }
+  for (const [i, r] of result.data.rules.entries()) {
+    if (!r.do && !r.script) throw new Error(`Invalid scene:\nrules.${i}: needs "do" or "script"`);
   }
   return result.data;
 }
