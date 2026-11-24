@@ -49,8 +49,8 @@ export function melodyFor(audio: Scene['audio']): number[][] | null {
 export class SoundMapper {
   private noteIndex = 0;
   private walk = 0;
-  private recent: number[] = [];
-  private recentHits: number[] = [];
+  /** Recent sound times per limiter key (event time, so it's deterministic). */
+  private recent = new Map<string, number[]>();
   private readonly rng: Rng;
   private readonly melody: number[][] | null;
   /** Backing notes folded into one pass of the song: [song time, note], sorted. */
@@ -84,34 +84,24 @@ export class SoundMapper {
       const locked = this.rhythmK > 0;
       const index = this.noteIndex;
       // At most 4 notes in any 60 ms window keeps big crowds from turning to noise.
-      this.recent = this.recent.filter((t) => t > time - 0.06);
-      const crowded = this.recent.length >= 4;
+      const crowded = !this.allow('note', time, 0.06, 4);
       if (crowded && !locked) return [];
       const note = this.nextNote();
       const out: Voice[] = [];
       if (!crowded) {
-        this.recent.push(time);
         out.push({ time, delay: 0, kind: 'note', midi: note, gain: Math.max(0.35, Math.min(1, 0.35 + e.speed / 2500)), pan });
       }
       if (locked && this.backing.length) out.push(...this.backingAfter(index, time));
       return out;
     }
-    if (e.type === 'escape' && audio.escapeSound) return one({ kind: 'escape', midi: [72], gain: 1, pan });
-    if (e.type === 'eliminate') return one({ kind: 'pop', midi: [], gain: 1, pan });
-    if (e.type === 'strike' && audio.hitSound) return one({ kind: 'hit', midi: [], gain: 1, pan });
-    if (e.type === 'clash' && audio.hitSound) return one({ kind: 'note', midi: [96, 103], gain: 0.5, pan });
-    if (e.type === 'wake') {
-      this.recent = this.recent.filter((t) => t > time - 0.06);
-      if (this.recent.length >= 4) return [];
-      this.recent.push(time);
-      return one({ kind: 'note', midi: this.nextNote(), gain: 0.6, pan });
-    }
-    if (e.type === 'hit' && audio.hitSound) {
-      this.recentHits = this.recentHits.filter((t) => t > time - 0.05);
-      if (this.recentHits.length >= 3) return [];
-      this.recentHits.push(time);
-      return one({ kind: 'hit', midi: [], gain: Math.max(0.3, Math.min(1, e.speed / 1500)), pan });
-    }
+    // Every other sound is rate-limited too: a format like multiply can make
+    // hundreds of escapes a second, and each one is several oscillators.
+    if (e.type === 'escape' && audio.escapeSound) return this.allow('escape', time, 0.25, 2) ? one({ kind: 'escape', midi: [72], gain: 1, pan }) : [];
+    if (e.type === 'eliminate') return this.allow('pop', time, 0.1, 3) ? one({ kind: 'pop', midi: [], gain: 1, pan }) : [];
+    if (e.type === 'strike' && audio.hitSound) return this.allow('hit', time, 0.05, 3) ? one({ kind: 'hit', midi: [], gain: 1, pan }) : [];
+    if (e.type === 'clash' && audio.hitSound) return this.allow('clash', time, 0.1, 3) ? one({ kind: 'note', midi: [96, 103], gain: 0.5, pan }) : [];
+    if (e.type === 'wake') return this.allow('note', time, 0.06, 4) ? one({ kind: 'note', midi: this.nextNote(), gain: 0.6, pan }) : [];
+    if (e.type === 'hit' && audio.hitSound) return this.allow('hit', time, 0.05, 3) ? one({ kind: 'hit', midi: [], gain: Math.max(0.3, Math.min(1, e.speed / 1500)), pan }) : [];
     return [];
   }
 
@@ -130,6 +120,15 @@ export class SoundMapper {
       out.push({ time: time + delay, delay, kind: 'note', midi: [note + this.scene.audio.transpose], gain, pan: 0 });
     }
     return out;
+  }
+
+  /** True (and counted) if fewer than `max` sounds of this kind played in the last `window` seconds. */
+  private allow(key: string, time: number, window: number, max: number): boolean {
+    const list = (this.recent.get(key) ?? []).filter((t) => t > time - window);
+    this.recent.set(key, list);
+    if (list.length >= max) return false;
+    list.push(time);
+    return true;
   }
 
   private nextNote(): number[] {

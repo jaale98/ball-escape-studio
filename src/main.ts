@@ -398,6 +398,9 @@ function applyVolume(): void {
   if (audio && scene) (audio.master as GainNode).gain.value = scene.audio.volume;
 }
 
+/** Audio-clock watchdog: if the context says it's running but its clock stops, rebuild it. */
+let clockSeen = { ctx: -1, real: 0 };
+
 function pumpAudio(): void {
   if (!world || !mapper || !scene) return;
   const events = world.events;
@@ -405,11 +408,31 @@ function pumpAudio(): void {
     audioCursor = events.length;
     return;
   }
+  const realNow = performance.now();
+  if (audio.ctx.currentTime !== clockSeen.ctx) clockSeen = { ctx: audio.ctx.currentTime, real: realNow };
+  else if (realNow - clockSeen.real > 1500) {
+    // The audio thread is stuck (an overload can do this): start a fresh context.
+    clockSeen = { ctx: -1, real: realNow };
+    void audio.ctx.close().catch(() => {});
+    audio = null;
+    ensureAudio();
+    audioCursor = events.length;
+    return;
+  }
   const now = audio.ctx.currentTime + 0.03;
+  // The mapper limits sounds by simulation time; this also caps each frame, so a
+  // backlog (a slow frame, a busy tab) can't flood the audio thread at once.
+  let budget = 24;
   for (; audioCursor < events.length; audioCursor++) {
     for (const v of mapper.map(events[audioCursor])) {
-      playVoice(audio.ctx, audio.master, v, now + v.delay, scene.audio.instrument);
-      voicesPlayed++;
+      if (budget <= 0) continue;
+      budget--;
+      try {
+        playVoice(audio.ctx, audio.master, v, now + v.delay, scene.audio.instrument);
+        voicesPlayed++;
+      } catch (err) {
+        console.warn('sound skipped', err);
+      }
     }
   }
 }
