@@ -19,7 +19,27 @@ Every run is **deterministic**: the same scene and seed always produce exactly t
 
 ## Features
 
-- **19 formats out of the box**, covering every format in the original catalog: ring escape, nested rings, multiply, grow on bounce, shrinking gap, ball race, battle royale, country battle, weapon battle, Plinko, hexagon escape, bouncing square, paint the ring, gravity flip, chain reaction, eternal loop, music bounce, rhythm bounce, and a 2,000-ball crowd. Each one is just a scene file.
+- **50 formats out of the box**, grouped by family in the gallery. They range from the classics (ring escape, nested rings, multiply, battles, Plinko) to destruction (ring breaker, brick breaker, 45-hit rings), teams (Pong wars territory, rock-paper-scissors, infection, absorb), forces (black holes, vortex drains, portals, orbits) and surreal twists (meowing escapes, gaps that jump, a triangle that becomes a circle, clone trails, merge jars). There are chaos videos too (double pendulums, pendulum waves, butterfly-effect twins, string art) and satisfying ones (picture reveals, rainbow sand, marble races, 100 rings). Each one is just a scene file.
+- **V2 building blocks:**
+  - **Containers:** breakable rings (segments or hit points).
+  - **Solids:** numbered bricks, spinning paddles and blades, bumpers, deadly walls.
+  - **Fields:** portals, and forces (attract, repel, vortex, wind; black holes swallow).
+  - **Spawning and boards:** emitters, territory boards, kill and finish zones.
+  - **Teams:** conversion rules, merge levels, absorb, split, clones.
+  - **Weapons:** kinds that power up per hit (sword, dagger, spear, hammer, scythe, bow with arrows, unarmed).
+  - **Chaos:** exact double pendulums, ghost copies for butterfly-effect videos.
+- **Looks and camera:**
+  - **Themes:** neon, pastel, paper, retro, vaporwave, noir, blueprint, candy.
+  - **Styles:** balls (glossy, 3D, glass, outline), rings (dashed, neon tube, rainbow, segments), trails (ribbon, comet, rainbow) and color modes (change per bounce, rainbow, heat).
+  - **Decoration:** string art, backdrops (stars, grid, gradient, ripples) and post effects (bloom, vignette, grain, scanlines, color fringe, confetti).
+  - **Camera:** follow, or zoom out ring by ring, plus screen shake.
+  - **Time:** slow motion at the climax and a 3-2-1 countdown. Preview, export and sound share one timing plan, so they stay in sync.
+- **More sound:**
+  - **Instruments:** seven new ones (glass, chip, piano, kalimba, pop, synth, and a synthesized, in-tune meow).
+  - **Event sounds:** breaks, portals, swallows, merges, captures and conversions each have their own.
+  - **Climax impact:** a bass drop, cymbal swell or gong.
+  - **Pitch modes:** notes can follow ball size, height or speed instead of the melody.
+- **Make it weird.** One click stacks two or three surreal modifiers (black hole, portals, gap jumping, splitting, meowing, clones, storm…) onto any scene as an unsaved change.
 - **The Director.** Simulates hundreds of runs in a fraction of a second, scores each for the story you want (slow burn, last-second escape, chaos, comeback, in time with the song), and shows the best nine playing side by side. Use one, swipe through them, or export the best.
 - **Swipe review and an export queue.** Keep (→) or discard (←) candidates one by one; kept videos render in the background and land in `exports/` with a caption, the exact scene, and a line in `exports/log.csv`.
 - **Batch production.** One click makes 4–12 remixes of a scene (new palette, instrument, melody and feel), each auto-directed. **Tournaments** turn any battle into a knockout bracket: every match becomes a scene with a close fight and a winner that advances.
@@ -108,19 +128,29 @@ Most formats are a base scene plus a twist. This is the whole `multiply` preset:
 | `gravity-flip` / `gravity-spin` | Gravity reverses / rotates on a timer (`every`, `degrees`) |
 | `zero-g` | No gravity |
 | `paint` | Balls leave permanent paint instead of fading trails |
+| `break-rings` / `hp-ring` | Rings break segment by segment (`segments`, `hp`) / shatter after `hp` bounces |
+| `split` / `absorb` / `merge` | Every bounce splits the ball / bigger eats smaller / same levels merge |
+| `infection` / `rps` | Team conversion: one zombie (`chance`) / rock-paper-scissors |
+| `black-hole` / `storm` / `portals` | A black hole that grows (`strength`, `swallow`, `grow`) / a shrinking arena / a portal pair |
+| `add-side` / `gap-jump` / `clone-trail` | Polygon gains a side / the gap jumps / each bounce leaves a clone |
+| `butterfly` | Ghost copies a millionth of a degree apart (`copies`) |
+| `string-art` / `rainbow` / `meow` | Lines between bounces / rainbow colors and trails / every bounce meows |
+| `slowmo` / `shake` / `countdown` | Slow motion at the climax / screen shake / a 3-2-1 intro |
 
 ### Building blocks
 
 | Section | What it controls |
 | --- | --- |
-| `entities` | `ring` (radius, spin, gaps), `polygon` (sides, open sides, exit `gap`), `wall`, `peg`, `zone` (counts balls entering), `ball` (radius, speed, count, colors, labels, hp, `weapon`, `shape`, `frozen`, `arrange`), and prefabs: `nested`, `pegboard`, `bins` |
-| `rules` | On `bounce`, `escape`, `hit`, `eliminate`, `strike` or `wake`: `grow`, `shrinkGap`, `speedUp`, `spawn`, `damage`, `spinUp`, `reverseSpin`, gravity changes, or a `script` |
+| `entities` | `ring` (radius, spin, gaps, `hp`, `segments`, `deadly`), `polygon` (sides, open sides, exit `gap`, `hp`), `wall` / `peg` (`boost` bumpers, `deadly`, `hp`), `brick`, `spinner`, `portal`, `force` (attract, repel, vortex, wind), `emitter`, `territory`, `pendulum`, `zone` (counts; `kill` drains, `finish` lines), `ball` (radius, speed, count, colors, labels, hp, `weapon` with `kind`, `shape`, `frozen`, `arrange`, `team`, `level`, `copies`), and prefabs: `nested`, `pegboard`, `bins`, `brickwall`, `funnel`, `course` |
+| `teams` | Team names, colors, emoji and who beats whom |
+| `rules` | On `bounce`, `escape`, `hit`, `eliminate`, `strike`, `wake`, `break`, `teleport`, `swallow`, `capture`, `merge`, `convert`, `corner` or `finish`: `grow`, `shrinkGap`, `speedUp`, `spawn`, `damage`, `spinUp`, `reverseSpin`, gravity changes, `split`, `absorb`, `merge`, `convert`, `clone`, `moveGap`, `addGap`, `addSide`, `shrinkContainer`, `recolor`, `growForce`, `end`, or a `script` |
 | `timeline` | Do the same actions `at` a time or `every` N seconds (spawners, gravity flips…) |
-| `duration` | Length cap and what ends the run: `firstEscape`, `allEscaped`, `lastStanding`, `never`; `trimStart` for loops |
+| `duration` | Length cap and what ends the run: `firstEscape`, `allEscaped`, `lastStanding`, `oneTeam`, `finish`, `cleared`, `never`; `trimStart` for loops |
+| `camera` | `mode` (fixed, follow, zoomOut), zoom, `shake`, `slowmo` (+ factor, lead), `countdown` |
 | `world` | Gravity (number or `[x, y]`), energy keeping, restitution, friction, ball cap |
-| `style` | Background color or picture, palette, ring color, trail length, glow, paint, hp rings |
-| `audio` | Melody (`pentatonic`, `ode-to-joy`, `fur-elise`, `midi:<file>`) or inline `notes`, chords, transpose, instrument, sound effects |
-| `overlay` | Title, subtitle, font, text color, sizes and positions, counter, timer, winner banner, zone counts |
+| `style` | Background color or picture, palette, ring color, `theme`, ball / ring / trail style, `colorMode`, string-art `lines`, `backdrop`, bloom, vignette, grain, scanlines, chromatic, confetti, trail length, glow, paint, hp rings, picture `reveal` |
+| `audio` | Melody (`pentatonic`, `ode-to-joy`, `fur-elise`, `midi:<file>`) or inline `notes`, chords, transpose, instrument (10), `pitchBy`, `climax` sound, event sounds |
+| `overlay` | Title, subtitle, font, text color, sizes and positions, counter (bounces, balls, escaped, teams, rings, bricks, hp), timer, winner banner, zone counts, `endCard`, per-bounce `reveal` text, `progress` bar |
 
 The full schema with every default lives in [`src/engine/scene.ts`](src/engine/scene.ts) and [`scene.schema.json`](scene.schema.json).
 
@@ -148,6 +178,42 @@ The full schema with every default lives in [`src/engine/scene.ts`](src/engine/s
 | [`eternal-loop`](scenes/eternal-loop.json) | A seamless loop found by the Director | `trimStart` loop window |
 | [`crowd-pour`](scenes/crowd-pour.json) | 2,000 balls drain through a gap two balls wide | timeline spawner, WebGL crowd |
 
+**New in V2** (31 more):
+
+| Scene | Format | Built from |
+| --- | --- | --- |
+| [`ring-breaker`](scenes/ring-breaker.json) | Smash through 12 layers of breakable segments | `nested` + `segments` |
+| [`hp-ring`](scenes/hp-ring.json) | 45 hits to break out | ring `hp` + `climax: gong` |
+| [`crusher`](scenes/crusher.json) | A spinning paddle makes more balls until the ring bursts | `spinner` + script spawn + ring `hp` |
+| [`brick-breaker`](scenes/brick-breaker.json) | Clear the wall of numbered bricks | `brickwall` + `endOn: cleared` |
+| [`pong-wars`](scenes/pong-wars.json) | Day vs night territory | `territory` + teams |
+| [`color-war`](scenes/color-war.json) | Four colors fight for the board | `territory` quadrants |
+| [`rock-paper-scissors`](scenes/rock-paper-scissors.json) | Who takes over? | `rps` |
+| [`infection`](scenes/infection.json) | 1 zombie vs 30 humans | `infection` |
+| [`absorb`](scenes/absorb.json) | Bigger eats smaller | `absorb` |
+| [`weapon-legends`](scenes/weapon-legends.json) | Sword vs dagger vs spear vs bow vs fists vs hammer | weapon `kind`s that power up |
+| [`shrinking-arena`](scenes/shrinking-arena.json) | Battle royale with a storm | `battle` + `storm` |
+| [`survival`](scenes/survival.json) | Dodge the spinning blade | deadly `spinner` + `storm` |
+| [`black-hole`](scenes/black-hole.json) | Don't get eaten | `black-hole` |
+| [`orbit-escape`](scenes/orbit-escape.json) | Slingshot out of a sun's pull | `force: attract` |
+| [`vortex-drain`](scenes/vortex-drain.json) | Marbles spiral down a drain, forever | `force: vortex` + `kill` zone + looping `emitter` |
+| [`portal-escape`](scenes/portal-escape.json) | The only way out is a portal | `portal` |
+| [`meow-escape`](scenes/meow-escape.json) | The cat meows the song | `meow` + emoji |
+| [`gap-jumper`](scenes/gap-jumper.json) | The exit keeps moving | `gap-jump` |
+| [`every-bounce-a-side`](scenes/every-bounce-a-side.json) | Triangle to circle | `add-side` |
+| [`clone-trail`](scenes/clone-trail.json) | Every bounce leaves a clone | `clone-trail` |
+| [`split-swarm`](scenes/split-swarm.json) | Every bounce splits it | `split` + `rainbow` |
+| [`merge-jar`](scenes/merge-jar.json) | Two of a kind merge | `emitter` levels + `merge` |
+| [`corner-hit`](scenes/corner-hit.json) | Will it hit the corner? | `corner` rule + `end` |
+| [`chaos-pendulums`](scenes/chaos-pendulums.json) | 8 double pendulums 0.001° apart | `pendulum` |
+| [`pendulum-wave`](scenes/pendulum-wave.json) | 15 pendulums make waves | `pendulum` with `wave` |
+| [`butterfly-effect`](scenes/butterfly-effect.json) | 12 balls a hair apart drift into chaos | `butterfly` |
+| [`string-art`](scenes/string-art.json) | Every bounce draws a line | `string-art` |
+| [`picture-reveal`](scenes/picture-reveal.json) | 1,600 balls settle and spell a word | `emitter` + `style.reveal` |
+| [`sand-pour`](scenes/sand-pour.json) | Rainbow sand through pegs | `funnel` + `pegboard` + `emitter` |
+| [`marble-race`](scenes/marble-race.json) | Eight marbles race a course to the line | `course` + `finish` zone + slow motion |
+| [`hundred-rings`](scenes/hundred-rings.json) | Can it escape 100 rings? | `nested` × 100 + `camera.mode: zoomOut` |
+
 ## The Director
 
 Click **Director** in the studio. Pick a story, set when the climax should land, and click **Find the best runs**. The Director simulates every candidate in Web Workers (300 runs of a 30 s scene take well under a second), optionally nudging ball speed and container spin by up to ±10%, then refines around the best five.
@@ -160,6 +226,9 @@ Click **Director** in the studio. Pick a story, set when the climax should land,
 | Comeback | Races and battles where the lead changes and the winner was behind at halftime |
 | In time with the song | Bounces that follow the MIDI song's note timing |
 | Perfect loop | A stretch whose last frame matches its first (sets the loop window for export) |
+| Underdog | Team formats where the side behind at halfway takes over |
+| Photo finish | Races won by a hair |
+| Destruction | Lots of breaks, with the last one near the target |
 
 The best nine play side by side. **Use** makes one the scene's seed (plus `world.speedScale` / `world.spinScale` tweaks; **Save to file** keeps them). **Export** queues it, and **Review one by one** opens the swipe view.
 
@@ -206,6 +275,12 @@ Drop pictures (PNG, JPG, WebP, GIF, SVG) anywhere on the studio to add them to `
 "style": { "backgroundImage": "sky.jpg", "backgroundDim": 0.4 },
 "overlay": { "title": "Cat vs Dog", "font": "condensed", "titleSize": 96, "titleY": 220, "timer": false }
 ```
+
+### Picture reveal, slow motion and the camera
+
+- **Picture reveal:** set `style.reveal` to a `text` or an `image` from `images/`. The studio runs the scene once, sees where every ball lands, and colors each ball by the word or picture at its landing spot. Colors don't touch the physics, so the real run lands the same way and the picture appears. The Look tab has a Picture reveal section for it.
+- **Slow motion:** `camera.slowmo` (video seconds, around the climax, starting `slowmoLead` before it) and the `countdown` intro change how many physics steps go into each frame, never the physics. One timing plan (`src/engine/timing.ts`) drives the preview, the export and the soundtrack, so a slow-motion export keeps picture and sound in sync.
+- **Camera:** `camera.mode: "zoomOut"` frames the innermost ring the ball is still inside, so a hundred rings fit a vertical video. `follow` keeps the action centered, and `shake` kicks on breaks, escapes and knockouts.
 
 ### Rhythm lock
 

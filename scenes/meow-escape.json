@@ -1,0 +1,49 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Meow escape",
+  "category": "surreal",
+  "seed": 36,
+  "modifiers": [
+    "meow"
+  ],
+  "duration": {
+    "max": 60,
+    "endOn": "firstEscape",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 900
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 420,
+      "thickness": 14,
+      "spin": 0.9,
+      "gaps": [
+        {
+          "at": 0,
+          "width": 26
+        }
+      ],
+      "color": "#ffb3c6"
+    },
+    {
+      "type": "ball",
+      "radius": 34,
+      "speed": 900,
+      "emoji": "🐱",
+      "color": "#ffd6a5"
+    }
+  ],
+  "style": {
+    "trail": 0.8,
+    "theme": "pastel"
+  },
+  "audio": {
+    "melody": "midi:twinkle-twinkle"
+  },
+  "overlay": {
+    "title": "Can the cat escape?"
+  }
+}

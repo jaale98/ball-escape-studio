@@ -1,0 +1,52 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Butterfly effect",
+  "category": "chaos",
+  "seed": 132,
+  "modifiers": [
+    {
+      "use": "butterfly",
+      "copies": 12
+    }
+  ],
+  "duration": {
+    "max": 60,
+    "endOn": "allEscaped",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 900
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 450,
+      "thickness": 12,
+      "spin": 0.6,
+      "gaps": [
+        {
+          "at": 0,
+          "width": 30
+        }
+      ]
+    },
+    {
+      "type": "ball",
+      "radius": 16,
+      "speed": 900,
+      "jitter": 1e-05
+    }
+  ],
+  "style": {
+    "trail": 0.85,
+    "trailStyle": "ribbon"
+  },
+  "audio": {
+    "instrument": "glass"
+  },
+  "overlay": {
+    "title": "12 balls, a millionth of a degree apart",
+    "titleSize": 62,
+    "counter": "escaped"
+  }
+}

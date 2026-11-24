@@ -1,0 +1,55 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Black hole",
+  "category": "forces",
+  "seed": 132,
+  "modifiers": [
+    {
+      "use": "black-hole",
+      "strength": 900,
+      "swallow": 34,
+      "grow": 1.05
+    }
+  ],
+  "duration": {
+    "max": 60,
+    "endOn": "lastStanding",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 470,
+      "thickness": 12,
+      "spin": 0,
+      "gaps": []
+    },
+    {
+      "type": "ball",
+      "count": 14,
+      "radius": 16,
+      "speed": 650,
+      "spread": 350,
+      "y": 960
+    }
+  ],
+  "style": {
+    "trail": 0.85,
+    "backdrop": "stars",
+    "theme": "noir"
+  },
+  "camera": {
+    "slowmo": 1.5
+  },
+  "audio": {
+    "instrument": "bell",
+    "climax": "gong"
+  },
+  "overlay": {
+    "title": "Don't get eaten",
+    "winner": true
+  }
+}

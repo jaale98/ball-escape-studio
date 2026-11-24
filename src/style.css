@@ -341,3 +341,11 @@ img.mini { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
   .view-wrap { flex: none; }
   #view { height: auto; width: 100%; max-height: 70vh; }
 }
+
+/* Look tab: Style & effects */
+.style-grid { display: grid; gap: 6px; }
+.style-grid .field { display: grid; grid-template-columns: 130px 1fr; align-items: center; gap: 8px; }
+.style-grid .field span { font-size: 12px; color: var(--muted, #9aa0b4); }
+.style-grid .slider { display: grid; grid-template-columns: 130px 1fr 44px; align-items: center; gap: 8px; }
+.style-grid .check { font-size: 13px; }
+.gallery-family { margin: 18px 0 8px; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted, #9aa0b4); }

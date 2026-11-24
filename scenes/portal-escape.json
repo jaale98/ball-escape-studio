@@ -1,0 +1,66 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Portal escape",
+  "category": "forces",
+  "seed": 52,
+  "duration": {
+    "max": 60,
+    "endOn": "firstEscape",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 900
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 450,
+      "thickness": 14,
+      "spin": 0,
+      "gaps": []
+    },
+    {
+      "type": "portal",
+      "a": [
+        390,
+        820
+      ],
+      "b": [
+        700,
+        1150
+      ],
+      "radius": 44,
+      "color": "#c77dff"
+    },
+    {
+      "type": "portal",
+      "a": [
+        540,
+        1300
+      ],
+      "b": [
+        540,
+        360
+      ],
+      "radius": 40
+    },
+    {
+      "type": "ball",
+      "radius": 18,
+      "speed": 900,
+      "y": 900
+    }
+  ],
+  "style": {
+    "trail": 0.85
+  },
+  "camera": {
+    "slowmo": 1.5
+  },
+  "audio": {
+    "instrument": "synth"
+  },
+  "overlay": {
+    "title": "Find the way out"
+  }
+}

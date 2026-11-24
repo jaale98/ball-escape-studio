@@ -1,7 +1,9 @@
 import { ArrayBufferTarget, Muxer } from 'mp4-muxer';
 import { createMaster, playVoice, SoundMapper } from '../audio/sound';
-import { FPS, HEIGHT, type Scene, STEPS_PER_FRAME, WIDTH } from '../engine/scene';
+import { FPS, HEIGHT, type Scene, WIDTH } from '../engine/scene';
+import { framePlan, stepTimes, timingFor } from '../engine/timing';
 import { World } from '../engine/world';
+import { withReveal } from '../director/reveal';
 import { ensureImages } from '../images';
 import { Renderer } from '../render/renderer';
 
@@ -84,7 +86,13 @@ export async function exportMp4(scene: Scene, onProgress: ExportProgress = () =>
   onProgress('simulate', 0);
   await ensureImages(scene);
   const pre = new World(scene).runToEnd();
-  const frames = Math.ceil(pre.stepCount / STEPS_PER_FRAME);
+  // Picture reveal: color each ball by where it lands (the physics doesn't change).
+  scene = withReveal(scene, pre);
+  // Slow motion and the countdown decide how many physics steps each frame gets.
+  const timing = timingFor(scene, pre.climaxStep);
+  const plan = framePlan(timing, pre.stepCount);
+  const times = stepTimes(plan);
+  const frames = plan.length;
   // trimStart: simulate and draw from 0 (trails warm up), encode from here on.
   const startFrame = Math.min(frames - 1, Math.round(scene.duration.trimStart * FPS));
   const seconds = (frames - startFrame) / FPS;
@@ -96,8 +104,10 @@ export async function exportMp4(scene: Scene, onProgress: ExportProgress = () =>
   const master = createMaster(actx, scene.audio.volume);
   const mapper = new SoundMapper(scene, pre.rhythmK);
   for (const e of pre.events) {
-    for (const v of mapper.map(e)) playVoice(actx, master, v, v.time, scene.audio.instrument);
+    const at = times[Math.min(e.step, times.length - 1)];
+    for (const v of mapper.map(e)) playVoice(actx, master, v, at + v.delay, scene.audio.instrument);
   }
+  for (const v of mapper.climax(pre.climaxStep)) playVoice(actx, master, v, times[Math.min(pre.climaxStep, times.length - 1)], scene.audio.instrument);
   const audio = await actx.startRendering();
 
   // 3. Muxer + encoders.
@@ -124,7 +134,8 @@ export async function exportMp4(scene: Scene, onProgress: ExportProgress = () =>
   const frameUs = 1e6 / FPS;
   for (let i = 0; i < frames; i++) {
     if (encodeError) throw encodeError;
-    if (i > 0) for (let s = 0; s < STEPS_PER_FRAME; s++) world.step();
+    for (let s = 0; s < plan[i]; s++) world.step();
+    renderer.intro = Math.max(0, timing.intro - i / FPS);
     renderer.render(world, i === 0 ? 0 : 1 / FPS);
     if (i < startFrame) {
       if (i % 30 === 0) await tick();

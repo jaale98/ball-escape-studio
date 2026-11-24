@@ -1,0 +1,51 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Hundred rings",
+  "category": "escape",
+  "seed": 14,
+  "duration": {
+    "max": 150,
+    "endOn": "allEscaped",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 160
+  },
+  "entities": [
+    {
+      "type": "nested",
+      "count": 100,
+      "inner": 70,
+      "spacing": 16,
+      "thickness": 4,
+      "spin": 0.9,
+      "spinFalloff": 1,
+      "alternate": false,
+      "gapWidth": 40,
+      "gapCount": 2,
+      "gapShrink": 0,
+      "gapOffset": 11,
+      "rainbow": true
+    },
+    {
+      "type": "ball",
+      "radius": 5,
+      "speed": 1700,
+      "color": "#ffffff"
+    }
+  ],
+  "style": {
+    "trail": 0.8
+  },
+  "camera": {
+    "mode": "zoomOut",
+    "slowmo": 1.5
+  },
+  "audio": {
+    "instrument": "glass"
+  },
+  "overlay": {
+    "title": "Can it escape 100 rings?",
+    "counter": "rings"
+  }
+}

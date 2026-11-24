@@ -1,0 +1,89 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Picture reveal",
+  "category": "satisfying",
+  "seed": 1,
+  "duration": {
+    "max": 27,
+    "endOn": "never",
+    "tail": 0
+  },
+  "world": {
+    "gravity": 1500,
+    "keepEnergy": false,
+    "restitution": 0.2,
+    "friction": 0.25,
+    "maxBalls": 1800,
+    "damping": 1.2
+  },
+  "entities": [
+    {
+      "type": "wall",
+      "x1": 190,
+      "y1": 560,
+      "x2": 190,
+      "y2": 1512,
+      "thickness": 36
+    },
+    {
+      "type": "wall",
+      "x1": 890,
+      "y1": 560,
+      "x2": 890,
+      "y2": 1512,
+      "thickness": 36
+    },
+    {
+      "type": "wall",
+      "x1": 190,
+      "y1": 1512,
+      "x2": 890,
+      "y2": 1512,
+      "thickness": 36
+    },
+    {
+      "type": "emitter",
+      "x": 540,
+      "y": 500,
+      "rate": 85,
+      "count": 1600,
+      "speed": 380,
+      "direction": 90,
+      "cone": 50,
+      "jitter": 24,
+      "radius": 8,
+      "radiusJitter": 0
+    },
+    {
+      "type": "ball",
+      "count": 0,
+      "radius": 8,
+      "color": "#3a3a48"
+    }
+  ],
+  "style": {
+    "trail": 0,
+    "glow": false,
+    "reveal": {
+      "text": "WOW"
+    }
+  },
+  "audio": {
+    "instrument": "pop",
+    "hitSound": false
+  },
+  "overlay": {
+    "title": "Wait for it…",
+    "counter": "none"
+  },
+  "timeline": [
+    {
+      "at": 21,
+      "do": [
+        {
+          "do": "freezeAll"
+        }
+      ]
+    }
+  ]
+}

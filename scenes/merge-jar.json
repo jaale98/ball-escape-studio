@@ -1,0 +1,82 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Merge jar",
+  "category": "surreal",
+  "seed": 1,
+  "modifiers": [
+    {
+      "use": "merge",
+      "growth": 1.25
+    }
+  ],
+  "duration": {
+    "max": 45,
+    "endOn": "never",
+    "tail": 0
+  },
+  "world": {
+    "gravity": 1400,
+    "keepEnergy": false,
+    "restitution": 0.25,
+    "friction": 0.15,
+    "maxBalls": 200
+  },
+  "entities": [
+    {
+      "type": "wall",
+      "x1": 200,
+      "y1": 700,
+      "x2": 200,
+      "y2": 1500,
+      "thickness": 16
+    },
+    {
+      "type": "wall",
+      "x1": 880,
+      "y1": 700,
+      "x2": 880,
+      "y2": 1500,
+      "thickness": 16
+    },
+    {
+      "type": "wall",
+      "x1": 200,
+      "y1": 1500,
+      "x2": 880,
+      "y2": 1500,
+      "thickness": 16
+    },
+    {
+      "type": "emitter",
+      "x": 540,
+      "y": 520,
+      "rate": 2.2,
+      "count": 90,
+      "speed": 220,
+      "direction": 90,
+      "cone": 70,
+      "jitter": 0,
+      "radius": 20,
+      "level": 3,
+      "levels": true
+    },
+    {
+      "type": "ball",
+      "count": 0,
+      "radius": 20
+    }
+  ],
+  "style": {
+    "trail": 0,
+    "ballStyle": "glossy",
+    "theme": "candy"
+  },
+  "audio": {
+    "instrument": "pop",
+    "hitSound": false
+  },
+  "overlay": {
+    "title": "Two of a kind merge",
+    "counter": "balls"
+  }
+}

@@ -3,16 +3,19 @@ import { createMaster, playVoice, SoundMapper } from './audio/sound';
 import { caption, captionText } from './director/caption';
 import { hasScripts, preflight } from './director/check';
 import { critique } from './director/critic';
+import { weirdModifiers } from './director/remix';
+import { withReveal } from './director/reveal';
 import { direct, scoreOne } from './director/pool';
 import { defaultTemplate, type RunScore } from './director/score';
-import type { Scene } from './engine/scene';
+import { PHYSICS_HZ, type Scene } from './engine/scene';
+import { rateAt, type Timing, timingFor } from './engine/timing';
 import { mergeSource, resolveScene } from './engine/source';
 import { DT, rhythmLockStatus, World } from './engine/world';
 import { canExport, exportMp4 } from './export/mp4';
 import { renderStill } from './export/still';
 import { Renderer } from './render/renderer';
 import { ensureImages } from './images';
-import { entriesFrom, type SceneEntry, sceneFiles } from './scenes';
+import { categoryOf, entriesFrom, FAMILIES, type SceneEntry, sceneFiles } from './scenes';
 import { loadSong, songFiles, songIndex, songUrls } from './songs';
 import { initAssistant } from './ui/assistant';
 import { initDirector } from './ui/director';
@@ -78,6 +81,12 @@ let seeking = false;
 /** An overlay covers the stage (Director, gallery): pause the main preview. */
 let directorOpen = false;
 let endedAt = 0;
+/** Video time since restart (drives the countdown). */
+let videoClock = 0;
+let climaxPlayed = false;
+/** Climax step from the Critic's headless run (-1 until known): lets slow motion start before the climax. */
+let knownClimaxStep = -1;
+let timing: Timing = { intro: 0, slowStart: -1, slowEnd: -1, factor: 1 };
 let audio: { ctx: AudioContext; master: AudioNode } | null = null;
 let soundOn = store.get('sound') === '1';
 /** A scene that should be shown as soon as it arrives (Claude or a gallery action made it). */
@@ -106,7 +115,16 @@ function fillSceneList(selected: string): void {
   const top = scenes.filter((s) => !parent(s.name));
   const kids = scenes.filter((s) => parent(s.name));
   const opt = (s: SceneEntry) => new Option(`${s.name}`, s.name);
-  sceneSelect.replaceChildren(...top.map(opt));
+  // Grouped by family (Escape, Destruction, Teams…).
+  sceneSelect.replaceChildren();
+  for (const [fam, label] of FAMILIES) {
+    const inFam = top.filter((s) => categoryOf(s, scenes) === fam);
+    if (!inFam.length) continue;
+    const g = document.createElement('optgroup');
+    g.label = label;
+    g.append(...inFam.map(opt));
+    sceneSelect.append(g);
+  }
   if (kids.length) {
     const g = document.createElement('optgroup');
     g.label = 'Remixes & matches';
@@ -258,7 +276,7 @@ async function loadScene(rebuild = true): Promise<void> {
       if (token !== loadToken) return;
       $('script-msg').textContent = scriptError ? `Script error: ${scriptError} (that script was switched off)` : '';
     } else $('script-msg').textContent = '';
-    scene = resolved;
+    scene = withReveal(resolved);
     seedInput.value = String(scene.seed);
     $('resolved-json').textContent = JSON.stringify({ ...scene, audio: { ...scene.audio, notes: scene.audio.notes ? `(${scene.audio.notes.length} note groups)` : undefined, noteTimes: undefined } }, null, 2);
     refreshMusic(scene, Object.keys(songs), song, rhythmLockStatus(scene));
@@ -269,6 +287,7 @@ async function loadScene(rebuild = true): Promise<void> {
       void refreshHistory(entry.name);
     }
     updateDirty();
+    knownClimaxStep = -1;
     setLength(scene.duration.max);
     applyVolume();
     restart();
@@ -340,6 +359,9 @@ function restart(): void {
   mapper = new SoundMapper(scene, world.rhythmK);
   audioCursor = 0;
   endedAt = 0;
+  videoClock = 0;
+  climaxPlayed = false;
+  timing = timingFor(scene, knownClimaxStep);
   renderer.render(world, 0);
   setTime(0);
 }
@@ -420,6 +442,10 @@ function pumpAudio(): void {
     return;
   }
   const now = audio.ctx.currentTime + 0.03;
+  if (!climaxPlayed && world.climaxStep >= 0) {
+    climaxPlayed = true;
+    for (const v of mapper.climax(world.climaxStep)) playVoice(audio.ctx, audio.master, v, now, scene.audio.instrument);
+  }
   // The mapper limits sounds by simulation time; this also caps each frame, so a
   // backlog (a slow frame, a busy tab) can't flood the audio thread at once.
   let budget = 24;
@@ -464,10 +490,22 @@ function frame(now: number): void {
   if (world && renderer && !exporting && !directorOpen && !seeking) {
     let rdt = 0;
     if (playing && !world.done) {
-      acc += dt;
-      while (acc >= DT && !world.done) {
-        world.step();
-        acc -= DT;
+      // Countdown: the run waits; slow motion: it runs slower (see engine/timing.ts).
+      videoClock += dt;
+      renderer.intro = Math.max(0, timing.intro - videoClock);
+      if (renderer.intro <= 0) {
+        acc += dt * rateAt(timing, world.stepCount);
+        while (acc >= DT && !world.done) {
+          world.step();
+          acc -= DT;
+          // A climax we didn't know about yet (first play): slow from here.
+          if (world.climaxStep >= 0 && timing.slowStart < 0 && scene!.camera.slowmo > 0) {
+            timing = timingFor(scene!, world.climaxStep);
+            timing.slowStart = world.climaxStep;
+            break;
+          }
+          if (rateAt(timing, world.stepCount) < 1 && acc > DT) acc = Math.min(acc, DT);
+        }
       }
       rdt = dt;
       pumpAudio();
@@ -639,6 +677,9 @@ function scheduleCritic(): void {
       const r = await scoreOne(s, loop ? { template: 'perfect-loop', target: s.duration.max - s.duration.trimStart } : { template: defaultTemplate(s), target: 30 });
       if (token !== criticToken) return;
       setRun(r.length, r.markers, r.climax);
+      knownClimaxStep = r.climax >= 0 ? Math.round(r.climax * PHYSICS_HZ) : -1;
+      if (world && world.stepCount === 0) timing = timingFor(s, knownClimaxStep);
+      else if (world && timing.slowStart < 0) timing = { ...timingFor(s, knownClimaxStep), intro: timing.intro };
       const notes = critique(s, r);
       criticNotes = notes.filter((n) => n.level === 'warn').map((n) => n.text);
       $('critic-list').replaceChildren(
@@ -694,6 +735,18 @@ function mergedSource(): Record<string, unknown> {
   for (const [path, v] of overrides) setPath(merged, path, v);
   return merged;
 }
+
+// Make it weird: stack a few surreal modifiers as an unsaved change (Discard undoes it).
+let weirdCount = 0;
+$('b-weird').addEventListener('click', () => {
+  const merged = mergedSource();
+  const picks = weirdModifiers(merged, (scene?.seed ?? 1) * 31 + ++weirdCount);
+  if (!picks.length) return;
+  const before = Array.isArray(merged.modifiers) ? merged.modifiers : [];
+  setTweak('modifiers', [...before, ...picks]);
+  const names = picks.map((m) => (typeof m === 'string' ? m : (m as { use: string }).use));
+  $('export-msg').textContent = `Weird: added ${names.join(' + ')}. Discard undoes it; Save keeps it.`;
+});
 
 // Rhythm lock: one click to find a seed whose bounces stay on the beat.
 $('rhythm-find').addEventListener('click', async () => {

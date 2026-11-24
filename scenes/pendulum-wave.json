@@ -1,0 +1,35 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Pendulum wave",
+  "category": "chaos",
+  "seed": 1,
+  "duration": {
+    "max": 60,
+    "endOn": "never",
+    "tail": 0
+  },
+  "entities": [
+    {
+      "type": "pendulum",
+      "arms": 1,
+      "count": 15,
+      "wave": 60,
+      "waveBase": 18,
+      "angles": [
+        24
+      ],
+      "y": 640,
+      "bob": 22
+    }
+  ],
+  "style": {
+    "trail": 0.85
+  },
+  "audio": {
+    "instrument": "kalimba"
+  },
+  "overlay": {
+    "title": "Watch the wave",
+    "counter": "none"
+  }
+}

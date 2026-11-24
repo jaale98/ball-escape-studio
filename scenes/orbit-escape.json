@@ -1,0 +1,55 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Orbit escape",
+  "category": "forces",
+  "seed": 1,
+  "duration": {
+    "max": 60,
+    "endOn": "firstEscape",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 460,
+      "thickness": 12,
+      "spin": 0.5,
+      "gaps": [
+        {
+          "at": 0,
+          "width": 12
+        }
+      ]
+    },
+    {
+      "type": "force",
+      "kind": "attract",
+      "strength": 1300,
+      "color": "#ffd23f"
+    },
+    {
+      "type": "ball",
+      "radius": 16,
+      "speed": 700,
+      "x": 540,
+      "y": 700
+    }
+  ],
+  "style": {
+    "trail": 0.93,
+    "trailStyle": "comet",
+    "backdrop": "stars"
+  },
+  "camera": {
+    "slowmo": 1.5
+  },
+  "audio": {
+    "instrument": "glass"
+  },
+  "overlay": {
+    "title": "Slingshot out"
+  }
+}

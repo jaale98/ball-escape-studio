@@ -1,0 +1,142 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Weapon legends",
+  "category": "battle",
+  "seed": 94,
+  "duration": {
+    "max": 60,
+    "endOn": "lastStanding",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 900
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 480,
+      "thickness": 14,
+      "spin": 0,
+      "gaps": []
+    },
+    {
+      "type": "ball",
+      "radius": 30,
+      "speed": 700,
+      "hp": 25,
+      "labels": [
+        "Sword"
+      ],
+      "color": "#ff4d6d",
+      "weapon": {
+        "kind": "sword",
+        "length": 80,
+        "spin": 3.5
+      }
+    },
+    {
+      "type": "ball",
+      "radius": 30,
+      "speed": 700,
+      "hp": 25,
+      "labels": [
+        "Dagger"
+      ],
+      "color": "#4dd4ff",
+      "weapon": {
+        "kind": "dagger",
+        "length": 45,
+        "spin": 5
+      }
+    },
+    {
+      "type": "ball",
+      "radius": 30,
+      "speed": 700,
+      "hp": 25,
+      "labels": [
+        "Spear"
+      ],
+      "color": "#ffd23f",
+      "weapon": {
+        "kind": "spear",
+        "length": 70,
+        "spin": 2.5
+      }
+    },
+    {
+      "type": "ball",
+      "radius": 30,
+      "speed": 700,
+      "hp": 25,
+      "labels": [
+        "Bow"
+      ],
+      "color": "#7cff6b",
+      "weapon": {
+        "kind": "bow",
+        "length": 36,
+        "spin": 0
+      }
+    },
+    {
+      "type": "ball",
+      "radius": 30,
+      "speed": 700,
+      "hp": 25,
+      "labels": [
+        "Unarmed"
+      ],
+      "color": "#c77dff",
+      "weapon": {
+        "kind": "unarmed",
+        "length": 1,
+        "spin": 0
+      }
+    },
+    {
+      "type": "ball",
+      "radius": 30,
+      "speed": 700,
+      "hp": 25,
+      "labels": [
+        "Hammer"
+      ],
+      "color": "#ff9f1c",
+      "weapon": {
+        "kind": "hammer",
+        "length": 60,
+        "spin": 2.2,
+        "width": 16
+      }
+    }
+  ],
+  "rules": [
+    {
+      "on": "hit",
+      "do": [
+        {
+          "do": "damage",
+          "amount": 0.5,
+          "when": "defending"
+        }
+      ]
+    }
+  ],
+  "style": {
+    "trail": 0.5
+  },
+  "camera": {
+    "shake": 0.8,
+    "slowmo": 2
+  },
+  "audio": {
+    "instrument": "synth",
+    "climax": "gong"
+  },
+  "overlay": {
+    "title": "Sword vs dagger vs spear vs bow vs fists vs hammer",
+    "titleSize": 58,
+    "counter": "balls"
+  }
+}

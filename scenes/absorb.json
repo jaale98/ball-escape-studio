@@ -1,0 +1,60 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Absorb",
+  "category": "teams",
+  "seed": 125,
+  "modifiers": [
+    "absorb"
+  ],
+  "duration": {
+    "max": 60,
+    "tail": 3
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 470,
+      "thickness": 12,
+      "spin": 0,
+      "gaps": []
+    },
+    {
+      "type": "ball",
+      "count": 16,
+      "radius": 12,
+      "speed": 700,
+      "spread": 330
+    },
+    {
+      "type": "ball",
+      "count": 7,
+      "radius": 18,
+      "speed": 600,
+      "spread": 330
+    },
+    {
+      "type": "ball",
+      "count": 3,
+      "radius": 26,
+      "speed": 500,
+      "spread": 300
+    }
+  ],
+  "style": {
+    "trail": 0.6,
+    "ballStyle": "glass"
+  },
+  "camera": {
+    "slowmo": 1.5
+  },
+  "audio": {
+    "instrument": "bell",
+    "climax": "swell"
+  },
+  "overlay": {
+    "title": "Bigger eats smaller"
+  }
+}

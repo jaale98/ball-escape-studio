@@ -1,0 +1,46 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Gap jumper",
+  "category": "surreal",
+  "seed": 34,
+  "modifiers": [
+    "gap-jump"
+  ],
+  "duration": {
+    "max": 60,
+    "endOn": "firstEscape",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 900
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 440,
+      "thickness": 14,
+      "spin": 0,
+      "gaps": [
+        {
+          "at": 0,
+          "width": 24
+        }
+      ]
+    },
+    {
+      "type": "ball",
+      "radius": 22,
+      "speed": 950
+    }
+  ],
+  "style": {
+    "trail": 0.85,
+    "colorMode": "bounce"
+  },
+  "audio": {
+    "instrument": "chip"
+  },
+  "overlay": {
+    "title": "The exit keeps moving"
+  }
+}

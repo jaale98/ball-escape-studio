@@ -1,0 +1,59 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Corner hit",
+  "category": "surreal",
+  "seed": 268,
+  "duration": {
+    "max": 60,
+    "endOn": "never",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "polygon",
+      "sides": 4,
+      "angle": 45,
+      "radius": 600,
+      "thickness": 12,
+      "spin": 0,
+      "open": []
+    },
+    {
+      "type": "ball",
+      "radius": 44,
+      "speed": 650,
+      "shape": "square",
+      "color": "#c77dff"
+    }
+  ],
+  "rules": [
+    {
+      "on": "corner",
+      "do": [
+        {
+          "do": "end"
+        }
+      ]
+    }
+  ],
+  "style": {
+    "trail": 0.5,
+    "colorMode": "bounce",
+    "theme": "retro",
+    "scanlines": true
+  },
+  "camera": {
+    "shake": 1,
+    "slowmo": 1.5
+  },
+  "audio": {
+    "instrument": "chip",
+    "climax": "swell"
+  },
+  "overlay": {
+    "title": "Will it hit the corner?"
+  }
+}

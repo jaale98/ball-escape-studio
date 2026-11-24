@@ -1,0 +1,90 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Marble race",
+  "category": "satisfying",
+  "seed": 96,
+  "duration": {
+    "max": 60,
+    "endOn": "finish",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 700,
+    "keepEnergy": false,
+    "restitution": 0.45,
+    "friction": 0
+  },
+  "entities": [
+    {
+      "type": "course",
+      "top": 560,
+      "bottom": 1450,
+      "levels": 7,
+      "opening": 110
+    },
+    {
+      "type": "zone",
+      "x": 80,
+      "y": 1440,
+      "width": 920,
+      "height": 60,
+      "finish": true,
+      "label": "FINISH"
+    },
+    {
+      "type": "wall",
+      "x1": 70,
+      "y1": 1500,
+      "x2": 1010,
+      "y2": 1500,
+      "thickness": 12
+    },
+    {
+      "type": "ball",
+      "count": 8,
+      "x": 540,
+      "y": 430,
+      "spread": 300,
+      "radius": 17,
+      "speed": 50,
+      "arrange": "grid",
+      "labels": [
+        "Ruby",
+        "Sky",
+        "Sun",
+        "Lime",
+        "Plum",
+        "Tang",
+        "Rose",
+        "Mint"
+      ],
+      "colors": [
+        "#ff4d6d",
+        "#4dd4ff",
+        "#ffd23f",
+        "#7cff6b",
+        "#c77dff",
+        "#ff9f1c",
+        "#ff8fab",
+        "#80ffdb"
+      ]
+    }
+  ],
+  "style": {
+    "trail": 0.6,
+    "ballStyle": "3d"
+  },
+  "camera": {
+    "slowmo": 2,
+    "countdown": 3
+  },
+  "audio": {
+    "instrument": "marimba",
+    "climax": "swell"
+  },
+  "overlay": {
+    "title": "Which marble wins?",
+    "counter": "none",
+    "labelSize": 20
+  }
+}

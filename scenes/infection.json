@@ -1,0 +1,50 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Infection",
+  "category": "teams",
+  "seed": 150,
+  "modifiers": [
+    {
+      "use": "infection",
+      "chance": 0.2
+    }
+  ],
+  "duration": {
+    "max": 60,
+    "tail": 3
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 470,
+      "thickness": 12,
+      "spin": 0,
+      "gaps": []
+    },
+    {
+      "type": "ball",
+      "count": 31,
+      "radius": 22,
+      "speed": 320,
+      "spread": 330
+    }
+  ],
+  "style": {
+    "trail": 0.4
+  },
+  "camera": {
+    "slowmo": 1.5
+  },
+  "audio": {
+    "instrument": "synth",
+    "hitSound": false,
+    "climax": "gong"
+  },
+  "overlay": {
+    "title": "1 zombie vs 40 humans",
+    "winner": true
+  }
+}

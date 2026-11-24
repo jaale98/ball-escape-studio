@@ -23,7 +23,7 @@ export interface Voice {
   time: number;
   /** Seconds after the event that caused it (backing notes fall between bounces). */
   delay: number;
-  kind: 'note' | 'escape' | 'hit' | 'pop';
+  kind: 'note' | 'escape' | 'hit' | 'pop' | 'break' | 'zap' | 'gulp' | 'merge' | 'tick' | 'chime' | 'bell' | 'shoot' | 'drop' | 'swell' | 'gong';
   /** Notes to play together (one for a melody, several for a chord). */
   midi: number[];
   gain: number;
@@ -78,6 +78,10 @@ export class SoundMapper {
     const pan = Math.max(-1, Math.min(1, (e.x - WIDTH / 2) / (WIDTH / 2))) * 0.5;
     const { audio } = this.scene;
     const one = (v: Omit<Voice, 'time' | 'delay'>): Voice[] => [{ time, delay: 0, ...v }];
+    if (e.type === 'bounce' && audio.pitchBy !== 'melody') {
+      if (!this.allow('note', time, 0.06, 4)) return [];
+      return one({ kind: 'note', midi: [this.pitchFor(e)], gain: Math.max(0.35, Math.min(1, 0.35 + e.speed / 2500)), pan });
+    }
     if (e.type === 'bounce') {
       // Under rhythm lock bounce i is note i, so the melody must advance on
       // every bounce even when a note is too crowded to sound.
@@ -102,7 +106,55 @@ export class SoundMapper {
     if (e.type === 'clash' && audio.hitSound) return this.allow('clash', time, 0.1, 3) ? one({ kind: 'note', midi: [96, 103], gain: 0.5, pan }) : [];
     if (e.type === 'wake') return this.allow('note', time, 0.06, 4) ? one({ kind: 'note', midi: this.nextNote(), gain: 0.6, pan }) : [];
     if (e.type === 'hit' && audio.hitSound) return this.allow('hit', time, 0.05, 3) ? one({ kind: 'hit', midi: [], gain: Math.max(0.3, Math.min(1, e.speed / 1500)), pan }) : [];
+    if (e.type === 'swing') {
+      // Pendulums: each one has its own note on a pentatonic ladder.
+      if (!this.allow('note', time, 0.05, 6)) return [];
+      const k = e.n ?? 0;
+      return one({ kind: 'note', midi: [48 + 12 * Math.floor(k / 5) + PENTATONIC[k % 5] + audio.transpose], gain: 0.5, pan });
+    }
+    if (e.type === 'finish') return this.allow('finish', time, 0.4, 1) ? one({ kind: 'bell', midi: [72, 76, 79], gain: 1, pan }) : [];
+    if (e.type === 'corner') return this.allow('corner', time, 0.5, 1) ? one({ kind: 'bell', midi: [84, 88, 91, 96], gain: 1, pan }) : [];
+    if (!audio.eventSounds) return [];
+    switch (e.type) {
+      case 'break':
+        return this.allow('break', time, 0.07, 3) ? one({ kind: 'break', midi: [86 + this.rng.int(10), 93 + this.rng.int(8), 100 + this.rng.int(6)], gain: 0.9, pan }) : [];
+      case 'teleport':
+        return this.allow('zap', time, 0.1, 2) ? one({ kind: 'zap', midi: [], gain: 0.8, pan }) : [];
+      case 'swallow':
+        return this.allow('gulp', time, 0.1, 3) ? one({ kind: 'gulp', midi: [], gain: 0.9, pan }) : [];
+      case 'merge': {
+        if (!this.allow('merge', time, 0.08, 3)) return [];
+        const n = 60 + 2 * (e.n ?? 0) + audio.transpose;
+        return one({ kind: 'merge', midi: [n, n + 4, n + 7], gain: 0.8, pan });
+      }
+      case 'capture':
+        return this.allow('tick', time, 0.05, 4) ? one({ kind: 'tick', midi: [72 + 7 * (e.n ?? 0)], gain: 0.35, pan }) : [];
+      case 'convert':
+        return this.allow('chime', time, 0.08, 3) ? one({ kind: 'chime', midi: [76 + 2 * (e.n ?? 0), 83 + 2 * (e.n ?? 0)], gain: 0.6, pan }) : [];
+      case 'shoot':
+        return this.allow('shoot', time, 0.1, 3) ? one({ kind: 'shoot', midi: [], gain: 0.6, pan }) : [];
+      default:
+        return [];
+    }
     return [];
+  }
+
+  /** The climax impact (audio.climax), at the climax step. */
+  climax(step: number): Voice[] {
+    const kind = this.scene.audio.climax;
+    if (kind === 'none' || step < 0) return [];
+    return [{ time: step / PHYSICS_HZ, delay: 0, kind, midi: [], gain: 1, pan: 0 }];
+  }
+
+  /** pitchBy size / height / speed: a pentatonic note from the ball's state. */
+  private pitchFor(e: SimEvent): number {
+    const { pitchBy, transpose } = this.scene.audio;
+    let t: number; // 0 = low, 1 = high
+    if (pitchBy === 'size') t = 1 - Math.min(1, Math.max(0, Math.log2((e.n ?? 20) / 8) / 4));
+    else if (pitchBy === 'height') t = 1 - Math.min(1, Math.max(0, (e.y - 400) / 1100));
+    else t = Math.min(1, Math.max(0, (e.speed - 150) / 2200));
+    const steps = Math.round(t * 15); // three octaves of pentatonic
+    return 48 + 12 * Math.floor(steps / 5) + PENTATONIC[steps % 5] + transpose;
   }
 
   /** Backing notes between melody note `i` and the next one, timed by the rhythm-lock tempo. */
@@ -266,11 +318,109 @@ export function playVoice(ctx: BaseAudioContext, dest: AudioNode, v: Voice, when
     return;
   }
 
+  if (v.kind === 'break') {
+    // Glass shatter: a bright noise crack and a few high pings.
+    noiseHit(ctx, panner, when, 'highpass', 2800, 0.7, 0.55 * v.gain, 0.22);
+    noiseHit(ctx, panner, when + 0.01, 'bandpass', 6500, 3, 0.3 * v.gain, 0.4);
+    v.midi.forEach((m, i) => tone(ctx, panner, when + i * 0.012, hz(m), 'sine', 0.09 * v.gain, 0.5 + i * 0.15));
+    return;
+  }
+  if (v.kind === 'zap') {
+    sweep(ctx, panner, when, 260, 2600, 0.14, 'sawtooth', 0.12 * v.gain, 'lowpass');
+    sweep(ctx, panner, when + 0.12, 2400, 500, 0.16, 'sine', 0.18 * v.gain);
+    return;
+  }
+  if (v.kind === 'gulp') {
+    sweep(ctx, panner, when, 420, 55, 0.38, 'sine', 0.55 * v.gain);
+    noiseHit(ctx, panner, when, 'lowpass', 500, 0.8, 0.25 * v.gain, 0.3);
+    return;
+  }
+  if (v.kind === 'merge') {
+    v.midi.forEach((m, i) => sweep(ctx, panner, when + i * 0.045, hz(m) * 0.6, hz(m), 0.08, 'sine', 0.2 * v.gain, undefined, 0.35));
+    return;
+  }
+  if (v.kind === 'tick') {
+    tone(ctx, panner, when, hz(v.midi[0] ?? 84), 'square', 0.05 * v.gain, 0.04);
+    return;
+  }
+  if (v.kind === 'chime') {
+    v.midi.forEach((m, i) => tone(ctx, panner, when + i * 0.07, hz(m), 'triangle', 0.16 * v.gain, 0.5));
+    return;
+  }
+  if (v.kind === 'bell') {
+    v.midi.forEach((m, i) => {
+      tone(ctx, panner, when + i * 0.03, hz(m), 'sine', 0.14 * v.gain, 2.2);
+      tone(ctx, panner, when + i * 0.03, hz(m) * 2.76, 'sine', 0.05 * v.gain, 1.1);
+    });
+    return;
+  }
+  if (v.kind === 'shoot') {
+    noiseHit(ctx, panner, when, 'bandpass', 1400, 2.5, 0.35 * v.gain, 0.12);
+    sweep(ctx, panner, when, 900, 300, 0.1, 'triangle', 0.08 * v.gain);
+    return;
+  }
+  if (v.kind === 'drop') {
+    // Bass drop: a falling sub and a noise hit.
+    sweep(ctx, panner, when, 140, 38, 1.4, 'sine', 0.9 * v.gain, undefined, 1.6);
+    sweep(ctx, panner, when, 280, 76, 0.8, 'triangle', 0.25 * v.gain);
+    noiseHit(ctx, panner, when, 'lowpass', 1800, 0.7, 0.45 * v.gain, 0.6);
+    return;
+  }
+  if (v.kind === 'swell') {
+    // Cymbal swell: bright noise that rings out.
+    noiseHit(ctx, panner, when, 'highpass', 5000, 0.5, 0.35 * v.gain, 2.4);
+    noiseHit(ctx, panner, when, 'bandpass', 9000, 1.5, 0.2 * v.gain, 1.6);
+    return;
+  }
+  if (v.kind === 'gong') {
+    for (const [k, a, d] of [
+      [1, 0.4, 4],
+      [1.48, 0.22, 3],
+      [2.09, 0.16, 2.4],
+      [2.93, 0.1, 1.8],
+      [4.2, 0.06, 1.2],
+    ] as const)
+      tone(ctx, panner, when, 82 * k, 'sine', a * v.gain, d);
+    noiseHit(ctx, panner, when, 'lowpass', 900, 0.8, 0.3 * v.gain, 0.25);
+    return;
+  }
+
   const each = 1 / Math.sqrt(v.midi.length || 1);
   for (const m of v.midi) {
     const f = hz(m);
     const peak = 0.26 * v.gain * each;
-    if (instrument === 'bell') {
+    if (instrument === 'glass') {
+      tone(ctx, panner, when, f, 'sine', peak, 2.2);
+      tone(ctx, panner, when, f * 2.32, 'sine', peak * 0.4, 1.3);
+      tone(ctx, panner, when, f * 4.25, 'sine', peak * 0.22, 0.6);
+      tone(ctx, panner, when, f * 6.8, 'sine', peak * 0.08, 0.3);
+    } else if (instrument === 'chip') {
+      tone(ctx, panner, when, f, 'square', peak * 0.45, 0.22);
+      tone(ctx, panner, when + 0.05, f * 2, 'square', peak * 0.18, 0.12);
+    } else if (instrument === 'piano') {
+      tone(ctx, panner, when, f, 'triangle', peak * 1.1, 1.4);
+      tone(ctx, panner, when, f * 2, 'sine', peak * 0.4, 0.9);
+      tone(ctx, panner, when, f * 3, 'sine', peak * 0.18, 0.5);
+      tone(ctx, panner, when, f * 4.02, 'sine', peak * 0.08, 0.25);
+    } else if (instrument === 'kalimba') {
+      tone(ctx, panner, when, f, 'sine', peak * 1.15, 0.9);
+      tone(ctx, panner, when, f * 5.43, 'sine', peak * 0.25, 0.09);
+      tone(ctx, panner, when, f * 3, 'sine', peak * 0.12, 0.2);
+    } else if (instrument === 'pop') {
+      sweep(ctx, panner, when, f * 1.9, f, 0.05, 'sine', peak * 1.3, undefined, 0.2);
+    } else if (instrument === 'synth') {
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.Q.value = 6;
+      lp.frequency.setValueAtTime(5200, when);
+      lp.frequency.exponentialRampToValueAtTime(500, when + 0.4);
+      lp.connect(panner);
+      tone(ctx, lp, when, f * 0.995, 'sawtooth', peak * 0.45, 0.45);
+      tone(ctx, lp, when, f * 1.005, 'sawtooth', peak * 0.45, 0.45);
+      tone(ctx, lp, when, f / 2, 'square', peak * 0.2, 0.3);
+    } else if (instrument === 'meow') {
+      meow(ctx, panner, when, f, peak);
+    } else if (instrument === 'bell') {
       tone(ctx, panner, when, f, 'sine', peak, 1.6);
       tone(ctx, panner, when, f * 2.76, 'sine', peak * 0.35, 0.9);
       tone(ctx, panner, when, f * 5.4, 'sine', peak * 0.15, 0.45);
@@ -288,4 +438,96 @@ export function playVoice(ctx: BaseAudioContext, dest: AudioNode, v: Voice, when
       tone(ctx, lp, when, f * 2, 'sine', peak * 0.3, 0.3);
     }
   }
+}
+
+/** A tone whose pitch glides from f0 to f1 over `glide` seconds, then decays (by `decay`, default glide). */
+function sweep(
+  ctx: BaseAudioContext,
+  dest: AudioNode,
+  when: number,
+  f0: number,
+  f1: number,
+  glide: number,
+  type: OscillatorType,
+  peak: number,
+  filter?: BiquadFilterType,
+  decay = glide,
+): void {
+  const osc = ctx.createOscillator();
+  osc.type = type;
+  osc.frequency.setValueAtTime(f0, when);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(20, f1), when + glide);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(peak, when + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + Math.max(glide, decay) + 0.02);
+  let out: AudioNode = g;
+  if (filter) {
+    const f = ctx.createBiquadFilter();
+    f.type = filter;
+    f.frequency.value = 3000;
+    g.connect(f);
+    out = f;
+  }
+  osc.connect(g);
+  out.connect(dest);
+  osc.start(when);
+  osc.stop(when + Math.max(glide, decay) + 0.05);
+}
+
+/** A filtered burst of noise. */
+function noiseHit(ctx: BaseAudioContext, dest: AudioNode, when: number, type: BiquadFilterType, freq: number, q: number, peak: number, decay: number): void {
+  const src = ctx.createBufferSource();
+  src.buffer = noise(ctx);
+  src.loop = true;
+  const f = ctx.createBiquadFilter();
+  f.type = type;
+  f.frequency.value = freq;
+  f.Q.value = q;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(peak, when);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + decay);
+  src.connect(f).connect(g).connect(dest);
+  src.start(when);
+  src.stop(when + decay + 0.05);
+}
+
+/**
+ * A meow, in tune: a buzzy source through two vowel formants that open
+ * ("mee") then close ("-ow"), with the pitch rising then falling.
+ */
+function meow(ctx: BaseAudioContext, dest: AudioNode, when: number, f: number, peak: number): void {
+  const dur = 0.42;
+  const osc = ctx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(f * 0.92, when);
+  osc.frequency.linearRampToValueAtTime(f * 1.12, when + 0.11);
+  osc.frequency.linearRampToValueAtTime(f * 0.82, when + dur);
+  const vib = ctx.createOscillator();
+  vib.frequency.value = 6;
+  const vibAmt = ctx.createGain();
+  vibAmt.gain.value = f * 0.012;
+  vib.connect(vibAmt).connect(osc.frequency);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(peak * 0.9, when + 0.03);
+  g.gain.setValueAtTime(peak * 0.9, when + dur * 0.6);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+  for (const [lo, hi, end, q] of [
+    [700, 1700, 650, 6],
+    [1900, 2700, 1100, 9],
+  ] as const) {
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = q;
+    bp.frequency.setValueAtTime(lo, when);
+    bp.frequency.linearRampToValueAtTime(hi, when + 0.12);
+    bp.frequency.linearRampToValueAtTime(end, when + dur);
+    osc.connect(bp).connect(g);
+  }
+  g.connect(dest);
+  osc.start(when);
+  vib.start(when);
+  osc.stop(when + dur + 0.05);
+  vib.stop(when + dur + 0.05);
 }

@@ -1,0 +1,60 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Crusher",
+  "category": "destruction",
+  "seed": 47,
+  "duration": {
+    "max": 60,
+    "endOn": "allEscaped",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 900,
+    "maxBalls": 220
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 450,
+      "thickness": 16,
+      "spin": 0,
+      "gaps": [],
+      "hp": 150
+    },
+    {
+      "type": "spinner",
+      "length": 340,
+      "width": 20,
+      "spin": 2.4,
+      "color": "#ffd23f"
+    },
+    {
+      "type": "ball",
+      "radius": 14,
+      "speed": 900,
+      "y": 700
+    }
+  ],
+  "rules": [
+    {
+      "on": "bounce",
+      "script": "if (!ctx.container && ctx.world.balls().length < 200) ctx.world.spawn({ x: ctx.ball.x, y: ctx.ball.y, speed: 900 });"
+    }
+  ],
+  "style": {
+    "trail": 0.5,
+    "theme": "candy"
+  },
+  "camera": {
+    "shake": 1.2,
+    "slowmo": 1.2
+  },
+  "audio": {
+    "instrument": "pop",
+    "climax": "drop"
+  },
+  "overlay": {
+    "title": "Every paddle hit makes another",
+    "counter": "hp"
+  }
+}

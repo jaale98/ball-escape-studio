@@ -222,7 +222,7 @@ async function runTournament(): Promise<void> {
         winner: m.winner.label,
         signals: {},
         facts: [`${m.roundName}`, `climax ${m.climax.toFixed(1)}s`, `${m.winner.label} wins`],
-        stats: { deadTime: 0, nearMisses: 0, bounceRate: 0, leadChanges: 0, peakBalls: 2, capped: false, scriptError: '' },
+        stats: { deadTime: 0, nearMisses: 0, bounceRate: 0, leadChanges: 0, peakBalls: 2, capped: false, scriptError: '', teamLeadChanges: 0, endSpeed: 0, pendulumSpread: 0 },
         markers: [],
       };
       out.push({ scene: s, r, title: `${m.roundName}: ${m.a.label} vs ${m.b.label}`, source: { name: m.name, raw: m.raw } });

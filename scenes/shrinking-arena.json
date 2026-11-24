@@ -1,0 +1,56 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Shrinking arena",
+  "category": "battle",
+  "seed": 84,
+  "modifiers": [
+    {
+      "use": "battle",
+      "hp": 6
+    },
+    {
+      "use": "storm",
+      "rate": 9,
+      "min": 150
+    }
+  ],
+  "duration": {
+    "max": 60,
+    "tail": 3
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 480,
+      "thickness": 14,
+      "spin": 0,
+      "gaps": [],
+      "color": "#c77dff"
+    },
+    {
+      "type": "ball",
+      "count": 12,
+      "radius": 22,
+      "speed": 650,
+      "spread": 320
+    }
+  ],
+  "style": {
+    "trail": 0.5
+  },
+  "camera": {
+    "shake": 0.6,
+    "slowmo": 1.5
+  },
+  "audio": {
+    "instrument": "marimba",
+    "climax": "drop"
+  },
+  "overlay": {
+    "title": "The storm is closing",
+    "winner": true
+  }
+}

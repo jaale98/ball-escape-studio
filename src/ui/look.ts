@@ -4,6 +4,7 @@
  * Every control is an unsaved change, like the Tune and Music tabs.
  */
 import type { Scene } from '../engine/scene';
+import { THEMES } from '../engine/source';
 import { imageNames, imageUrl } from '../images';
 
 type Raw = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -95,6 +96,142 @@ export function initLook(h: LookHooks): void {
   });
 }
 
+type Field =
+  | { path: string; label: string; kind: 'select'; options: [string, string][] }
+  | { path: string; label: string; kind: 'check' }
+  | { path: string; label: string; kind: 'range'; min: number; max: number; step: number }
+  | { path: string; label: string; kind: 'text'; placeholder: string }
+  | { path: string; label: string; kind: 'image' }
+  | { group: string };
+
+const opts = (...xs: string[]): [string, string][] => xs.map((x) => [x, x[0].toUpperCase() + x.slice(1)]);
+
+/** The Style section: every V2 look, effect, camera and sound option. */
+const STYLE_FIELDS: Field[] = [
+  { group: 'Look' },
+  { path: 'style.theme', label: 'Theme', kind: 'select', options: [['', 'None'], ...opts(...Object.keys(THEMES))] },
+  { path: 'style.ballStyle', label: 'Balls', kind: 'select', options: opts('flat', 'glossy', '3d', 'outline', 'glass') },
+  { path: 'style.ringStyle', label: 'Rings', kind: 'select', options: opts('solid', 'dashed', 'double', 'rainbow', 'segments') },
+  { path: 'style.trailStyle', label: 'Trails', kind: 'select', options: opts('dots', 'ribbon', 'comet', 'rainbow') },
+  { path: 'style.trail', label: 'Trail length', kind: 'range', min: 0, max: 0.97, step: 0.01 },
+  { path: 'style.colorMode', label: 'Ball colors', kind: 'select', options: [['fixed', 'Fixed'], ['bounce', 'Change every bounce'], ['rainbow', 'Rainbow drift'], ['speed', 'By speed (heat)']] },
+  { path: 'style.lines', label: 'String art', kind: 'select', options: [['none', 'None'], ['center', 'Bounce → center'], ['web', 'Bounce → last bounce'], ['star', 'Star (5 back)'], ['tether', 'Tether to center']] },
+  { path: 'style.lineAlpha', label: 'Line strength', kind: 'range', min: 0.05, max: 1, step: 0.05 },
+  { path: 'style.backdrop', label: 'Backdrop', kind: 'select', options: opts('none', 'stars', 'grid', 'gradient', 'ripples') },
+  { group: 'Effects' },
+  { path: 'style.glow', label: 'Glow', kind: 'check' },
+  { path: 'style.bloom', label: 'Bloom', kind: 'check' },
+  { path: 'style.vignette', label: 'Vignette', kind: 'check' },
+  { path: 'style.grain', label: 'Film grain', kind: 'check' },
+  { path: 'style.scanlines', label: 'Scanlines', kind: 'check' },
+  { path: 'style.chromatic', label: 'Color fringe on hits', kind: 'check' },
+  { path: 'style.confetti', label: 'Confetti', kind: 'check' },
+  { path: 'style.paint', label: 'Paint', kind: 'check' },
+  { group: 'Camera & time' },
+  { path: 'camera.mode', label: 'Camera', kind: 'select', options: [['fixed', 'Fixed'], ['follow', 'Follow the action'], ['zoomOut', 'Zoom out ring by ring']] },
+  { path: 'camera.zoom', label: 'Zoom', kind: 'range', min: 0.5, max: 2, step: 0.05 },
+  { path: 'camera.shake', label: 'Shake', kind: 'range', min: 0, max: 3, step: 0.1 },
+  { path: 'camera.slowmo', label: 'Slow motion (s)', kind: 'range', min: 0, max: 6, step: 0.25 },
+  { path: 'camera.slowmoFactor', label: 'Slow-mo speed', kind: 'range', min: 0.1, max: 0.8, step: 0.05 },
+  { path: 'camera.countdown', label: 'Countdown', kind: 'range', min: 0, max: 5, step: 1 },
+  { group: 'Text' },
+  { path: 'overlay.progress', label: 'Time left', kind: 'select', options: [['none', 'Hidden'], ['bar', 'Bar'], ['ring', 'Ring']] },
+  { path: 'overlay.endCard', label: 'End card', kind: 'text', placeholder: 'Follow for part 2' },
+  { path: 'overlay.reveal', label: 'Reveal per bounce', kind: 'text', placeholder: 'A message, one word per bounce' },
+  { path: 'overlay.revealBy', label: 'Reveal by', kind: 'select', options: opts('words', 'letters') },
+  { group: 'Picture reveal' },
+  { path: 'style.reveal.text', label: 'Word', kind: 'text', placeholder: 'Balls land and spell this' },
+  { path: 'style.reveal.image', label: 'Picture', kind: 'image' },
+  { group: 'Sound' },
+  { path: 'audio.instrument', label: 'Instrument', kind: 'select', options: opts('pluck', 'bell', 'marimba', 'glass', 'chip', 'piano', 'kalimba', 'pop', 'synth', 'meow') },
+  { path: 'audio.pitchBy', label: 'Pitch follows', kind: 'select', options: [['melody', 'The melody'], ['size', 'Ball size'], ['height', 'Height'], ['speed', 'Speed']] },
+  { path: 'audio.climax', label: 'Climax sound', kind: 'select', options: [['none', 'None'], ['drop', 'Bass drop'], ['swell', 'Cymbal swell'], ['gong', 'Gong']] },
+  { path: 'audio.eventSounds', label: 'Break / portal / merge sounds', kind: 'check' },
+];
+
+function getPath(o: Raw, path: string): unknown {
+  return path.split('.').reduce<unknown>((x, k) => (x && typeof x === 'object' ? (x as Raw)[k] : undefined), o);
+}
+
+/** Build (or refresh) the Style section from the resolved scene. */
+function buildStyle(scene: Scene): void {
+  const box = $('l-style');
+  const focused = document.activeElement;
+  if (focused && box.contains(focused) && (focused as HTMLInputElement).type === 'text') return; // don't steal a text box mid-typing
+  box.replaceChildren();
+  const resolved = scene as unknown as Raw;
+  for (const f of STYLE_FIELDS) {
+    if ('group' in f) {
+      const h = document.createElement('div');
+      h.className = 'slider-group';
+      h.textContent = f.group;
+      box.append(h);
+      continue;
+    }
+    const value = getPath(resolved, f.path);
+    const label = document.createElement('label');
+    label.className = f.kind === 'check' ? 'check' : f.kind === 'range' ? 'slider' : 'field';
+    if (f.kind === 'check') {
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = !!value;
+      input.addEventListener('change', () => hooks.set(f.path, input.checked, false));
+      label.append(input, ` ${f.label}`);
+    } else {
+      const span = document.createElement('span');
+      span.textContent = f.label;
+      label.append(span);
+      if (f.kind === 'select' || f.kind === 'image') {
+        const sel = document.createElement('select');
+        const options = f.kind === 'image' ? ([['', 'None'], ...imageNames().map((n) => [n, n])] as [string, string][]) : f.options;
+        for (const [v, t] of options) sel.append(new Option(t, v));
+        sel.value = String(value ?? '');
+        sel.addEventListener('change', () => {
+          const v = sel.value || undefined;
+          if (f.path === 'style.theme') applyThemeChoice(v);
+          else hooks.set(f.path, v, false);
+        });
+        label.append(sel);
+      } else if (f.kind === 'range') {
+        const input = document.createElement('input');
+        input.type = 'range';
+        input.min = String(f.min);
+        input.max = String(f.max);
+        input.step = String(f.step);
+        input.value = String(value ?? f.min);
+        const out = document.createElement('output');
+        out.textContent = input.value;
+        input.addEventListener('input', () => {
+          out.textContent = input.value;
+          hooks.set(f.path, Number(input.value), false);
+        });
+        label.append(input, out);
+      } else {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = f.placeholder;
+        input.value = String(value ?? '');
+        let timer = 0;
+        input.addEventListener('input', () => {
+          clearTimeout(timer);
+          timer = window.setTimeout(() => hooks.set(f.path, input.value.trim() || undefined, false), 400);
+        });
+        label.append(input);
+      }
+    }
+    box.append(label);
+  }
+}
+
+/** Picking a theme sets its colors and styles outright (so it shows even over the scene's own colors). */
+function applyThemeChoice(name: string | undefined): void {
+  hooks.set('style.theme', name, false);
+  const theme = name ? THEMES[name] : undefined;
+  if (!theme) return;
+  for (const [k, v] of Object.entries(theme.style)) hooks.set(`style.${k}`, v, false);
+  for (const [k, v] of Object.entries(theme.overlay ?? {})) hooks.set(`overlay.${k}`, v, false);
+}
+
 /** Fill the tab from the resolved scene (values with defaults) and its merged source (for per-ball arrays). */
 export function refreshLook(scene: Scene, source: Raw): void {
   merged = source;
@@ -133,6 +270,7 @@ export function refreshLook(scene: Scene, source: Raw): void {
   bg.replaceChildren(new Option('None', ''), ...imageNames().map((n) => new Option(n, n)));
   bg.value = scene.style.backgroundImage ?? '';
   $('l-dim-row').hidden = !scene.style.backgroundImage;
+  buildStyle(scene);
   buildBalls(scene);
 }
 

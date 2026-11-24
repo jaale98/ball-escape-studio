@@ -1,0 +1,70 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Vortex drain",
+  "category": "forces",
+  "seed": 1,
+  "duration": {
+    "max": 30,
+    "endOn": "never",
+    "tail": 0
+  },
+  "world": {
+    "gravity": 0,
+    "keepEnergy": false,
+    "restitution": 0.85,
+    "maxBalls": 400
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 470,
+      "thickness": 12,
+      "spin": 0,
+      "gaps": []
+    },
+    {
+      "type": "force",
+      "kind": "vortex",
+      "strength": 420,
+      "inward": 0.6,
+      "color": "#4dd4ff"
+    },
+    {
+      "type": "zone",
+      "x": 500,
+      "y": 920,
+      "width": 80,
+      "height": 80,
+      "kill": true
+    },
+    {
+      "type": "emitter",
+      "x": 540,
+      "y": 560,
+      "rate": 14,
+      "count": 140,
+      "speed": 420,
+      "direction": 0,
+      "cone": 30,
+      "radius": 10,
+      "rainbow": true,
+      "loop": true
+    },
+    {
+      "type": "ball",
+      "count": 0,
+      "radius": 10
+    }
+  ],
+  "style": {
+    "trail": 0.8
+  },
+  "audio": {
+    "instrument": "kalimba"
+  },
+  "overlay": {
+    "title": "Down the drain",
+    "counter": "none",
+    "zones": false
+  }
+}

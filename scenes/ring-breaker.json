@@ -1,0 +1,56 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Ring breaker",
+  "category": "destruction",
+  "seed": 14,
+  "duration": {
+    "max": 60,
+    "endOn": "allEscaped",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "nested",
+      "count": 12,
+      "inner": 120,
+      "outer": 470,
+      "thickness": 9,
+      "spin": 0.6,
+      "spinFalloff": 0.92,
+      "gapWidth": 0,
+      "gapShrink": 0,
+      "minGap": 0,
+      "segments": 20,
+      "segmentHp": 1,
+      "segmentHpGrow": 0.45,
+      "rainbow": true
+    },
+    {
+      "type": "ball",
+      "radius": 13,
+      "speed": 1150,
+      "color": "#ffffff"
+    }
+  ],
+  "style": {
+    "trail": 0.7,
+    "ringStyle": "segments",
+    "theme": "neon"
+  },
+  "camera": {
+    "shake": 0.6,
+    "slowmo": 1.5
+  },
+  "audio": {
+    "melody": "midi:hall-of-the-mountain-king",
+    "instrument": "glass",
+    "climax": "drop"
+  },
+  "overlay": {
+    "title": "Can it break all 12 layers?",
+    "counter": "rings"
+  }
+}

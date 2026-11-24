@@ -8,7 +8,7 @@
 import { PHYSICS_HZ, type Scene } from '../engine/scene';
 import { type RingContainer, World } from '../engine/world';
 
-export type Template = 'slow-burn' | 'last-second' | 'chaos' | 'comeback' | 'music-sync' | 'perfect-loop';
+export type Template = 'slow-burn' | 'last-second' | 'chaos' | 'comeback' | 'music-sync' | 'perfect-loop' | 'underdog' | 'photo-finish' | 'destruction';
 
 export const TEMPLATES: Record<Template, { label: string; description: string }> = {
   'slow-burn': { label: 'Slow burn', description: 'Climax near the target, with near-misses building toward it and no dead stretches.' },
@@ -16,6 +16,9 @@ export const TEMPLATES: Record<Template, { label: string; description: string }>
   chaos: { label: 'Chaos', description: 'As busy as possible: lots of hits, lots of balls.' },
   comeback: { label: 'Comeback', description: 'Races and battles: the lead changes hands and the winner was behind at halftime.' },
   'music-sync': { label: 'In time with the song', description: 'Bounces land on the MIDI song’s note timing.' },
+  underdog: { label: 'Underdog', description: 'Team formats: the side that was behind at halfway takes over in the end, with the lead swapping along the way.' },
+  'photo-finish': { label: 'Photo finish', description: 'Races: the winner crosses the line a hair ahead of second place.' },
+  destruction: { label: 'Destruction', description: 'Breakable formats: lots of breaks, with the last one landing near the target.' },
   'perfect-loop': {
     label: 'Perfect loop',
     description: 'Finds a stretch whose last frame matches its first, so the video loops seamlessly on replay (target = loop length). Best with one ball and no gravity.',
@@ -26,6 +29,9 @@ export const TEMPLATES: Record<Template, { label: string; description: string }>
 export function defaultTemplate(scene: Scene): Template {
   if (scene.audio.rhythmLock || (scene.audio.noteTimes && scene.audio.melody.startsWith('midi:'))) return 'music-sync';
   if (scene.duration.endOn === 'lastStanding') return 'comeback';
+  if (scene.duration.endOn === 'oneTeam' || scene.teams.length > 1) return 'underdog';
+  if (scene.duration.endOn === 'finish') return 'photo-finish';
+  if (scene.duration.endOn === 'cleared') return 'destruction';
   if (scene.duration.endOn === 'never') return 'chaos';
   return 'slow-burn';
 }
@@ -51,7 +57,20 @@ export interface RunScore extends Variation {
   /** Short human-readable facts. */
   facts: string[];
   /** Raw measurements (for the Critic). */
-  stats: { deadTime: number; nearMisses: number; bounceRate: number; leadChanges: number; peakBalls: number; capped: boolean; scriptError: string };
+  stats: {
+    deadTime: number;
+    nearMisses: number;
+    bounceRate: number;
+    leadChanges: number;
+    peakBalls: number;
+    capped: boolean;
+    scriptError: string;
+    teamLeadChanges: number;
+    /** Average ball speed when the video ends (px/s): is a pile settled? */
+    endSpeed: number;
+    /** Pendulum scenes: how far apart the bobs ended (px). */
+    pendulumSpread: number;
+  };
   /** Perfect loops: the seamless stretch found. */
   loop?: { from: number; to: number; error: number };
   /** Moments worth marking on a timeline. */
@@ -111,7 +130,7 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
   const startingBalls = w.balls.length;
   const T = opts.target;
   // A scene whose script can end it (world.end()) has a climax too.
-  const endsOnClimax = scene.duration.endOn !== 'never' || /world\.end\(/.test(JSON.stringify(scene.rules) + JSON.stringify(scene.timeline));
+  const endsOnClimax = scene.duration.endOn !== 'never' || /world\.end\(|"do":"end"/.test(JSON.stringify(scene.rules) + JSON.stringify(scene.timeline));
 
   // Signals gathered while stepping.
   const nearMisses: number[] = []; // times
@@ -127,6 +146,18 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
   let leadChanges = 0;
   const hpAtHalf = new Map<number, number>();
   let halfSampled = false;
+  // Teams: the leading team over time, and the standings at halfway.
+  let teamLeader = -1;
+  let teamLeadChanges = 0;
+  let teamsAtHalf: number[] | null = null;
+  const finishTimes: number[] = [];
+  const breakTimes: number[] = [];
+  const teamCounts = (): number[] => {
+    if (w.territory) return [...w.territory.counts];
+    const c = scene.teams.map(() => 0);
+    for (const b of w.balls) if (b.alive && !b.projectile && b.team !== undefined) c[w.teamOf(b.team)]++;
+    return c;
+  };
 
   const markers: RunScore['markers'] = [];
   let cursor = 0;
@@ -159,6 +190,9 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
         if (markers.length < 400) markers.push({ t: lastEliminationAt, kind: 'eliminate' });
       }
       if (e.type === 'escape' && markers.length < 400 && w.balls.length <= 40) markers.push({ t: e.step / PHYSICS_HZ, kind: 'escape' });
+      if (e.type === 'finish') finishTimes.push(e.step / PHYSICS_HZ);
+      if (e.type === 'break') breakTimes.push(e.step / PHYSICS_HZ);
+      if (e.type === 'swallow' && startingBalls > 1) lastEliminationAt = e.step / PHYSICS_HZ;
       if (e.type === 'bounce') {
         bounceTimes.push(e.step / PHYSICS_HZ);
         // Near miss: a ring bounce just beside a gap edge.
@@ -183,6 +217,13 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
         if (leader >= 0 && top.id !== leader && (top.hp ?? 0) > (w.balls[leader].hp ?? 0)) leadChanges++;
         leader = top.id;
       }
+      if (scene.teams.length > 1) {
+        const c = teamCounts();
+        const top = c.indexOf(Math.max(...c));
+        if (teamLeader >= 0 && top !== teamLeader && c[top] > c[teamLeader]) teamLeadChanges++;
+        teamLeader = top;
+        if (!teamsAtHalf && t >= T / 2) teamsAtHalf = c;
+      }
       if (!halfSampled && t >= T / 2) {
         halfSampled = true;
         for (const b of w.balls) if (b.alive && b.hp !== undefined) hpAtHalf.set(b.id, b.hp);
@@ -193,8 +234,9 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
   // Climax: first escape, last elimination, or the moment the ending triggered.
   let climax = -1;
   if (w.endReason === 'escaped') climax = w.firstEscapeStep / PHYSICS_HZ;
-  else if (w.endReason === 'lastStanding') climax = lastEliminationAt;
+  else if (w.endReason === 'lastStanding') climax = lastEliminationAt >= 0 ? lastEliminationAt : w.climaxStep / PHYSICS_HZ;
   else if (w.endReason === 'allEscaped' || w.endReason === 'filled' || w.endReason === 'script') climax = w.time - scene.duration.tail;
+  else if (w.climaxStep >= 0) climax = w.climaxStep / PHYSICS_HZ;
   const failed = endsOnClimax && climax < 0;
 
   const timing = climax < 0 ? (endsOnClimax ? 0 : 0.5) : gauss(climax - T, 0.15 * T);
@@ -214,7 +256,19 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
     const ranked = [...hpAtHalf.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
     comeback = clamp01(ranked.indexOf(winnerBall.id) / Math.max(1, ranked.length - 1));
   }
-  const lead = clamp01(leadChanges / 5);
+  const lead = clamp01((leadChanges + teamLeadChanges) / 5);
+  // Team formats: the eventual winner was behind at halfway.
+  let underdog = 0;
+  const winTeam = w.winnerTeam ? w.teamOf(w.winnerTeam) : -1;
+  if (winTeam >= 0 && teamsAtHalf) {
+    const ranked = teamsAtHalf.map((n, i) => [n, i]).sort((a, b) => b[0] - a[0]).map(([, i]) => i);
+    underdog = clamp01(ranked.indexOf(winTeam) / Math.max(1, ranked.length - 1));
+  }
+  const margin = finishTimes.length >= 2 ? finishTimes[1] - finishTimes[0] : Infinity;
+  const photo = Number.isFinite(margin) ? gauss(margin, 0.35) : 0;
+  const lastBreak = breakTimes.length ? breakTimes[breakTimes.length - 1] : -1;
+  const smash = clamp01(breakTimes.length / 40);
+  const lateBreak = lastBreak > 0 ? gauss(lastBreak - T, 0.15 * T) : 0;
   const rhythm = rhythmScore(bounceTimes, scene.audio.noteTimes);
 
   const signals: Record<string, number> = { timing, pacing };
@@ -235,6 +289,18 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
     case 'comeback':
       Object.assign(signals, { comeback, lead, misses });
       weights = { comeback: 3, lead: 2, timing: 1, misses: 1 };
+      break;
+    case 'underdog':
+      Object.assign(signals, { underdog, lead });
+      weights = { underdog: 3, lead: 2, timing: 2, pacing: 1 };
+      break;
+    case 'photo-finish':
+      Object.assign(signals, { photo, comeback });
+      weights = { photo: 3, timing: 2, comeback: 1, pacing: 1 };
+      break;
+    case 'destruction':
+      Object.assign(signals, { smash, lateBreak });
+      weights = { smash: 2, lateBreak: 2, timing: 2, pacing: 1 };
       break;
     case 'music-sync':
       Object.assign(signals, { rhythm: rhythm.score });
@@ -263,6 +329,15 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
   if (deadTime > 3) facts.push(`${deadTime.toFixed(1)}s lull`);
   if (leadChanges) facts.push(`${leadChanges} lead changes`);
   if (winnerBall) facts.push(`${winnerBall.label ?? `ball ${winnerBall.id}`} wins`);
+  if (w.winnerTeam) facts.push(`${w.winnerTeam} wins`);
+  if (teamLeadChanges) facts.push(`${teamLeadChanges} takeovers`);
+  if (w.breaks) facts.push(`${w.breaks} breaks`);
+  if (w.captures) facts.push(`${w.captures} cells painted`);
+  if (w.conversions) facts.push(`${w.conversions} converted`);
+  if (w.merges) facts.push(`${w.merges} merges`);
+  if (w.swallowed) facts.push(`${w.swallowed} swallowed`);
+  if (w.corners) facts.push(`${w.corners} corner hits`);
+  if (Number.isFinite(margin)) facts.push(`won by ${margin.toFixed(2)}s`);
   if (opts.template === 'music-sync' && rhythm.checked) facts.push(`${Math.round(rhythm.score * 100)}% of ${rhythm.checked} notes on time`);
   const loop = looping && bestLoop.to > 0 ? { from: LOOP_ANCHOR, to: Math.round(bestLoop.to * 1000) / 1000, error: bestLoop.error } : undefined;
   if (looping) {
@@ -276,7 +351,7 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
     climax,
     length: w.time,
     endReason: w.endReason,
-    winner: winnerBall ? (winnerBall.label ?? `ball ${winnerBall.id}`) : '',
+    winner: winnerBall ? (winnerBall.label ?? `ball ${winnerBall.id}`) : w.winnerTeam,
     signals,
     facts,
     stats: {
@@ -287,6 +362,18 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
       peakBalls,
       capped: peakBalls >= scene.world.maxBalls,
       scriptError: w.scriptError,
+      teamLeadChanges,
+      endSpeed: (() => {
+        const live = w.balls.filter((b) => b.alive && !b.projectile);
+        return live.length ? live.reduce((a, b) => a + Math.hypot(b.vx, b.vy), 0) / live.length : 0;
+      })(),
+      pendulumSpread: (() => {
+        if (w.pendulums.length < 2) return 0;
+        const bobs = w.pendulums.map((p) => w.pendulumBob(p));
+        let d = 0;
+        for (const a of bobs) for (const b of bobs) d = Math.max(d, Math.hypot(a[0] - b[0], a[1] - b[1]));
+        return d;
+      })(),
     },
     loop,
     markers: [

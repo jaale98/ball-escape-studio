@@ -1,0 +1,39 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Chaos pendulums",
+  "category": "chaos",
+  "seed": 1,
+  "duration": {
+    "max": 40,
+    "endOn": "never",
+    "tail": 0
+  },
+  "entities": [
+    {
+      "type": "pendulum",
+      "arms": 2,
+      "count": 8,
+      "spread": 0.001,
+      "lengths": [
+        210,
+        210
+      ],
+      "angles": [
+        130,
+        150
+      ],
+      "y": 800
+    }
+  ],
+  "style": {
+    "trail": 0.94,
+    "trailStyle": "ribbon"
+  },
+  "audio": {
+    "instrument": "glass"
+  },
+  "overlay": {
+    "title": "8 pendulums, 0.001° apart",
+    "counter": "none"
+  }
+}

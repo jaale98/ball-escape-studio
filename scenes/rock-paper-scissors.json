@@ -1,0 +1,47 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Rock paper scissors",
+  "category": "teams",
+  "seed": 69,
+  "modifiers": [
+    "rps"
+  ],
+  "duration": {
+    "max": 60,
+    "tail": 3
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 470,
+      "thickness": 12,
+      "spin": 0,
+      "gaps": []
+    },
+    {
+      "type": "ball",
+      "count": 36,
+      "radius": 26,
+      "speed": 420,
+      "spread": 330
+    }
+  ],
+  "style": {
+    "trail": 0.3,
+    "glow": false
+  },
+  "camera": {
+    "slowmo": 1.5
+  },
+  "audio": {
+    "instrument": "pop",
+    "hitSound": false
+  },
+  "overlay": {
+    "title": "Who takes over?",
+    "winner": true
+  }
+}

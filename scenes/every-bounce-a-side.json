@@ -1,0 +1,47 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Every bounce a side",
+  "category": "surreal",
+  "seed": 173,
+  "modifiers": [
+    {
+      "use": "add-side",
+      "max": 24
+    }
+  ],
+  "duration": {
+    "max": 60,
+    "endOn": "firstEscape",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 900
+  },
+  "entities": [
+    {
+      "type": "polygon",
+      "sides": 3,
+      "radius": 500,
+      "thickness": 14,
+      "spin": 0.5,
+      "open": [
+        0
+      ],
+      "gap": 64
+    },
+    {
+      "type": "ball",
+      "radius": 22,
+      "speed": 950
+    }
+  ],
+  "style": {
+    "trail": 0.8
+  },
+  "audio": {
+    "instrument": "bell"
+  },
+  "overlay": {
+    "title": "Triangle to circle"
+  }
+}

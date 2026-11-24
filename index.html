@@ -60,6 +60,7 @@
 
         <div class="row buttons">
           <button id="open-director" title="Search hundreds of runs for the best story (D)">Director</button>
+          <button id="b-weird" title="Stack 2–3 surreal modifiers (black hole, portals, splitting, meowing…) onto this scene as an unsaved change. Discard undoes it.">Make it weird</button>
           <button id="export" class="primary" title="Render a 1080×1920 MP4 (E)">Export MP4</button>
         </div>
         <p id="export-msg" class="msg"></p>
@@ -101,7 +102,7 @@
           <label class="slider"><span>Name size</span><input id="l-labelSize" type="range" min="12" max="70" step="1" /><output></output></label>
         </div>
         <label class="field"><span>Counter</span>
-          <select id="l-counter"><option value="none">None</option><option value="bounces">Bounces</option><option value="balls">Balls left</option><option value="escaped">Escaped</option></select>
+          <select id="l-counter"><option value="none">None</option><option value="bounces">Bounces</option><option value="balls">Balls left</option><option value="escaped">Escaped</option><option value="teams">Teams</option><option value="rings">Rings escaped</option><option value="bricks">Bricks left</option><option value="hp">Ring hit points</option></select>
         </label>
         <div class="toggles">
           <label class="check"><input id="l-timer" type="checkbox" /> Timer</label>
@@ -117,6 +118,10 @@
         </div>
         <label class="field"><span>Background picture</span><select id="l-bgImage"></select></label>
         <label class="slider" id="l-dim-row"><span>Darken picture</span><input id="l-backgroundDim" type="range" min="0" max="0.9" step="0.05" /><output></output></label>
+
+        <h3>Style &amp; effects</h3>
+        <p class="muted">Themes fill in colors and styles; everything here is an unsaved change until you Save.</p>
+        <div id="l-style" class="style-grid"></div>
 
         <h3>Balls</h3>
         <p class="muted">Names, emoji and photos for each ball. Drop pictures anywhere on the studio to add them to <code>images/</code>.</p>

@@ -1,5 +1,5 @@
 import { Rng } from './rng';
-import { type Action, ActionSchema, type BallSpec, gravityVec, HEIGHT, PHYSICS_HZ, type Scene, songLoopLength, WIDTH } from './scene';
+import { type Action, ActionSchema, type BallSpec, gravityVec, HEIGHT, PHYSICS_HZ, type Scene, songLoopLength, type TeamSpec, WIDTH } from './scene';
 import { compileScript, type ScriptContext, type ScriptFn } from './script';
 
 export const DT = 1 / PHYSICS_HZ;
@@ -64,6 +64,24 @@ export interface Ball {
   image?: string;
   emoji?: string;
   weapon?: Weapon;
+  /** Team name (scene.teams), if any. */
+  team?: string;
+  /** Merge level. */
+  level: number;
+  /** Ghost-copy group: balls only touch balls of the same group. */
+  group: number;
+  /** Never moves and never wakes (clones). */
+  anchored: boolean;
+  /** An arrow: belongs to `owner`, deals `damage`, dies on any wall. */
+  projectile?: { owner: number; damage: number };
+  /** Portal it is standing in (can't re-enter until it leaves), or -1. */
+  portal: number;
+  /** Palette index, for recolor. */
+  colorIndex: number;
+  /** Emitter that made it, if any. */
+  source?: number;
+  /** Locked in place by freezeAll (drawn at full color, unlike a frozen ball). */
+  locked?: boolean;
 }
 
 export interface Weapon {
@@ -75,6 +93,15 @@ export interface Weapon {
   angle: number;
   color?: string;
   lastClashStep: number;
+  kind: 'blade' | 'sword' | 'dagger' | 'spear' | 'hammer' | 'scythe' | 'bow' | 'unarmed';
+  grow: { damage: number; spin: number; length: number; speed: number; arrows: number };
+  /** Hits landed so far. */
+  hits: number;
+  /** bow: arrows per volley, and the step of the next volley. */
+  arrows: number;
+  nextShot: number;
+  fireSteps: number;
+  knockback: number;
 }
 
 export interface Gap {
@@ -94,10 +121,19 @@ interface ContainerBase {
   angle: number;
   spin: number;
   color: string;
+  deadly: boolean;
+  /** Whole-container hp (undefined = unbreakable). */
+  hp?: number;
+  maxHp?: number;
+  /** Shattered: no longer a wall. */
+  broken: boolean;
 }
 export interface RingContainer extends ContainerBase {
   kind: 'ring';
   gaps: Gap[];
+  /** Breakable segments (hp per segment; 0 = broken), evenly spaced from angle 0. */
+  segments?: number[];
+  segmentHp: number;
 }
 export interface PolyContainer extends ContainerBase {
   kind: 'poly';
@@ -113,7 +149,7 @@ export type Container = RingContainer | PolyContainer;
 /** A static capsule: a wall segment, or a peg (zero-length segment). */
 export interface Solid {
   id: number;
-  kind: 'wall' | 'peg';
+  kind: 'wall' | 'peg' | 'spinner' | 'brick';
   x1: number;
   y1: number;
   x2: number;
@@ -121,6 +157,85 @@ export interface Solid {
   /** Half the wall thickness, or the peg radius. */
   half: number;
   color: string;
+  deadly: boolean;
+  boost: number;
+  hp?: number;
+  maxHp?: number;
+  alive: boolean;
+  /** spinner / brick: center (spinner: pivot), angle (radians), spin. */
+  cx: number;
+  cy: number;
+  angle: number;
+  spin: number;
+  /** spinner: bar length and pivot; brick: half width / half height. */
+  length: number;
+  pivotEnd: boolean;
+  hw: number;
+  hh: number;
+}
+
+export interface Portal {
+  id: number;
+  ax: number;
+  ay: number;
+  bx: number;
+  by: number;
+  r: number;
+  colorA: string;
+  colorB: string;
+}
+
+export interface Force {
+  id: number;
+  kind: 'attract' | 'repel' | 'vortex' | 'wind';
+  x: number;
+  y: number;
+  strength: number;
+  dx: number;
+  dy: number;
+  radius: number;
+  swallow: number;
+  inward: number;
+  visible: boolean;
+  color: string;
+  /** Balls eaten so far. */
+  eaten: number;
+}
+
+interface Emitter {
+  spec: Extract<Scene['entities'][number], { type: 'emitter' }>;
+  made: number;
+  acc: number;
+  startStep: number;
+}
+
+export interface Territory {
+  x: number;
+  y: number;
+  cols: number;
+  rows: number;
+  cell: number;
+  /** Owner team index per cell (row-major). */
+  owner: Int16Array;
+  /** Cells per team. */
+  counts: number[];
+}
+
+export interface Pendulum {
+  id: number;
+  x: number;
+  y: number;
+  arms: 1 | 2;
+  l1: number;
+  l2: number;
+  t1: number;
+  t2: number;
+  w1: number;
+  w2: number;
+  g: number;
+  bob: number;
+  color: string;
+  chime: boolean;
 }
 
 export interface Zone {
@@ -131,9 +246,32 @@ export interface Zone {
   height: number;
   label?: string;
   count: number;
+  kill: boolean;
+  finish: boolean;
 }
 
-export type SimEventType = 'bounce' | 'escape' | 'spawn' | 'hit' | 'eliminate' | 'zone' | 'exit' | 'gravity' | 'strike' | 'clash' | 'wake';
+export type SimEventType =
+  | 'bounce'
+  | 'escape'
+  | 'spawn'
+  | 'hit'
+  | 'eliminate'
+  | 'zone'
+  | 'exit'
+  | 'gravity'
+  | 'strike'
+  | 'clash'
+  | 'wake'
+  | 'break'
+  | 'teleport'
+  | 'swallow'
+  | 'capture'
+  | 'merge'
+  | 'convert'
+  | 'corner'
+  | 'finish'
+  | 'shoot'
+  | 'swing';
 
 export interface SimEvent {
   step: number;
@@ -149,6 +287,8 @@ export interface SimEvent {
   y: number;
   /** Impact strength in px/s. */
   speed: number;
+  /** Extra detail: the pendulum for a swing, the team index for a capture/convert, the level for a merge, the brick/solid broken. */
+  n?: number;
 }
 
 interface TimelineState {
@@ -161,7 +301,21 @@ interface TimelineState {
   where: string;
 }
 
-type RuleEvent = 'bounce' | 'escape' | 'hit' | 'eliminate' | 'strike' | 'wake';
+type RuleEvent = 'bounce' | 'escape' | 'hit' | 'eliminate' | 'strike' | 'wake' | 'break' | 'teleport' | 'swallow' | 'capture' | 'merge' | 'convert' | 'corner' | 'finish';
+const RULE_EVENTS: RuleEvent[] = ['bounce', 'escape', 'hit', 'eliminate', 'strike', 'wake', 'break', 'teleport', 'swallow', 'capture', 'merge', 'convert', 'corner', 'finish'];
+
+/** Default power-ups per weapon kind (weapon.grow overrides). */
+const WEAPON_GROW: Record<Weapon['kind'], Weapon['grow']> = {
+  blade: { damage: 0, spin: 1, length: 0, speed: 1, arrows: 0 },
+  sword: { damage: 1, spin: 1, length: 0, speed: 1, arrows: 0 },
+  dagger: { damage: 0, spin: 1.18, length: 0, speed: 1, arrows: 0 },
+  spear: { damage: 0, spin: 1, length: 14, speed: 1, arrows: 0 },
+  hammer: { damage: 0.5, spin: 1, length: 0, speed: 1, arrows: 0 },
+  scythe: { damage: 0, spin: 1.06, length: 4, speed: 1, arrows: 0 },
+  bow: { damage: 0, spin: 1, length: 0, speed: 1, arrows: 1 },
+  unarmed: { damage: 0, spin: 1, length: 0, speed: 1.12, arrows: 0 },
+};
+const MAX_WEAPON_SPIN = 22;
 interface RuleEntry {
   actions: Action[];
   script?: ScriptFn;
@@ -173,7 +327,7 @@ function wrap(a: number): number {
   return a - TAU * Math.floor((a + Math.PI) / TAU);
 }
 
-const BALL_ACTIONS = new Set(['grow', 'speedUp', 'damage']);
+const BALL_ACTIONS = new Set(['grow', 'speedUp', 'damage', 'split', 'recolor', 'clone']);
 
 /** Shortest distance between two segments. */
 function segmentDistance(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, dx: number, dy: number): number {
@@ -203,6 +357,19 @@ export class World {
   containers: Container[] = [];
   solids: Solid[] = [];
   zones: Zone[] = [];
+  portals: Portal[] = [];
+  forces: Force[] = [];
+  territory: Territory | null = null;
+  pendulums: Pendulum[] = [];
+  readonly teams: TeamSpec[];
+  /** Winning team (oneTeam endings, territory at the end), or ''. */
+  winnerTeam = '';
+  breaks = 0;
+  captures = 0;
+  conversions = 0;
+  merges = 0;
+  swallowed = 0;
+  corners = 0;
   /** Every event so far, in order. Consumers keep their own read cursor. */
   events: SimEvent[] = [];
   bounces = 0;
@@ -234,8 +401,22 @@ export class World {
   private readonly rules: Record<RuleEvent, RuleEntry[]>;
   private readonly timeline: TimelineState[];
   private readonly rngScript: Rng;
+  /** Randomness for V2 actions and emitters (its own stream, so V1 runs are unchanged). */
+  private readonly rngAct: Rng;
+  private readonly damping: number;
+  private readonly emitters: Emitter[] = [];
+  private readonly teamIndex = new Map<string, number>();
   private readonly scriptState: Record<string, unknown> = {};
   private maxR = 0;
+  /** First ball to cross a finish zone, or -1. */
+  private finishWinner = -1;
+  private readonly hadBreakables: boolean;
+  /** Merge / absorb rules on hits act on touch (any speed). */
+  private readonly touchMerge: boolean;
+  private readonly touchAbsorb: boolean;
+  private readonly mergeGrowth: number;
+  private readonly mergeMax: number;
+  private readonly absorbMax: number;
   /** During a hit's rules: true when the ball the rules run for was the one struck. */
   private defending = true;
 
@@ -244,12 +425,16 @@ export class World {
     this.rngSpawn = new Rng(scene.seed, 'spawn');
     [this.gx, this.gy] = gravityVec(scene.world.gravity);
     this.rngScript = new Rng(scene.seed, 'script');
+    this.rngAct = new Rng(scene.seed, 'act');
+    this.damping = scene.world.damping;
+    this.teams = scene.teams;
+    scene.teams.forEach((t, i) => this.teamIndex.set(t.name, i));
     const rulesFor = (on: RuleEvent): RuleEntry[] =>
       scene.rules
         .map((r, i) => ({ r, i }))
         .filter(({ r }) => r.on === on)
         .map(({ r, i }) => ({ actions: r.do ?? [], script: r.script ? compileScript(r.script, `rules.${i}`) : undefined, where: `rules.${i}` }));
-    this.rules = { bounce: rulesFor('bounce'), escape: rulesFor('escape'), hit: rulesFor('hit'), eliminate: rulesFor('eliminate'), strike: rulesFor('strike'), wake: rulesFor('wake') };
+    this.rules = Object.fromEntries(RULE_EVENTS.map((on) => [on, rulesFor(on)])) as Record<RuleEvent, RuleEntry[]>;
     this.timeline = scene.timeline.map((t, i) => ({
       atStep: t.at !== undefined ? Math.round(t.at * PHYSICS_HZ) : undefined,
       everySteps: t.every !== undefined ? Math.max(1, Math.round(t.every * PHYSICS_HZ)) : undefined,
@@ -273,6 +458,12 @@ export class World {
           spin: e.spin * scene.world.spinScale,
           gaps: e.gaps.filter((g) => g.width > 0).map((g) => ({ at: g.at * DEG, width: g.width * DEG })),
           color: e.color ?? scene.style.ringColor,
+          deadly: e.deadly,
+          hp: e.hp,
+          maxHp: e.hp,
+          broken: false,
+          segments: e.segments ? Array.from({ length: e.segments }, () => e.segmentHp) : undefined,
+          segmentHp: e.segmentHp,
         });
       } else if (e.type === 'polygon') {
         this.containers.push({
@@ -288,13 +479,94 @@ export class World {
           open: Array.from({ length: e.sides }, (_, k) => e.open.includes(k)),
           gap: e.gap,
           color: e.color ?? scene.style.ringColor,
+          deadly: e.deadly,
+          hp: e.hp,
+          maxHp: e.hp,
+          broken: false,
         });
-      } else if (e.type === 'wall') {
-        this.solids.push({ id: this.solids.length, kind: 'wall', x1: e.x1, y1: e.y1, x2: e.x2, y2: e.y2, half: e.thickness / 2, color: e.color ?? scene.style.ringColor });
-      } else if (e.type === 'peg') {
-        this.solids.push({ id: this.solids.length, kind: 'peg', x1: e.x, y1: e.y, x2: e.x, y2: e.y, half: e.radius, color: e.color ?? scene.style.ringColor });
+      } else if (e.type === 'wall' || e.type === 'peg' || e.type === 'brick' || e.type === 'spinner') {
+        const base = { id: this.solids.length, color: e.color ?? scene.style.ringColor, alive: true, cx: 0, cy: 0, angle: 0, spin: 0, length: 0, pivotEnd: false, hw: 0, hh: 0, deadly: false, boost: 1 };
+        if (e.type === 'wall') this.solids.push({ ...base, kind: 'wall', x1: e.x1, y1: e.y1, x2: e.x2, y2: e.y2, half: e.thickness / 2, deadly: e.deadly, boost: e.boost, hp: e.hp, maxHp: e.hp });
+        else if (e.type === 'peg') this.solids.push({ ...base, kind: 'peg', x1: e.x, y1: e.y, x2: e.x, y2: e.y, half: e.radius, deadly: e.deadly, boost: e.boost, hp: e.hp, maxHp: e.hp });
+        else if (e.type === 'brick')
+          this.solids.push({ ...base, kind: 'brick', x1: e.x, y1: e.y, x2: e.x, y2: e.y, half: 0, cx: e.x, cy: e.y, angle: e.angle * DEG, hw: e.width / 2, hh: e.height / 2, hp: e.hp, maxHp: e.hp, color: e.color ?? scene.style.palette[this.solids.length % scene.style.palette.length] });
+        else {
+          const s: Solid = { ...base, kind: 'spinner', x1: 0, y1: 0, x2: 0, y2: 0, half: e.width / 2, cx: e.x, cy: e.y, angle: e.angle * DEG, spin: e.spin * scene.world.spinScale, length: e.length, pivotEnd: e.pivot === 'end', deadly: e.deadly };
+          this.placeSpinner(s);
+          this.solids.push(s);
+        }
       } else if (e.type === 'zone') {
-        this.zones.push({ id: this.zones.length, x: e.x, y: e.y, width: e.width, height: e.height, label: e.label, count: 0 });
+        this.zones.push({ id: this.zones.length, x: e.x, y: e.y, width: e.width, height: e.height, label: e.label, count: 0, kill: e.kill, finish: e.finish });
+      } else if (e.type === 'portal') {
+        this.portals.push({ id: this.portals.length, ax: e.a[0], ay: e.a[1], bx: e.b[0], by: e.b[1], r: e.radius, colorA: e.color ?? '#ff9f1c', colorB: e.color ?? '#4dd4ff' });
+      } else if (e.type === 'force') {
+        this.forces.push({
+          id: this.forces.length,
+          kind: e.kind,
+          x: e.x,
+          y: e.y,
+          strength: e.strength,
+          dx: Math.cos(e.direction * DEG),
+          dy: Math.sin(e.direction * DEG),
+          radius: e.radius,
+          swallow: e.swallow,
+          inward: e.inward,
+          visible: e.visible,
+          color: e.color ?? (e.kind === 'attract' ? '#c77dff' : e.kind === 'vortex' ? '#4dd4ff' : '#ffffff'),
+          eaten: 0,
+        });
+      } else if (e.type === 'emitter') {
+        this.emitters.push({ spec: e, made: 0, acc: 0, startStep: Math.round(e.start * PHYSICS_HZ) });
+      } else if (e.type === 'territory') {
+        const n = e.cols * e.rows;
+        const owner = new Int16Array(n);
+        const k = Math.max(1, scene.teams.length);
+        const rng = new Rng(scene.seed, 'territory');
+        for (let r = 0; r < e.rows; r++) {
+          for (let c = 0; c < e.cols; c++) {
+            let t = 0;
+            if (e.layout === 'halves') t = Math.min(k - 1, Math.floor((c / e.cols) * Math.min(k, 2)));
+            else if (e.layout === 'columns') t = Math.min(k - 1, Math.floor((c / e.cols) * k));
+            else if (e.layout === 'stripes') t = Math.min(k - 1, Math.floor((r / e.rows) * k));
+            else if (e.layout === 'quadrants') t = ((r < e.rows / 2 ? 0 : 2) + (c < e.cols / 2 ? 0 : 1)) % k;
+            else t = rng.int(k);
+            owner[r * e.cols + c] = t;
+          }
+        }
+        const counts = Array.from({ length: k }, () => 0);
+        for (const t of owner) counts[t]++;
+        this.territory = { x: e.x, y: e.y, cols: e.cols, rows: e.rows, cell: e.cell, owner, counts };
+      } else if (e.type === 'pendulum') {
+        const rainbow = (i: number) => `hsl(${Math.round((i / Math.max(1, e.count)) * 300)}, 95%, 62%)`;
+        for (let i = 0; i < e.count; i++) {
+          let l1 = e.lengths[0] ?? 230;
+          let x = e.x;
+          if (e.wave > 0) {
+            // Pendulum k swings (waveBase + k) times per wave period: the pattern repeats every `wave` seconds.
+            const swings = e.waveBase + (e.count - 1 - i);
+            l1 = e.gravity * (e.wave / (2 * Math.PI * swings)) ** 2;
+            x = e.x + (i - (e.count - 1) / 2) * Math.min(64, 900 / Math.max(1, e.count));
+          }
+          const last = e.arms === 2 ? 1 : 0;
+          const a1 = ((e.angles[0] ?? 120) + (last === 0 ? i * e.spread : 0)) * DEG;
+          const a2 = ((e.angles[1] ?? 150) + (last === 1 ? i * e.spread : 0)) * DEG;
+          this.pendulums.push({
+            id: i,
+            x,
+            y: e.y,
+            arms: e.arms,
+            l1,
+            l2: e.lengths[1] ?? l1,
+            t1: a1,
+            t2: a2,
+            w1: 0,
+            w2: 0,
+            g: e.gravity,
+            bob: e.bob,
+            color: e.colors?.[i % e.colors.length] ?? rainbow(i),
+            chime: e.chime,
+          });
+        }
       }
     }
 
@@ -307,6 +579,22 @@ export class World {
       const cols = Math.ceil(Math.sqrt(spec.count));
       const gap = Math.max(spec.radius * 2.6, ((spec.spread ?? 40) * 2) / Math.max(1, cols - 1));
       for (let i = 0; i < spec.count; i++) {
+        if (spec.copies > 1) {
+          // Butterfly effect: identical copies, each launched a hair apart, that never touch each other.
+          const first = this.spawnBall(spec, i, spec.x, spec.y, spec.spread ?? (spec.count > 1 ? 40 : 0));
+          if (!first) continue;
+          const dir = Math.atan2(first.vy, first.vx);
+          const speed = Math.hypot(first.vx, first.vy) / this.scene.world.speedScale;
+          first.group = 0;
+          for (let k = 1; k < spec.copies; k++) {
+            const c = this.spawnBall(spec, i, first.x, first.y, 0, speed, dir / DEG + k * spec.jitter);
+            if (!c) break;
+            c.group = k;
+            c.color = spec.colors?.[k % spec.colors.length] ?? this.scene.style.palette[k % this.scene.style.palette.length];
+          }
+          first.color = spec.colors?.[0] ?? this.scene.style.palette[0];
+          continue;
+        }
         if (spec.arrange === 'grid' && spec.count > 1) {
           const gx = cx + ((i % cols) - (cols - 1) / 2) * gap;
           const gy = cy + (Math.floor(i / cols) - (Math.ceil(spec.count / cols) - 1) / 2) * gap;
@@ -315,6 +603,15 @@ export class World {
       }
     }
     this.startingBalls = this.balls.length;
+    this.hadBreakables = this.breakablesLeft > 0;
+    const hitActs = scene.rules.filter((r) => r.on === 'hit').flatMap((r) => r.do ?? []);
+    const merge = hitActs.find((a) => a.do === 'merge');
+    const absorb = hitActs.find((a) => a.do === 'absorb');
+    this.touchMerge = !!merge;
+    this.touchAbsorb = !!absorb;
+    this.mergeGrowth = merge && merge.do === 'merge' ? merge.growth : 1.25;
+    this.mergeMax = merge && merge.do === 'merge' ? merge.maxLevel : 10;
+    this.absorbMax = absorb && absorb.do === 'absorb' ? absorb.max : 400;
 
     // Rhythm lock: pick a tempo so the ball keeps roughly its launch speed.
     const nt = scene.audio.noteTimes;
@@ -340,9 +637,27 @@ export class World {
     return this.stepCount * DT;
   }
 
+  /** Live balls (arrows don't count). */
   get aliveCount(): number {
     let n = 0;
-    for (const b of this.balls) if (b.alive) n++;
+    for (const b of this.balls) if (b.alive && !b.projectile) n++;
+    return n;
+  }
+
+  /** Team index of a team name (-1 if none). */
+  teamOf(name: string | undefined): number {
+    return name === undefined ? -1 : (this.teamIndex.get(name) ?? -1);
+  }
+
+  /** Breakable things still standing: bricks, breakable walls/pegs, ring segments, rings with hp. */
+  get breakablesLeft(): number {
+    let n = 0;
+    for (const s of this.solids) if (s.alive && s.hp !== undefined) n++;
+    for (const c of this.containers) {
+      if (c.broken) continue;
+      if (c.kind === 'ring' && c.segments) for (const h of c.segments) n += h > 0 ? 1 : 0;
+      else if (c.hp !== undefined) n++;
+    }
     return n;
   }
 
@@ -351,6 +666,12 @@ export class World {
     if (this.done) return;
     this.runTimeline();
     for (const c of this.containers) c.angle = wrap(c.angle + c.spin * DT);
+    for (const s of this.solids) {
+      if (s.kind !== 'spinner') continue;
+      s.angle = wrap(s.angle + s.spin * DT);
+      this.placeSpinner(s);
+    }
+    if (this.emitters.length) this.runEmitters();
 
     // Only balls that existed at the start of the step move this step.
     const n = this.balls.length;
@@ -361,6 +682,7 @@ export class World {
     this.collideBalls();
     this.strikes();
     this.countZones();
+    if (this.pendulums.length) this.stepPendulums();
 
     this.stepCount++;
     this.checkEnd();
@@ -381,6 +703,17 @@ export class World {
       if (c.kind === 'ring') for (const g of c.gaps) values.push(g.width);
     }
     for (const z of this.zones) values.push(z.count);
+    // V2 state, only when present (so V1 scenes keep their V1 hashes).
+    for (const b of this.balls) if (b.team !== undefined || b.level || b.group || b.anchored || b.projectile) values.push(this.teamOf(b.team), b.level, b.group);
+    for (const s of this.solids) if (s.hp !== undefined || s.kind === 'spinner') values.push(s.hp ?? 0, s.alive ? 1 : 0, s.angle);
+    for (const c of this.containers) {
+      if (c.hp !== undefined) values.push(c.hp);
+      if (c.broken) values.push(-7);
+      if (c.kind === 'ring' && c.segments) values.push(...c.segments);
+    }
+    if (this.territory) values.push(...this.territory.counts);
+    for (const p of this.pendulums) values.push(p.t1, p.t2, p.w1, p.w2);
+    for (const f of this.forces) values.push(f.eaten);
     const bytes = new Uint8Array(new Float64Array(values).buffer);
     let h = 2166136261;
     for (let i = 0; i < bytes.length; i++) {
@@ -441,6 +774,12 @@ export class World {
       vy: Math.sin(dir) * v,
       r: spec.radius,
       color: spec.colors?.[index % spec.colors.length] ?? spec.color ?? palette[id % palette.length],
+      colorIndex: id % palette.length,
+      team: spec.teams?.[index % spec.teams.length] ?? spec.team,
+      level: spec.level ?? 0,
+      group: 0,
+      anchored: false,
+      portal: -1,
       label: spec.labels?.[index % spec.labels.length],
       hp: spec.hp,
       maxHp: spec.hp,
@@ -452,13 +791,39 @@ export class World {
       shape: spec.shape ?? 'circle',
       rot: 0,
       // Blades of a group start fanned out evenly, not all pointing the same way.
-      weapon: spec.weapon ? { ...spec.weapon, angle: spec.weapon.angle * DEG + (index * TAU) / Math.max(1, spec.count), lastClashStep: -Infinity } : undefined,
+      weapon: spec.weapon
+        ? {
+            length: spec.weapon.length,
+            width: spec.weapon.width,
+            spin: spec.weapon.spin,
+            damage: spec.weapon.damage,
+            color: spec.weapon.color,
+            angle: spec.weapon.angle * DEG + (index * TAU) / Math.max(1, spec.count),
+            lastClashStep: -Infinity,
+            kind: spec.weapon.kind,
+            grow: { ...WEAPON_GROW[spec.weapon.kind], ...spec.weapon.grow },
+            hits: 0,
+            arrows: 1,
+            fireSteps: Math.max(1, Math.round(spec.weapon.fireEvery * PHYSICS_HZ)),
+            nextShot: Math.round(spec.weapon.fireEvery * PHYSICS_HZ * 0.5),
+            knockback: spec.weapon.knockback * (spec.weapon.kind === 'hammer' ? 1.9 : 1),
+          }
+        : undefined,
       escaped: this.containers.map((c) => Math.hypot(cx - c.x, cy - c.y) >= this.innerRadius(c)),
       everEscaped: [],
       inZone: this.zones.map(() => false),
       energy: 0,
     };
     ball.everEscaped = [...ball.escaped];
+    // A team ball takes its team's color and emoji unless the spec gives its own.
+    const team = ball.team !== undefined ? this.teams[this.teamOf(ball.team)] : undefined;
+    if (team) {
+      if (team.color && !spec.colors && !spec.color) ball.color = team.color;
+      if (team.emoji && !ball.emoji && !ball.image) ball.emoji = team.emoji;
+    }
+    // Picture reveal: the studio colored each ball by where it lands.
+    const reveal = this.scene.style.revealColors?.[id];
+    if (reveal) ball.color = reveal;
     if (ball.frozen) {
       ball.vx = 0;
       ball.vy = 0;
@@ -503,19 +868,35 @@ export class World {
     for (let k = 0; k < n && b.alive; k++) {
       b.vx += this.gx * h;
       b.vy += this.gy * h;
+      if (this.damping > 0) {
+        const k = Math.exp(-this.damping * h);
+        b.vx *= k;
+        b.vy *= k;
+      }
+      if (this.forces.length) {
+        this.applyForces(b, h);
+        if (!b.alive) break;
+      }
       b.x += b.vx * h;
       b.y += b.vy * h;
-      for (let i = 0; i < this.containers.length; i++) {
+      for (let i = 0; i < this.containers.length && b.alive; i++) {
         const c = this.containers[i];
+        if (c.broken) continue;
         if (c.kind === 'ring') {
           if (!b.escaped[i]) this.collideRing(b, c, i);
           else this.collideRingOutside(b, c, i);
         } else this.collidePoly(b, c, i);
       }
       for (const s of this.solids) {
-        const hit = this.collideCapsule(b, s.x1, s.y1, s.x2, s.y2, s.half, 0, 0, 0, e);
+        if (!s.alive || !b.alive) continue;
+        let hit: number;
+        if (s.kind === 'brick') hit = this.collideBox(b, s, e);
+        else if (s.kind === 'spinner') hit = this.collideCapsule(b, s.x1, s.y1, s.x2, s.y2, s.half, s.cx, s.cy, s.spin, e);
+        else hit = this.collideCapsule(b, s.x1, s.y1, s.x2, s.y2, s.half, 0, 0, 0, e);
         if (hit > 0) this.onBounce(b, null, s.id, hit);
       }
+      if (this.portals.length && b.alive) this.checkPortals(b);
+      if (this.territory && b.team !== undefined && b.alive) this.collideTerritory(b);
     }
     if (b.alive && b.escaped.every(Boolean)) {
       const m = b.r + 60;
@@ -542,7 +923,8 @@ export class World {
     const outer = ring.radius + half;
     if (d + b.r < inner) return; // not touching the wall
 
-    const gap = this.gapAt(ring, Math.atan2(dy, dx) - ring.angle);
+    const theta = Math.atan2(dy, dx) - ring.angle;
+    const gap = this.gapAt(ring, theta);
     if (gap) {
       if (d - b.r > outer) {
         this.escape(b, ring, idx);
@@ -551,6 +933,11 @@ export class World {
       // Passing through the gap: the gap's two edges are rounded caps.
       this.collideCap(b, ring, gap.at - gap.width / 2, false);
       this.collideCap(b, ring, gap.at + gap.width / 2, false);
+      return;
+    }
+    if (ring.segments && ring.segments[this.segmentAt(ring, theta)] <= 0) {
+      // A broken segment is an opening without rounded edges.
+      if (d - b.r > outer) this.escape(b, ring, idx);
       return;
     }
 
@@ -588,7 +975,12 @@ export class World {
     const half = ring.thickness / 2;
     const outer = ring.radius + half;
     if (d - b.r > outer) return;
-    const gap = this.gapAt(ring, Math.atan2(dy, dx) - ring.angle);
+    const theta = Math.atan2(dy, dx) - ring.angle;
+    if (ring.segments && ring.segments[this.segmentAt(ring, theta)] <= 0) {
+      if (d + b.r < ring.radius - half) b.escaped[idx] = false;
+      return;
+    }
+    const gap = this.gapAt(ring, theta);
     if (gap) {
       if (d + b.r < ring.radius - half) b.escaped[idx] = false;
       else {
@@ -692,7 +1084,7 @@ export class World {
       for (let i = 0; i < balls.length; i++) {
         const a = balls[i];
         if (!a.alive) continue;
-        for (let j = i + 1; j < balls.length && a.alive; j++) if (layer[i] === layer[j]) this.collidePair(a, balls[j]);
+        for (let j = i + 1; j < balls.length && a.alive; j++) if (layer[i] === layer[j] && a.group === balls[j].group) this.collidePair(a, balls[j]);
       }
       return;
     }
@@ -719,7 +1111,7 @@ export class World {
         for (let dy = -1; dy <= 1 && a.alive; dy++) {
           const list = grid.get((cx[i] + dx) * 100003 + cy[i] + dy);
           if (!list) continue;
-          for (const j of list) if (j > i && layer[i] === layer[j] && a.alive) this.collidePair(a, balls[j]);
+          for (const j of list) if (j > i && layer[i] === layer[j] && a.alive && a.group === balls[j].group) this.collidePair(a, balls[j]);
         }
       }
     }
@@ -732,6 +1124,24 @@ export class World {
     const rr = a.r + b.r;
     const d2 = dx * dx + dy * dy;
     if (d2 >= rr * rr || d2 === 0) return;
+    if (a.projectile || b.projectile) {
+      this.arrowHit(a.projectile ? a : b, a.projectile ? b : a);
+      return;
+    }
+    if (a.anchored || b.anchored) {
+      if (!(a.anchored && b.anchored)) this.collideAnchored(a.anchored ? a : b, a.anchored ? b : a);
+      return;
+    }
+    // Contact mechanics: merge (same level) and absorb happen on touch, at any speed.
+    if (this.touchMerge && a.level === b.level && !a.frozen && !b.frozen) {
+      this.mergeBalls(a, b);
+      return;
+    }
+    if (this.touchAbsorb && !a.frozen && !b.frozen) {
+      const big = a.r > b.r || (a.r === b.r && a.id < b.id) ? a : b;
+      this.absorbBall(big, big === a ? b : a);
+      return;
+    }
     const e = this.scene.world.restitution;
     // A moving ball wakes a frozen one on a real impact; the frozen one then
     // takes part normally. (A graze or a resting touch doesn't wake it.)
@@ -772,6 +1182,9 @@ export class World {
       }
       if (-rvn > (this.scene.world.keepEnergy ? HIT_THRESHOLD : SETTLE_THRESHOLD * 2)) {
         this.emit('hit', a, -1, -1, -1, -rvn, (a.x + b.x) / 2, (a.y + b.y) / 2);
+        // Unarmed fighters: the one charging in lands the punch.
+        if (a.weapon?.kind === 'unarmed' && aIn > bIn && a.team !== b.team) this.punch(a, b);
+        else if (b.weapon?.kind === 'unarmed' && bIn > aIn && a.team !== b.team) this.punch(b, a);
         this.defending = aIn < bIn;
         this.runRules('hit', a, null, -rvn, b);
         this.defending = bIn < aIn;
@@ -783,8 +1196,9 @@ export class World {
 
   /** Spinning weapons: strike other balls, and clash (both reverse) when two blades cross. */
   private strikes(): void {
-    const armed = this.balls.filter((b) => b.alive && b.weapon);
+    const armed = this.balls.filter((b) => b.alive && b.weapon && b.weapon.kind !== 'unarmed' && !b.projectile);
     if (!armed.length) return;
+    for (const a of armed) if (a.weapon!.kind === 'bow' && this.stepCount >= a.weapon!.nextShot) this.fireArrows(a);
     const e = this.scene.world.restitution;
     for (const a of armed) a.weapon!.angle = wrap(a.weapon!.angle + a.weapon!.spin * DT);
     const blade = (a: Ball): [number, number, number, number] => {
@@ -817,8 +1231,11 @@ export class World {
       const w = a.weapon!;
       const [x1, y1, x2, y2] = blade(a);
       const layerA = a.escaped.reduce((n, v) => n + (v ? 1 : 0), 0);
+      if (w.kind === 'bow') continue; // a bow only shoots
       for (const b of this.balls) {
-        if (b === a || !b.alive) continue;
+        if (b === a || !b.alive || b.group !== a.group) continue;
+        if (a.team !== undefined && a.team === b.team) continue;
+        if (b.projectile && b.projectile.owner === a.id) continue;
         if (b.escaped.reduce((n, v) => n + (v ? 1 : 0), 0) !== layerA) continue;
         const abx = x2 - x1;
         const aby = y2 - y1;
@@ -831,6 +1248,12 @@ export class World {
         const min = b.r + w.width / 2;
         const d2 = dx * dx + dy * dy;
         if (d2 >= min * min || d2 < 1e-12) continue;
+        if (b.projectile) {
+          // Parried: the blade knocks the arrow out of the air.
+          b.alive = false;
+          this.emit('clash', a, -1, -1, -1, 800, px, py);
+          continue;
+        }
         const d = Math.sqrt(d2);
         const nx = dx / d;
         const ny = dy / d;
@@ -846,14 +1269,15 @@ export class World {
         const pvy = a.vy + w.spin * arm * Math.cos(w.angle);
         const vn = (b.vx - pvx) * nx + (b.vy - pvy) * ny;
         if (vn < 0) {
-          b.vx -= (1 + e) * vn * nx;
-          b.vy -= (1 + e) * vn * ny;
-          if (b.energy === 0) b.energy = this.energyOf(b);
+          b.vx -= (1 + e) * vn * nx * w.knockback;
+          b.vy -= (1 + e) * vn * ny * w.knockback;
+          if (b.energy === 0 || w.knockback !== 1) b.energy = this.energyOf(b);
           else this.restoreEnergy(b);
         }
         if (this.stepCount - b.lastDamageStep >= DAMAGE_COOLDOWN) {
           this.emit('strike', a, -1, -1, -1, Math.abs(vn), px, py);
           if (w.damage > 0) this.damage(b, w.damage, true);
+          this.powerUp(a);
           this.runRules('strike', a, null, Math.abs(vn), b);
           if (b.hp === undefined) b.lastDamageStep = this.stepCount; // still rate-limit strike events
         }
@@ -871,20 +1295,53 @@ export class World {
           b.inZone[z.id] = true;
           z.count++;
           this.emit('zone', b, -1, -1, z.id);
+          if (z.finish && !b.projectile) {
+            this.emit('finish', b, -1, -1, z.id);
+            if (this.finishWinner < 0) this.finishWinner = b.id;
+            this.runRules('finish', b, null, 0, null);
+          }
+          if (z.kill) {
+            this.swallowBall(b, null);
+            break;
+          }
         }
       }
     }
   }
 
   private onBounce(b: Ball, c: Container | null, solid: number, strength: number): void {
+    // Arrows break on any wall.
+    if (b.projectile) {
+      b.alive = false;
+      return;
+    }
+    const s = solid >= 0 ? this.solids[solid] : null;
+    if ((c?.deadly || s?.deadly) && !(this.scene.duration.endOn === 'lastStanding' && this.aliveCount <= 1)) {
+      this.emit('bounce', b, c ? c.id : -1, solid, -1, strength);
+      b.hp = 0;
+      this.eliminate(b);
+      return;
+    }
     this.restoreEnergy(b);
+    if (s && s.boost !== 1) {
+      // Bumper: a harder kick out (energy re-based so it sticks).
+      const sp = Math.hypot(b.vx, b.vy);
+      const k = Math.min(3500, sp * s.boost) / Math.max(1e-6, sp);
+      b.vx *= k;
+      b.vy *= k;
+      b.energy = this.energyOf(b);
+    }
     // Settling scenes (no energy keeping) have balls resting in piles: only real
     // impacts count as bounces, or every jostle would become an event and a note.
     if (strength < (this.scene.world.keepEnergy ? BOUNCE_THRESHOLD : SETTLE_THRESHOLD)) return;
     this.bounces++;
     this.emit('bounce', b, c ? c.id : -1, solid, -1, strength);
+    this.events[this.events.length - 1].n = b.r; // the sound can follow the ball's size
+    if (c && c.kind === 'poly') this.checkCorner(b, c);
     this.runRules('bounce', b, c, strength, null);
     if (this.rhythmK > 0) this.lockToRhythm(b, this.bounces - 1);
+    if (c) this.hitContainer(b, c);
+    if (s && s.hp !== undefined) this.hitSolid(b, s);
   }
 
   /**
@@ -1070,7 +1527,7 @@ export class World {
 
   private runRules(on: RuleEvent, b: Ball, c: Container | null, impact: number, other: Ball | null): void {
     for (const r of this.rules[on]) {
-      if (r.actions.length) this.applyActions(r.actions, b, c, impact);
+      if (r.actions.length) this.applyActions(r.actions, b, c, impact, other);
       if (r.script) this.runScript(r, on, b, c, impact, other);
     }
   }
@@ -1096,20 +1553,14 @@ export class World {
         do: (action) => {
           const parsed = ActionSchema.safeParse(action);
           if (!parsed.success) throw new Error(`world.do: ${parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`);
-          world.applyActions([parsed.data], b, c, impact);
+          world.applyActions([parsed.data], b, c, impact, other);
         },
         gravity: (x, y) => {
           world.gx = x;
           world.gy = y;
           world.gravityChanged();
         },
-        end: () => {
-          if (world.endStep === Infinity) {
-            world.endReason = 'script';
-            world.climaxStep = world.stepCount;
-            world.endStep = world.stepCount + Math.round(world.scene.duration.tail * PHYSICS_HZ);
-          }
-        },
+        end: () => world.endNow('script'),
         get time() {
           return world.time;
         },
@@ -1140,7 +1591,7 @@ export class World {
    * Apply actions. `b` is the ball the event happened to (null for timeline
    * world actions); `c` is the container involved (null = all containers).
    */
-  private applyActions(actions: Action[], b: Ball | null, c: Container | null, impact: number): void {
+  private applyActions(actions: Action[], b: Ball | null, c: Container | null, impact: number, other: Ball | null = null): void {
     const targets = c ? [c] : this.containers;
     for (const act of actions) {
       switch (act.do) {
@@ -1151,7 +1602,7 @@ export class World {
           this.containers.forEach((k, i) => {
             if (!b.escaped[i]) cap = Math.min(cap, this.innerRadius(k) * 0.92);
           });
-          b.r = Math.min(cap, b.r + act.amount);
+          b.r = Math.max(act.min, Math.min(cap, b.r + act.amount));
           if (b.r >= cap - 1e-9) this.filled = true;
           break;
         }
@@ -1205,6 +1656,68 @@ export class World {
         case 'reverseSpin':
           for (const k of targets) k.spin = -k.spin;
           break;
+        case 'split':
+          if (b && b.alive && !b.projectile) this.splitBall(b, act.min, act.angle * DEG, act.recolor);
+          break;
+        case 'absorb':
+          if (b && other && b.alive && other.alive && (b.r > other.r || (b.r === other.r && b.id < other.id))) this.absorbBall(b, other, act.max);
+          break;
+        case 'merge':
+          if (b && other && b.alive && other.alive && b.level === other.level && b.level < act.maxLevel) this.mergeBalls(b, other, act.growth);
+          break;
+        case 'convert':
+          if (b && other && b.alive && other.alive && b.team !== undefined && other.team !== b.team) {
+            const mine = this.teams[this.teamOf(b.team)];
+            const wins = act.mode === 'always' || (mine && other.team !== undefined && mine.beats.includes(other.team));
+            if (wins && (act.chance >= 1 || this.rngAct.next() < act.chance)) this.convertBall(other, b.team, b);
+          }
+          break;
+        case 'clone':
+          if (b && b.alive && !b.projectile) this.cloneBall(b);
+          break;
+        case 'moveGap':
+          for (const k of targets) if (k.kind === 'ring') for (const g of k.gaps) g.at = this.rngAct.range(-Math.PI, Math.PI);
+          break;
+        case 'addGap':
+          for (const k of targets) if (k.kind === 'ring' && k.gaps.length < act.max) k.gaps.push({ at: this.rngAct.range(-Math.PI, Math.PI), width: act.width * DEG });
+          break;
+        case 'addSide':
+          for (const k of targets) {
+            if (k.kind !== 'poly' || k.sides >= act.max) continue;
+            k.sides++;
+            k.open.push(false);
+          }
+          break;
+        case 'shrinkContainer':
+          for (const k of targets) k.radius = Math.max(act.min, k.radius - act.amount);
+          break;
+        case 'recolor':
+          if (b && b.alive) {
+            const pal = this.scene.style.palette;
+            b.colorIndex = (b.colorIndex + 1) % pal.length;
+            b.color = pal[b.colorIndex];
+          }
+          break;
+        case 'end':
+          this.endNow('rule');
+          break;
+        case 'freezeAll':
+          for (const x of this.balls) {
+            if (!x.alive || x.projectile) continue;
+            x.vx = 0;
+            x.vy = 0;
+            x.frozen = true;
+            x.anchored = true;
+            x.locked = true;
+            x.energy = 0;
+          }
+          break;
+        case 'growForce':
+          for (const f of this.forces) {
+            f.strength *= act.factor;
+            if (f.swallow > 0) f.swallow = Math.min(act.max, f.swallow + act.swallow);
+          }
+          break;
       }
     }
   }
@@ -1219,6 +1732,585 @@ export class World {
     this.events.push({ step: this.stepCount, type, ball: b.id, ring, solid, zone, x, y, speed });
   }
 
+  // ---- V2 mechanics ---------------------------------------------------------------
+
+  /** End the run now (rule action or script). */
+  endNow(reason: string): void {
+    if (this.endStep !== Infinity) return;
+    this.endReason = reason;
+    this.climaxStep = this.stepCount;
+    this.endStep = this.stepCount + Math.round(this.scene.duration.tail * PHYSICS_HZ);
+  }
+
+  /** The one team every live ball is on, or '' (also: one team owns the whole territory). */
+  private soleTeam(): string {
+    if (this.territory) {
+      const c = this.territory.counts;
+      const owners = c.filter((n) => n > 0).length;
+      if (owners === 1 && this.teams.length > 1) return this.teams[c.findIndex((n) => n > 0)]?.name ?? '';
+    }
+    let team: string | undefined;
+    let any = false;
+    for (const b of this.balls) {
+      if (!b.alive || b.projectile) continue;
+      if (b.team === undefined) return '';
+      if (!any) {
+        team = b.team;
+        any = true;
+      } else if (b.team !== team) return '';
+    }
+    return any ? (team ?? '') : '';
+  }
+
+  private placeSpinner(s: Solid): void {
+    const ca = Math.cos(s.angle);
+    const sa = Math.sin(s.angle);
+    if (s.pivotEnd) {
+      s.x1 = s.cx;
+      s.y1 = s.cy;
+      s.x2 = s.cx + ca * s.length;
+      s.y2 = s.cy + sa * s.length;
+    } else {
+      s.x1 = s.cx - (ca * s.length) / 2;
+      s.y1 = s.cy - (sa * s.length) / 2;
+      s.x2 = s.cx + (ca * s.length) / 2;
+      s.y2 = s.cy + (sa * s.length) / 2;
+    }
+  }
+
+  /** Ball vs. a (possibly rotated) rectangle. Returns the impact speed, or 0. */
+  private collideBox(b: Ball, s: Solid, e: number): number {
+    const ca = Math.cos(s.angle);
+    const sa = Math.sin(s.angle);
+    const dx = b.x - s.cx;
+    const dy = b.y - s.cy;
+    const lx = dx * ca + dy * sa;
+    const ly = -dx * sa + dy * ca;
+    if (Math.abs(lx) > s.hw + b.r || Math.abs(ly) > s.hh + b.r) return 0;
+    const qx = Math.max(-s.hw, Math.min(s.hw, lx));
+    const qy = Math.max(-s.hh, Math.min(s.hh, ly));
+    let nx = lx - qx;
+    let ny = ly - qy;
+    const d2 = nx * nx + ny * ny;
+    let pen: number;
+    if (d2 > 1e-12) {
+      if (d2 >= b.r * b.r) return 0;
+      const d = Math.sqrt(d2);
+      nx /= d;
+      ny /= d;
+      pen = b.r - d;
+    } else {
+      // Centre inside the box: push out along the nearest face.
+      const px = s.hw - Math.abs(lx);
+      const py = s.hh - Math.abs(ly);
+      if (px < py) {
+        nx = lx < 0 ? -1 : 1;
+        ny = 0;
+        pen = px + b.r;
+      } else {
+        nx = 0;
+        ny = ly < 0 ? -1 : 1;
+        pen = py + b.r;
+      }
+    }
+    const wnx = nx * ca - ny * sa;
+    const wny = nx * sa + ny * ca;
+    b.x += wnx * pen;
+    b.y += wny * pen;
+    const vn = b.vx * wnx + b.vy * wny;
+    if (vn >= 0) return 0;
+    b.vx -= (1 + e) * vn * wnx;
+    b.vy -= (1 + e) * vn * wny;
+    return -vn;
+  }
+
+  private applyForces(b: Ball, h: number): void {
+    for (const f of this.forces) {
+      if (f.kind === 'wind') {
+        b.vx += f.dx * f.strength * h;
+        b.vy += f.dy * f.strength * h;
+        continue;
+      }
+      const dx = f.x - b.x;
+      const dy = f.y - b.y;
+      const d = Math.hypot(dx, dy) || 1e-9;
+      if (f.radius > 0 && d > f.radius) continue;
+      if (f.kind === 'attract' && f.swallow > 0 && d < f.swallow + b.r * 0.5 && !b.projectile) {
+        if (!(this.scene.duration.endOn === 'lastStanding' && this.aliveCount <= 1)) {
+          this.swallowBall(b, f);
+          return;
+        }
+      }
+      const ux = dx / d;
+      const uy = dy / d;
+      const dd = Math.max(d, 30);
+      if (f.kind === 'attract' || f.kind === 'repel') {
+        const a = f.strength * (100 / dd) ** 2 * (f.kind === 'repel' ? -1 : 1);
+        b.vx += ux * a * h;
+        b.vy += uy * a * h;
+      } else {
+        // Vortex: swirl (1/r) plus some pull inward.
+        const a = f.strength * (100 / dd);
+        const tx = -uy;
+        const ty = ux;
+        b.vx += (tx * (1 - f.inward) + ux * f.inward) * a * h;
+        b.vy += (ty * (1 - f.inward) + uy * f.inward) * a * h;
+      }
+    }
+  }
+
+  /** A ball eaten by a black hole, drain or bigger ball. */
+  private swallowBall(b: Ball, f: Force | null): void {
+    if (!b.alive) return;
+    b.alive = false;
+    this.swallowed++;
+    if (f) f.eaten++;
+    this.emit('swallow', b, -1, -1, -1, Math.hypot(b.vx, b.vy), f ? f.x : b.x, f ? f.y : b.y);
+    this.runRules('swallow', b, null, 0, null);
+  }
+
+  private checkPortals(b: Ball): void {
+    if (b.portal >= 0) {
+      // Must leave the mouth it came out of before it can enter again.
+      const p = this.portals[b.portal >> 1];
+      const [mx, my] = b.portal & 1 ? [p.bx, p.by] : [p.ax, p.ay];
+      if (Math.hypot(b.x - mx, b.y - my) > p.r + b.r) b.portal = -1;
+      return;
+    }
+    for (const p of this.portals) {
+      let from: [number, number] | null = null;
+      let to: [number, number] = [0, 0];
+      let end = 0;
+      if (Math.hypot(b.x - p.ax, b.y - p.ay) < p.r * 0.7) {
+        from = [p.ax, p.ay];
+        to = [p.bx, p.by];
+        end = 1;
+      } else if (Math.hypot(b.x - p.bx, b.y - p.by) < p.r * 0.7) {
+        from = [p.bx, p.by];
+        to = [p.ax, p.ay];
+        end = 0;
+      }
+      if (!from) continue;
+      const ox = b.x;
+      const oy = b.y;
+      b.x = to[0] + (b.x - from[0]);
+      b.y = to[1] + (b.y - from[1]);
+      b.portal = p.id * 2 + end;
+      b.energy = this.energyOf(b);
+      this.emit('teleport', b, -1, -1, -1, Math.hypot(b.vx, b.vy), ox, oy);
+      // Coming out on the other side of a wall counts as an escape (or a recapture).
+      this.containers.forEach((c, i) => {
+        if (c.broken) return;
+        const inside = Math.hypot(b.x - c.x, b.y - c.y) < this.innerRadius(c);
+        if (!inside && !b.escaped[i]) this.escape(b, c, i);
+        else if (inside && b.escaped[i]) b.escaped[i] = false;
+      });
+      this.runRules('teleport', b, null, 0, null);
+      return;
+    }
+  }
+
+  /** Territory: pass through your own color, bounce off and repaint anyone else's. */
+  private collideTerritory(b: Ball): void {
+    const T = this.territory!;
+    const team = this.teamOf(b.team);
+    if (team < 0) return;
+    const x0 = T.x;
+    const y0 = T.y;
+    const x1 = T.x + T.cols * T.cell;
+    const y1 = T.y + T.rows * T.cell;
+    // The board's edge is a wall.
+    if (b.x - b.r < x0 && b.vx < 0) (b.x = x0 + b.r), (b.vx = -b.vx);
+    if (b.x + b.r > x1 && b.vx > 0) (b.x = x1 - b.r), (b.vx = -b.vx);
+    if (b.y - b.r < y0 && b.vy < 0) (b.y = y0 + b.r), (b.vy = -b.vy);
+    if (b.y + b.r > y1 && b.vy > 0) (b.y = y1 - b.r), (b.vy = -b.vy);
+    const cellAt = (x: number, y: number) => {
+      const c = Math.floor((x - x0) / T.cell);
+      const r = Math.floor((y - y0) / T.cell);
+      return c < 0 || r < 0 || c >= T.cols || r >= T.rows ? -1 : r * T.cols + c;
+    };
+    for (const axis of [0, 1]) {
+      const px = axis === 0 ? b.x + Math.sign(b.vx) * b.r : b.x;
+      const py = axis === 1 ? b.y + Math.sign(b.vy) * b.r : b.y;
+      const cell = cellAt(px, py);
+      if (cell < 0 || T.owner[cell] === team) continue;
+      T.counts[T.owner[cell]]--;
+      T.owner[cell] = team;
+      T.counts[team]++;
+      if (axis === 0) b.vx = -b.vx;
+      else b.vy = -b.vy;
+      // A hair of randomness keeps the paths from settling into a loop.
+      const tw = this.rngAct.range(-0.03, 0.03);
+      const c = Math.cos(tw);
+      const sn = Math.sin(tw);
+      [b.vx, b.vy] = [b.vx * c - b.vy * sn, b.vx * sn + b.vy * c];
+      this.captures++;
+      this.emit('capture', b, -1, -1, -1, Math.hypot(b.vx, b.vy), px, py);
+      this.events[this.events.length - 1].n = team;
+      this.runRules('capture', b, null, 0, null);
+    }
+  }
+
+  private runEmitters(): void {
+    this.emitters.forEach((em, ei) => {
+      const sp = em.spec;
+      if (this.stepCount < em.startStep) return;
+      if (!sp.loop && em.made >= sp.count) return;
+      em.acc += sp.rate * DT;
+      while (em.acc >= 1) {
+        em.acc -= 1;
+        if (!sp.loop && em.made >= sp.count) break;
+        if (sp.loop) {
+          let mine = 0;
+          for (const b of this.balls) if (b.alive && b.source === ei) mine++;
+          if (mine >= sp.count) break;
+        }
+        const level = sp.level === undefined ? undefined : sp.levels ? this.rngAct.int(sp.level + 1) : sp.level;
+        const r = Math.max(2, (sp.radius + (sp.radiusJitter ? this.rngAct.range(-sp.radiusJitter, sp.radiusJitter) : 0)) * 1.25 ** (level ?? 0));
+        const pal = this.scene.style.palette;
+        const color = sp.rainbow
+          ? `hsl(${Math.round((em.made * (sp.loop ? 9 : 360 / Math.max(12, sp.count))) % 360)}, 92%, 60%)`
+          : sp.colors
+            ? sp.colors[em.made % sp.colors.length]
+            : level !== undefined
+              ? pal[level % pal.length]
+              : undefined;
+        const spec: BallSpec = { ...this.template, count: 1, copies: 1, radius: r, color, colors: undefined, labels: undefined, team: sp.team, teams: undefined, level, frozen: false };
+        const x = sp.x + (sp.jitter ? this.rngAct.range(-sp.jitter, sp.jitter) : 0);
+        const y = sp.y + (sp.jitter ? this.rngAct.range(-sp.jitter, sp.jitter) : 0);
+        const dir = sp.direction + (sp.cone ? this.rngAct.range(-sp.cone / 2, sp.cone / 2) : 0);
+        const b = this.spawnBall(spec, em.made, x, y, 0, sp.speed, dir);
+        if (!b) break;
+        b.source = ei;
+        em.made++;
+      }
+    });
+  }
+
+  private stepPendulums(): void {
+    const h = DT;
+    for (const p of this.pendulums) {
+      const before = p.t1;
+      if (p.arms === 1) {
+        // Simple pendulum, RK4.
+        const f = (t: number) => (-p.g / p.l1) * Math.sin(t);
+        const k1t = p.w1;
+        const k1w = f(p.t1);
+        const k2t = p.w1 + (h / 2) * k1w;
+        const k2w = f(p.t1 + (h / 2) * k1t);
+        const k3t = p.w1 + (h / 2) * k2w;
+        const k3w = f(p.t1 + (h / 2) * k2t);
+        const k4t = p.w1 + h * k3w;
+        const k4w = f(p.t1 + h * k3t);
+        p.t1 += (h / 6) * (k1t + 2 * k2t + 2 * k3t + k4t);
+        p.w1 += (h / 6) * (k1w + 2 * k2w + 2 * k3w + k4w);
+      } else {
+        // Double pendulum (equal masses), RK4 on (t1, t2, w1, w2).
+        const g = p.g;
+        const l1 = p.l1;
+        const l2 = p.l2;
+        const acc = (t1: number, t2: number, w1: number, w2: number): [number, number] => {
+          const d = t1 - t2;
+          const den = 3 - Math.cos(2 * d);
+          const a1 = (-3 * g * Math.sin(t1) - g * Math.sin(t1 - 2 * t2) - 2 * Math.sin(d) * (w2 * w2 * l2 + w1 * w1 * l1 * Math.cos(d))) / (l1 * den);
+          const a2 = (2 * Math.sin(d) * (2 * w1 * w1 * l1 + 2 * g * Math.cos(t1) + w2 * w2 * l2 * Math.cos(d))) / (l2 * den);
+          return [a1, a2];
+        };
+        const s0 = [p.t1, p.t2, p.w1, p.w2];
+        const deriv = (s: number[]): number[] => {
+          const [a1, a2] = acc(s[0], s[1], s[2], s[3]);
+          return [s[2], s[3], a1, a2];
+        };
+        const add = (a: number[], b: number[], k: number) => a.map((v, i) => v + b[i] * k);
+        const k1 = deriv(s0);
+        const k2 = deriv(add(s0, k1, h / 2));
+        const k3 = deriv(add(s0, k2, h / 2));
+        const k4 = deriv(add(s0, k3, h));
+        const next = s0.map((v, i) => v + (h / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]));
+        [p.t1, p.t2, p.w1, p.w2] = next;
+      }
+      // A chime when the (upper) arm swings through the bottom.
+      if (p.chime && Math.sin(before) * Math.sin(p.t1) < 0 && Math.cos(p.t1) > 0) {
+        const [x, y] = this.pendulumBob(p);
+        this.events.push({ step: this.stepCount, type: 'swing', ball: -1, ring: -1, solid: -1, zone: -1, x, y, speed: Math.abs(p.w1) * p.l1, n: p.id });
+      }
+    }
+  }
+
+  /** Where a pendulum's last bob is. */
+  pendulumBob(p: Pendulum): [number, number] {
+    const x1 = p.x + p.l1 * Math.sin(p.t1);
+    const y1 = p.y + p.l1 * Math.cos(p.t1);
+    if (p.arms === 1) return [x1, y1];
+    return [x1 + p.l2 * Math.sin(p.t2), y1 + p.l2 * Math.cos(p.t2)];
+  }
+
+  /** A polygon bounce right next to a vertex. */
+  private checkCorner(b: Ball, c: PolyContainer): void {
+    let best = Infinity;
+    for (const [vx, vy] of this.polyVertices(c)) best = Math.min(best, Math.hypot(b.x - vx, b.y - vy));
+    if (best > b.r * 1.45 + c.thickness / 2) return;
+    this.corners++;
+    this.emit('corner', b, c.id);
+    this.runRules('corner', b, c, 0, null);
+  }
+
+  private segmentAt(ring: RingContainer, theta: number): number {
+    const n = ring.segments!.length;
+    const a = ((theta % TAU) + TAU) % TAU;
+    return Math.min(n - 1, Math.floor((a / TAU) * n));
+  }
+
+  /** A bounce on a breakable container: chip a segment, or the whole ring's hp. */
+  private hitContainer(b: Ball, c: Container): void {
+    if (c.broken) return;
+    if (c.kind === 'ring' && c.segments) {
+      const i = this.segmentAt(c, Math.atan2(b.y - c.y, b.x - c.x) - c.angle);
+      if (c.segments[i] <= 0) return;
+      c.segments[i]--;
+      if (c.segments[i] <= 0) {
+        this.breaks++;
+        this.emit('break', b, c.id, -1, -1, Math.hypot(b.vx, b.vy));
+        this.events[this.events.length - 1].n = i;
+        this.runRules('break', b, c, 0, null);
+      }
+      return;
+    }
+    if (c.hp === undefined) return;
+    c.hp--;
+    if (c.hp > 0) return;
+    c.broken = true;
+    this.breaks++;
+    this.emit('break', b, c.id, -1, -1, Math.hypot(b.vx, b.vy), c.x, c.y);
+    this.events[this.events.length - 1].n = -1;
+    this.runRules('break', b, c, 0, null);
+    // Everything inside is free.
+    const idx = this.containers.indexOf(c);
+    for (const x of this.balls) if (x.alive && !x.escaped[idx]) this.escape(x, c, idx);
+  }
+
+  private hitSolid(b: Ball, s: Solid): void {
+    s.hp!--;
+    if (s.hp! > 0) return;
+    s.alive = false;
+    this.breaks++;
+    this.emit('break', b, -1, s.id, -1, Math.hypot(b.vx, b.vy), s.kind === 'brick' ? s.cx : b.x, s.kind === 'brick' ? s.cy : b.y);
+    this.runRules('break', b, null, 0, null);
+  }
+
+  /** A moving ball against an immovable clone. */
+  private collideAnchored(rock: Ball, b: Ball): void {
+    const dx = b.x - rock.x;
+    const dy = b.y - rock.y;
+    const d = Math.hypot(dx, dy) || 1e-9;
+    const nx = dx / d;
+    const ny = dy / d;
+    if (b.frozen) return;
+    const vn = b.vx * nx + b.vy * ny;
+    if (vn >= 0) return; // moving away (e.g. off its own fresh clone)
+    b.x = rock.x + nx * (rock.r + b.r);
+    b.y = rock.y + ny * (rock.r + b.r);
+    const e = this.scene.world.restitution;
+    b.vx -= (1 + e) * vn * nx;
+    b.vy -= (1 + e) * vn * ny;
+    this.onBounce(b, null, -1, -vn);
+  }
+
+  private arrowHit(arrow: Ball, target: Ball): void {
+    if (!arrow.alive || !target.alive || target.projectile) return;
+    if (target.id === arrow.projectile!.owner) return;
+    const owner = this.balls[arrow.projectile!.owner];
+    if (owner && owner.team !== undefined && owner.team === target.team) return;
+    arrow.alive = false;
+    target.vx += arrow.vx * 0.12;
+    target.vy += arrow.vy * 0.12;
+    if (target.frozen) target.frozen = false;
+    target.energy = this.energyOf(target);
+    this.emit('strike', owner ?? arrow, -1, -1, -1, 600, arrow.x, arrow.y);
+    this.damage(target, arrow.projectile!.damage, true);
+    if (owner?.alive) this.powerUp(owner);
+  }
+
+  /** An unarmed ball lands a body blow. */
+  private punch(a: Ball, b: Ball): void {
+    const w = a.weapon!;
+    if (this.stepCount - b.lastDamageStep < DAMAGE_COOLDOWN) return;
+    this.emit('strike', a, -1, -1, -1, Math.hypot(a.vx, a.vy), (a.x + b.x) / 2, (a.y + b.y) / 2);
+    this.damage(b, w.damage, true);
+    this.runRules('strike', a, null, 0, b);
+    this.powerUp(a);
+  }
+
+  /** A weapon lands a hit: it powers up as its kind says. */
+  private powerUp(a: Ball): void {
+    const w = a.weapon;
+    if (!w) return;
+    w.hits++;
+    const g = w.grow;
+    if (g.damage) w.damage += g.damage;
+    if (g.spin !== 1) w.spin = Math.sign(w.spin || 1) * Math.min(MAX_WEAPON_SPIN, Math.abs(w.spin) * g.spin);
+    if (g.length) w.length = Math.min(420, w.length + g.length);
+    if (g.arrows) w.arrows = Math.min(12, w.arrows + g.arrows);
+    if (g.speed !== 1) {
+      const sp = Math.hypot(a.vx, a.vy);
+      const k = Math.min(2600, sp * g.speed) / Math.max(1e-6, sp);
+      a.vx *= k;
+      a.vy *= k;
+      a.energy = this.energyOf(a);
+    }
+  }
+
+  /** A bow looses a volley at the nearest enemy. */
+  private fireArrows(a: Ball): void {
+    const w = a.weapon!;
+    w.nextShot = this.stepCount + w.fireSteps;
+    let target: Ball | null = null;
+    let best = Infinity;
+    for (const b of this.balls) {
+      if (b === a || !b.alive || b.projectile || b.group !== a.group) continue;
+      if (a.team !== undefined && a.team === b.team) continue;
+      const d = Math.hypot(b.x - a.x, b.y - a.y);
+      if (d < best) {
+        best = d;
+        target = b;
+      }
+    }
+    if (!target) return;
+    const base = Math.atan2(target.y - a.y, target.x - a.x);
+    w.angle = base;
+    for (let k = 0; k < w.arrows; k++) {
+      const ang = base + (k - (w.arrows - 1) / 2) * 0.14;
+      const arrow = this.spawnLike(a, a.x + Math.cos(ang) * (a.r + 10), a.y + Math.sin(ang) * (a.r + 10), Math.cos(ang) * 1500, Math.sin(ang) * 1500, 6);
+      if (!arrow) return;
+      arrow.projectile = { owner: a.id, damage: Math.max(1, w.damage) };
+      arrow.color = w.color ?? '#fff3b0';
+      arrow.weapon = undefined;
+      arrow.label = undefined;
+      arrow.hp = undefined;
+      arrow.maxHp = undefined;
+      arrow.emoji = undefined;
+      arrow.image = undefined;
+      arrow.shape = 'circle';
+    }
+    this.emit('shoot', a);
+  }
+
+  /** A new ball that looks like `src` (same team, look and level). */
+  private spawnLike(src: Ball, x: number, y: number, vx: number, vy: number, r: number): Ball | null {
+    if (this.aliveCount >= this.scene.world.maxBalls) return null;
+    const b: Ball = {
+      ...src,
+      id: this.nextBallId++,
+      x,
+      y,
+      vx,
+      vy,
+      r,
+      hp: src.maxHp,
+      lastDamageStep: -Infinity,
+      alive: true,
+      frozen: false,
+      anchored: false,
+      portal: -1,
+      weapon: src.weapon ? { ...src.weapon, grow: { ...src.weapon.grow } } : undefined,
+      escaped: [...src.escaped],
+      everEscaped: [...src.everEscaped],
+      inZone: [...src.inZone],
+      projectile: undefined,
+      energy: 0,
+    };
+    b.energy = this.energyOf(b);
+    this.maxR = Math.max(this.maxR, r);
+    this.balls.push(b);
+    this.emit('spawn', b);
+    return b;
+  }
+
+  private splitBall(b: Ball, min: number, spread: number, recolor: boolean): void {
+    const r = b.r / Math.SQRT2;
+    if (r < min) return;
+    const sp = Math.hypot(b.vx, b.vy);
+    const dir = Math.atan2(b.vy, b.vx);
+    const px = -Math.sin(dir) * r * 0.6;
+    const py = Math.cos(dir) * r * 0.6;
+    const twin = this.spawnLike(b, b.x + px, b.y + py, Math.cos(dir + spread / 2) * sp, Math.sin(dir + spread / 2) * sp, r);
+    if (!twin) return;
+    b.r = r;
+    b.x -= px;
+    b.y -= py;
+    b.vx = Math.cos(dir - spread / 2) * sp;
+    b.vy = Math.sin(dir - spread / 2) * sp;
+    b.energy = this.energyOf(b);
+    if (recolor) {
+      const pal = this.scene.style.palette;
+      twin.colorIndex = (b.colorIndex + 1 + (twin.id % (pal.length - 1 || 1))) % pal.length;
+      twin.color = pal[twin.colorIndex];
+    }
+  }
+
+  private absorbBall(big: Ball, small: Ball, max = this.absorbMax): void {
+    if (!small.alive || !big.alive) return;
+    let cap = max;
+    this.containers.forEach((k, i) => {
+      if (!big.escaped[i] && !k.broken) cap = Math.min(cap, this.innerRadius(k) * 0.9);
+    });
+    big.r = Math.min(cap, Math.sqrt(big.r * big.r + small.r * small.r));
+    this.maxR = Math.max(this.maxR, big.r);
+    small.alive = false;
+    this.swallowed++;
+    this.emit('swallow', small, -1, -1, -1, Math.hypot(small.vx, small.vy), big.x, big.y);
+    this.runRules('swallow', small, null, 0, big);
+  }
+
+  private mergeBalls(a: Ball, b: Ball, growth = this.mergeGrowth): void {
+    if (a.level >= this.mergeMax) return;
+    const keep = a.id < b.id ? a : b;
+    const gone = keep === a ? b : a;
+    const ma = keep.r * keep.r;
+    const mb = gone.r * gone.r;
+    keep.x = (keep.x * ma + gone.x * mb) / (ma + mb);
+    keep.y = (keep.y * ma + gone.y * mb) / (ma + mb);
+    keep.vx = (keep.vx * ma + gone.vx * mb) / (ma + mb);
+    keep.vy = (keep.vy * ma + gone.vy * mb) / (ma + mb);
+    keep.level++;
+    keep.r *= growth;
+    this.maxR = Math.max(this.maxR, keep.r);
+    const pal = this.scene.style.palette;
+    keep.colorIndex = keep.level % pal.length;
+    keep.color = pal[keep.colorIndex];
+    keep.energy = this.energyOf(keep);
+    gone.alive = false;
+    this.merges++;
+    this.emit('merge', keep, -1, -1, -1, 0);
+    this.events[this.events.length - 1].n = keep.level;
+    this.runRules('merge', keep, null, 0, gone);
+  }
+
+  private convertBall(b: Ball, team: string, by: Ball | null): void {
+    const t = this.teams[this.teamOf(team)];
+    b.team = team;
+    b.color = t?.color ?? by?.color ?? b.color;
+    if (t?.emoji) b.emoji = t.emoji;
+    else if (by) b.emoji = by.emoji;
+    this.conversions++;
+    this.emit('convert', b);
+    this.events[this.events.length - 1].n = this.teamOf(team);
+    this.runRules('convert', b, null, 0, by);
+  }
+
+  private cloneBall(b: Ball): void {
+    const c = this.spawnLike(b, b.x, b.y, 0, 0, b.r);
+    if (!c) return;
+    c.frozen = true;
+    c.anchored = true;
+    c.weapon = undefined;
+    c.energy = 0;
+    // The original steps off its clone so they don't start overlapped.
+    const sp = Math.hypot(b.vx, b.vy) || 1;
+    b.x += (b.vx / sp) * 0.5;
+    b.y += (b.vy / sp) * 0.5;
+  }
+
   private checkEnd(): void {
     const { duration } = this.scene;
     if (this.endStep === Infinity && duration.endOn !== 'never') {
@@ -1229,8 +2321,17 @@ export class World {
         reason = 'allEscaped';
       else if (duration.endOn === 'lastStanding' && this.startingBalls > 1 && this.aliveCount <= 1) {
         reason = 'lastStanding';
-        this.winner = this.balls.find((b) => b.alive)?.id ?? -1;
-      }
+        this.winner = this.balls.find((b) => b.alive && !b.projectile)?.id ?? -1;
+      } else if (duration.endOn === 'oneTeam' && this.stepCount > 0) {
+        const team = this.soleTeam();
+        if (team) {
+          reason = 'oneTeam';
+          this.winnerTeam = team;
+        }
+      } else if (duration.endOn === 'finish' && this.finishWinner >= 0) {
+        reason = 'finish';
+        this.winner = this.finishWinner;
+      } else if (duration.endOn === 'cleared' && this.hadBreakables && this.breakablesLeft === 0) reason = 'cleared';
       if (reason) {
         this.endReason = reason;
         this.climaxStep = reason === 'escaped' && this.firstEscapeStep >= 0 ? this.firstEscapeStep : this.stepCount;
@@ -1241,6 +2342,11 @@ export class World {
     if (this.time >= duration.max) {
       this.done = true;
       if (!this.endReason) this.endReason = 'timeLimit';
+    }
+    // Territory battles that run out the clock: the biggest share wins.
+    if (this.done && this.territory && !this.winnerTeam && this.teams.length) {
+      const c = this.territory.counts;
+      this.winnerTeam = this.teams[c.indexOf(Math.max(...c))]?.name ?? '';
     }
   }
 }

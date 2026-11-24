@@ -36,6 +36,21 @@ Reaching for code is the last resort. If a format truly needs a new engine capab
 - `audio.rhythmLock: true` keeps every bounce on the beat. It needs exactly one ball and a ring or polygon (gravity is fine); `rhythmLockStatus()` in `src/engine/world.ts` says whether it applies. Pick the seed with `npm run sim -- <name> --director music-sync`, since not every seed stays in time.
 - Keep `keepEnergy: true` for bouncing formats; use `keepEnergy: false` with restitution below 1 and some `friction` for things that settle (Plinko).
 
+## V2 building blocks
+
+- Formats by family (`category` on the scene: escape, destruction, battle, teams, forces, surreal, chaos, satisfying, music). The README's preset table lists all 50.
+- Destruction: ring `hp` or `segments`/`segmentHp`, breakable `wall`/`peg` `hp`, `brick` (or the `brickwall` prefab), `endOn: cleared`.
+- Teams: declare `teams` (name, color, emoji, `beats`), give balls `team`/`teams`. Conversion is the `convert` action (`chance` slows it); `endOn: oneTeam`; counter `teams`. A `territory` board repaints cells (Pong wars); team balls need a contrasting `color` because they take their team color otherwise.
+- Forces and fields: `force` (attract, repel, vortex, wind; `swallow` makes a black hole, `growForce` makes it hungrier), `portal`, `spinner` (paddles; `deadly` blades), bumpers (`boost`), `zone` `kill` (drains) and `finish` (`endOn: finish`), `emitter` (pours balls; `loop` keeps a count alive).
+- Ball tricks: `split`, `absorb`, `merge` (by `level`), `clone`, `moveGap`, `addGap`, `addSide`, `shrinkContainer`, `recolor`, `end` actions; `copies` + `jitter` for butterfly-effect ghosts that never touch; weapon `kind` (sword, dagger, spear, hammer, scythe, bow, unarmed) powers up per hit.
+- Chaos: `pendulum` (1 or 2 arms; `count` + `spread` for chaos; `wave` for pendulum waves). A scene may have only pendulums or emitters and no balls.
+- Look: `style.theme` fills unset colors and styles. Also `ballStyle`, `ringStyle`, `trailStyle`, `colorMode`, `lines` (string art), `backdrop`, `bloom`/`vignette`/`grain`/`scanlines`/`chromatic`/`confetti`.
+- Camera and time: `camera` (`mode`, `zoom`, `shake`, `slowmo` in video seconds, `slowmoFactor`, `slowmoLead`, `countdown`). Timing lives in `src/engine/timing.ts`; never make the physics depend on it.
+- Text: overlay `endCard`, per-bounce `reveal` text, `progress`. Picture reveal is `style.reveal` (`text` or `image`); the studio fills `style.revealColors`.
+- Sound: 10 instruments (meow included), `pitchBy`, `climax` (drop, swell, gong), `eventSounds`.
+- Director stories for these: `underdog` (teams), `photo-finish` (races), `destruction` (breakables). Tune with `npm run sim -- <name> --director <story> --target <s>`.
+- New V2 randomness uses the `act` stream in `world.ts`, separate from V1's streams, so V1 scenes keep their exact runs. Keep it that way: new state goes into `hash()` only when present.
+
 ## Engine rules (don't break these)
 
 - `src/engine/` must stay deterministic: no `Math.random`, `Date`, `performance.now`, or iteration over unordered collections in simulation code. Use `Rng` with a named stream.

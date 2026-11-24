@@ -72,8 +72,9 @@ if (director) {
 function run(seed: number) {
   const t0 = performance.now();
   const w = new World({ ...base!, seed }).runToEnd();
-  const climax = w.endReason === 'lastStanding' || w.endReason === 'filled' || w.endReason === 'allEscaped' ? w.time - base!.duration.tail : w.firstEscapeStep < 0 ? -1 : w.firstEscapeStep / 240;
-  const winner = w.winner >= 0 ? (w.balls[w.winner].label ?? `ball ${w.winner}`) : '';
+  // The climax: the moment the run's ending happened (the timer stops there).
+  const climax = w.climaxStep >= 0 ? w.climaxStep / 240 : w.firstEscapeStep < 0 ? -1 : w.firstEscapeStep / 240;
+  const winner = w.winner >= 0 ? (w.balls[w.winner].label ?? `ball ${w.winner}`) : w.winnerTeam;
   return { seed, end: w.endReason, length: w.time, climax, bounces: w.bounces, escapes: w.uniqueEscapes, balls: w.aliveCount, winner, hash: w.hash(), ms: performance.now() - t0, world: w };
 }
 
@@ -91,7 +92,7 @@ if (seeds) {
     );
   }
   const total = rows.reduce((n, r) => n + r.ms, 0);
-  console.log(`\n${rows.length} runs in ${total.toFixed(0)} ms (${(total / rows.length).toFixed(1)} ms per run). climax = first escape, last elimination, or fill.`);
+  console.log(`\n${rows.length} runs in ${total.toFixed(0)} ms (${(total / rows.length).toFixed(1)} ms per run). climax = the moment the ending happened (escape, knockout, takeover, finish…).`);
 } else {
   const r = run(flag('seed') !== undefined ? Number(flag('seed')) : base.seed);
   if (args.includes('--events')) {
@@ -109,6 +110,20 @@ if (seeds) {
   console.log(`escapes      ${r.escapes}`);
   console.log(`balls alive  ${r.balls} of ${r.world.balls.length}`);
   if (r.world.zones.length) console.log(`zones        ${r.world.zones.map((z) => z.count).join(' ')}`);
+  const w = r.world;
+  const extra: [string, number | string][] = [
+    ['breaks', w.breaks],
+    ['captures', w.captures],
+    ['converted', w.conversions],
+    ['merges', w.merges],
+    ['swallowed', w.swallowed],
+    ['corners', w.corners],
+  ];
+  for (const [k, v] of extra) if (v) console.log(`${k.padEnd(12)} ${v}`);
+  if (w.teams.length) {
+    const counts = w.territory ? w.territory.counts : w.teams.map((t) => w.balls.filter((b) => b.alive && b.team === t.name).length);
+    console.log(`teams        ${w.teams.map((t, i) => `${t.name} ${counts[i]}`).join(', ')}`);
+  }
   if (r.world.scriptError) console.log(`script error ${r.world.scriptError}`);
   console.log(`state hash   ${r.hash}`);
   console.log(`sim time     ${r.ms.toFixed(1)} ms`);

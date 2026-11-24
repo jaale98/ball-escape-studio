@@ -1,0 +1,74 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Survival",
+  "category": "battle",
+  "seed": 146,
+  "modifiers": [
+    {
+      "use": "storm",
+      "rate": 5,
+      "min": 150
+    }
+  ],
+  "duration": {
+    "max": 60,
+    "endOn": "lastStanding",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 480,
+      "thickness": 14,
+      "spin": 0,
+      "gaps": []
+    },
+    {
+      "type": "spinner",
+      "length": 300,
+      "width": 12,
+      "spin": 1.3,
+      "deadly": true,
+      "color": "#ff4d6d"
+    },
+    {
+      "type": "ball",
+      "count": 10,
+      "y": 700,
+      "radius": 22,
+      "speed": 800,
+      "spread": 300,
+      "labels": [
+        "Ava",
+        "Ben",
+        "Cleo",
+        "Dev",
+        "Eli",
+        "Fay",
+        "Gus",
+        "Hana",
+        "Ivo",
+        "Juno"
+      ]
+    }
+  ],
+  "style": {
+    "trail": 0.5
+  },
+  "camera": {
+    "shake": 0.8,
+    "slowmo": 1.5
+  },
+  "audio": {
+    "instrument": "pluck",
+    "climax": "gong"
+  },
+  "overlay": {
+    "title": "Last ball alive",
+    "counter": "balls",
+    "labelSize": 22
+  }
+}

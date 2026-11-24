@@ -33,6 +33,11 @@ export function critique(scene: Scene, r: RunScore): Note[] {
   if (scene.audio.rhythmLock && r.signals.rhythm !== undefined && r.signals.rhythm < 0.9) {
     warn(`Rhythm lock keeps only ${Math.round(r.signals.rhythm * 100)}% of notes on time with this seed (some paths can't hit the beat). The Director's “In time with the song” story finds seeds that stay in time.`);
   }
+  if (scene.teams.length > 1 && r.climax > 0 && s.teamLeadChanges === 0) warn('One team leads from the first second, so the takeover has no suspense. The Director’s Underdog story finds runs where the lead swaps.');
+  if (scene.style.reveal && s.endSpeed > 60) warn(`The picture isn't settled when the video ends (balls still moving at ${Math.round(s.endSpeed)} px/s), so it will look smeared. Allow more time or use more friction.`);
+  if (scene.camera.slowmo > 0 && r.climax < 0) warn('Slow motion is on, but this run has no climax to slow down for.');
+  const pend = scene.entities.find((e) => e.type === 'pendulum');
+  if (pend && pend.type === 'pendulum' && pend.count > 1 && pend.wave === 0 && s.pendulumSpread < 60) warn(`The pendulums never split apart (${Math.round(s.pendulumSpread)}px at the end). A bigger spread or a longer video shows the chaos.`);
   if (r.loop && r.loop.error > 8) warn(`The loop seam is ${r.loop.error.toFixed(0)}px off; the cut may be visible. Try the Director's Perfect loop story.`);
 
   if (!notes.length) {

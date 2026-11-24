@@ -1,0 +1,46 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "String art",
+  "category": "chaos",
+  "seed": 1,
+  "modifiers": [
+    "string-art"
+  ],
+  "duration": {
+    "max": 40,
+    "endOn": "never",
+    "tail": 0
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 470,
+      "thickness": 6,
+      "spin": 0,
+      "gaps": []
+    },
+    {
+      "type": "ball",
+      "radius": 10,
+      "speed": 1100,
+      "x": 640,
+      "y": 880,
+      "direction": 20,
+      "color": "#ffffff"
+    }
+  ],
+  "style": {
+    "colorMode": "rainbow",
+    "lineAlpha": 0.45
+  },
+  "audio": {
+    "melody": "midi:canon-in-d",
+    "instrument": "piano"
+  },
+  "overlay": {
+    "title": "Every bounce draws a line"
+  }
+}

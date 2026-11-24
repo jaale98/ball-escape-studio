@@ -1,0 +1,47 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "HP ring",
+  "category": "destruction",
+  "seed": 9,
+  "duration": {
+    "max": 60,
+    "endOn": "firstEscape",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 900
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 430,
+      "thickness": 18,
+      "spin": 0,
+      "gaps": [],
+      "hp": 45
+    },
+    {
+      "type": "ball",
+      "radius": 26,
+      "speed": 1250,
+      "color": "#ff4d6d"
+    }
+  ],
+  "style": {
+    "trail": 0.8,
+    "ballStyle": "3d"
+  },
+  "camera": {
+    "shake": 1,
+    "slowmo": 1.5
+  },
+  "audio": {
+    "melody": "midi:william-tell",
+    "instrument": "piano",
+    "climax": "gong"
+  },
+  "overlay": {
+    "title": "45 hits to break out",
+    "counter": "hp"
+  }
+}

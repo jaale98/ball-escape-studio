@@ -1,0 +1,91 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Color war",
+  "category": "teams",
+  "seed": 45,
+  "duration": {
+    "max": 45,
+    "endOn": "oneTeam",
+    "tail": 2
+  },
+  "world": {
+    "gravity": 0
+  },
+  "teams": [
+    {
+      "name": "Red",
+      "color": "#ff4d6d"
+    },
+    {
+      "name": "Blue",
+      "color": "#4dd4ff"
+    },
+    {
+      "name": "Yellow",
+      "color": "#ffd23f"
+    },
+    {
+      "name": "Green",
+      "color": "#7cff6b"
+    }
+  ],
+  "entities": [
+    {
+      "type": "territory",
+      "x": 90,
+      "y": 440,
+      "cols": 20,
+      "rows": 24,
+      "cell": 45,
+      "layout": "quadrants"
+    },
+    {
+      "type": "ball",
+      "team": "Red",
+      "x": 300,
+      "y": 700,
+      "radius": 17,
+      "speed": 900,
+      "color": "#6b0f22"
+    },
+    {
+      "type": "ball",
+      "team": "Blue",
+      "x": 780,
+      "y": 700,
+      "radius": 17,
+      "speed": 900,
+      "color": "#0b4d66"
+    },
+    {
+      "type": "ball",
+      "team": "Yellow",
+      "x": 300,
+      "y": 1250,
+      "radius": 17,
+      "speed": 900,
+      "color": "#6b5200"
+    },
+    {
+      "type": "ball",
+      "team": "Green",
+      "x": 780,
+      "y": 1250,
+      "radius": 17,
+      "speed": 900,
+      "color": "#1f5c14"
+    }
+  ],
+  "style": {
+    "trail": 0,
+    "glow": false
+  },
+  "audio": {
+    "instrument": "marimba"
+  },
+  "overlay": {
+    "title": "4 colors. 1 board.",
+    "counter": "teams",
+    "winner": true
+  }
+}

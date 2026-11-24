@@ -154,10 +154,30 @@ export class GlBallLayer {
   private rgb(color: string): [number, number, number] {
     let c = this.colors.get(color);
     if (!c) {
-      const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color.trim());
-      c = m ? [parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255] : [1, 1, 1];
+      c = parseColor(color);
       this.colors.set(color, c);
     }
     return c;
   }
+}
+
+/** "#rrggbb", "#rgb" or "hsl(h, s%, l%)" to 0–1 RGB (anything else: white). */
+export function parseColor(color: string): [number, number, number] {
+  const t = color.trim();
+  let m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(t);
+  if (m) return [parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255];
+  m = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(t);
+  if (m) return [parseInt(m[1] + m[1], 16) / 255, parseInt(m[2] + m[2], 16) / 255, parseInt(m[3] + m[3], 16) / 255];
+  const h = /^hsla?\(\s*([-\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%/i.exec(t);
+  if (h) {
+    const hue = ((((parseFloat(h[1]) % 360) + 360) % 360) / 360) * 6;
+    const s = parseFloat(h[2]) / 100;
+    const l = parseFloat(h[3]) / 100;
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs((hue % 2) - 1));
+    const [r, g, b] = hue < 1 ? [c, x, 0] : hue < 2 ? [x, c, 0] : hue < 3 ? [0, c, x] : hue < 4 ? [0, x, c] : hue < 5 ? [x, 0, c] : [c, 0, x];
+    const mm = l - c / 2;
+    return [r + mm, g + mm, b + mm];
+  }
+  return [1, 1, 1];
 }

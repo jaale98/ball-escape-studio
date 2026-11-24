@@ -1,0 +1,64 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Brick breaker",
+  "category": "destruction",
+  "seed": 19,
+  "duration": {
+    "max": 60,
+    "endOn": "cleared",
+    "tail": 3
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "polygon",
+      "sides": 4,
+      "angle": 45,
+      "radius": 620,
+      "thickness": 14,
+      "spin": 0,
+      "open": []
+    },
+    {
+      "type": "brickwall",
+      "x1": 140,
+      "x2": 940,
+      "top": 560,
+      "rows": 5,
+      "cols": 7,
+      "height": 44,
+      "hp": 1,
+      "hpGrow": 1
+    },
+    {
+      "type": "ball",
+      "count": 5,
+      "x": 540,
+      "y": 1280,
+      "spread": 120,
+      "radius": 14,
+      "speed": 1300,
+      "direction": -80,
+      "color": "#ffffff"
+    }
+  ],
+  "style": {
+    "trail": 0.6,
+    "ballStyle": "glossy"
+  },
+  "camera": {
+    "shake": 0.5,
+    "slowmo": 1
+  },
+  "audio": {
+    "instrument": "chip",
+    "melody": "midi:turkish-march",
+    "climax": "swell"
+  },
+  "overlay": {
+    "title": "Clear the wall",
+    "counter": "bricks"
+  }
+}

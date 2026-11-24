@@ -6,7 +6,7 @@
 import type { Scene } from '../engine/scene';
 import { resolveScene } from '../engine/source';
 import { renderStill } from '../export/still';
-import type { SceneEntry } from '../scenes';
+import { categoryOf, FAMILIES, type SceneEntry } from '../scenes';
 import { ask, slug } from './modal';
 
 export interface GalleryHooks {
@@ -85,14 +85,22 @@ function build(): void {
 
   const box = $('g-groups');
   box.replaceChildren();
-  const grid = document.createElement('div');
-  grid.className = 'gallery-grid';
-  for (const s of roots) {
-    const kids = (children.get(s.name) ?? []).filter(match);
-    if (!match(s) && !kids.length) continue;
-    grid.append(card(s, kids.length));
+  // One section per family (Escape, Destruction, Teams…).
+  for (const [fam, label] of FAMILIES) {
+    const grid = document.createElement('div');
+    grid.className = 'gallery-grid';
+    for (const s of roots) {
+      if (categoryOf(s, all) !== fam) continue;
+      const kids = (children.get(s.name) ?? []).filter(match);
+      if (!match(s) && !kids.length) continue;
+      grid.append(card(s, kids.length));
+    }
+    if (!grid.childElementCount) continue;
+    const h = document.createElement('h4');
+    h.className = 'gallery-family';
+    h.textContent = `${label} · ${grid.childElementCount}`;
+    box.append(h, grid);
   }
-  box.append(grid);
   for (const [parent, kids] of children) {
     const shown = kids.filter(match);
     if (!shown.length) continue;

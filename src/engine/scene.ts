@@ -28,6 +28,10 @@ export const RingSchema = z
     angle: z.number().default(0).describe('Starting rotation in degrees.'),
     gaps: z.array(GapSchema).default([{ at: 0, width: 30 }]).describe('Openings in the ring. [] = closed ring.'),
     color: z.string().optional(),
+    hp: z.number().int().positive().optional().describe('Breakable: the ring shatters after this many bounces (every ball inside escapes).'),
+    segments: z.number().int().min(2).max(360).optional().describe('Cut the ring into this many segments that break one by one (each after segmentHp bounces).'),
+    segmentHp: z.number().int().min(1).default(1).describe('With segments: bounces each segment takes before it breaks.'),
+    deadly: z.boolean().default(false).describe('Touching the ring eliminates the ball.'),
   })
   .strict()
   .describe('A circular wall the balls start inside. Escaping = leaving through a gap.');
@@ -45,6 +49,8 @@ export const PolygonSchema = z
     open: z.array(z.number().int().min(0)).default([0]).describe('Indices of sides with an exit. [] = closed.'),
     gap: z.number().positive().optional().describe('Width (px) of the exit in each open side, centered. Default: the whole side is missing.'),
     color: z.string().optional(),
+    hp: z.number().int().positive().optional().describe('Breakable: the polygon shatters after this many bounces.'),
+    deadly: z.boolean().default(false).describe('Touching a side eliminates the ball.'),
   })
   .strict()
   .describe('A spinning regular polygon the balls start inside. Missing sides are exits.');
@@ -58,6 +64,9 @@ export const WallSchema = z
     y2: z.number(),
     thickness: z.number().positive().default(10),
     color: z.string().optional(),
+    deadly: z.boolean().default(false).describe('Touching it eliminates the ball (spikes, lava).'),
+    boost: z.number().min(0).max(3).default(1).describe('Bumper: ball speed is multiplied by this on each bounce (1 = normal).'),
+    hp: z.number().int().positive().optional().describe('Breakable: disappears after this many bounces.'),
   })
   .strict()
   .describe('A static straight wall (two-sided).');
@@ -69,6 +78,9 @@ export const PegSchema = z
     y: z.number(),
     radius: z.number().positive().default(9),
     color: z.string().optional(),
+    deadly: z.boolean().default(false),
+    boost: z.number().min(0).max(3).default(1).describe('Bumper: ball speed is multiplied by this on each bounce (pinball bumpers use ~1.3).'),
+    hp: z.number().int().positive().optional().describe('Breakable: disappears after this many bounces.'),
   })
   .strict()
   .describe('A static round peg.');
@@ -81,9 +93,126 @@ export const ZoneSchema = z
     width: z.number().positive(),
     height: z.number().positive(),
     label: z.string().optional(),
+    kill: z.boolean().default(false).describe('A drain: balls entering it are removed.'),
+    finish: z.boolean().default(false).describe('A finish line: the first ball in wins (use with endOn: finish).'),
   })
   .strict()
   .describe('An invisible region that counts each ball entering it (once per ball).');
+
+export const BrickSchema = z
+  .object({
+    type: z.literal('brick'),
+    x: z.number().describe('Center x.'),
+    y: z.number().describe('Center y.'),
+    width: z.number().positive().default(90),
+    height: z.number().positive().default(44),
+    angle: z.number().default(0).describe('Rotation in degrees.'),
+    hp: z.number().int().positive().default(3).describe('Bounces it takes before breaking. Shown on the brick.'),
+    color: z.string().optional(),
+  })
+  .strict()
+  .describe('A breakable rectangle with a hit counter (brick breaker).');
+
+export const SpinnerSchema = z
+  .object({
+    type: z.literal('spinner'),
+    x: z.number().default(WIDTH / 2).describe('Pivot x.'),
+    y: z.number().default(HEIGHT / 2).describe('Pivot y.'),
+    length: z.number().positive().default(300),
+    width: z.number().positive().default(18),
+    spin: z.number().default(2).describe('rad/s, positive = clockwise.'),
+    angle: z.number().default(0).describe('Starting angle in degrees.'),
+    pivot: z.enum(['center', 'end']).default('center').describe('Turn about the bar’s middle (a propeller) or one end (a paddle / sweeper).'),
+    deadly: z.boolean().default(false).describe('A blade: touching it eliminates the ball.'),
+    color: z.string().optional(),
+  })
+  .strict()
+  .describe('A rotating bar: paddles, propellers, sweepers, saw blades.');
+
+export const PortalSchema = z
+  .object({
+    type: z.literal('portal'),
+    a: z.tuple([z.number(), z.number()]).describe('First mouth [x, y].'),
+    b: z.tuple([z.number(), z.number()]).describe('Second mouth [x, y].'),
+    radius: z.number().positive().default(46),
+    color: z.string().optional().describe('Default: orange (a) and blue (b).'),
+  })
+  .strict()
+  .describe('Two linked holes: a ball entering one comes out of the other at the same speed and direction.');
+
+export const ForceSchema = z
+  .object({
+    type: z.literal('force'),
+    kind: z.enum(['attract', 'repel', 'vortex', 'wind']).default('attract'),
+    x: z.number().default(WIDTH / 2),
+    y: z.number().default(HEIGHT / 2),
+    strength: z.number().default(900).describe('attract/repel/vortex: acceleration (px/s²) at 100 px away, falling with distance. wind: acceleration everywhere.'),
+    direction: z.number().default(0).describe('wind: direction in degrees.'),
+    radius: z.number().nonnegative().default(0).describe('Only acts within this distance (0 = everywhere).'),
+    swallow: z.number().nonnegative().default(0).describe('attract: balls closer than this are swallowed (a black hole). 0 = none.'),
+    inward: z.number().default(0.25).describe('vortex: how much of the pull is inward (0 = pure swirl, 1 = mostly inward).'),
+    visible: z.boolean().default(true),
+    color: z.string().optional(),
+  })
+  .strict()
+  .describe('A force field: a black hole / sun (attract), repeller, whirlpool (vortex) or wind.');
+
+export const EmitterSchema = z
+  .object({
+    type: z.literal('emitter'),
+    x: z.number().default(WIDTH / 2),
+    y: z.number().default(450),
+    rate: z.number().positive().default(10).describe('Balls per second.'),
+    count: z.number().int().positive().default(100).describe('Total balls it makes.'),
+    start: z.number().nonnegative().default(0).describe('Seconds before it starts.'),
+    speed: z.number().nonnegative().default(300),
+    direction: z.number().default(90).describe('Degrees (90 = down).'),
+    cone: z.number().nonnegative().default(20).describe('Random spread of the direction, degrees.'),
+    jitter: z.number().nonnegative().default(6).describe('Random spread of the position, px.'),
+    radius: z.number().positive().default(14),
+    radiusJitter: z.number().nonnegative().default(0).describe('Random ± px on each ball’s radius.'),
+    colors: z.array(z.string()).optional().describe('Cycled per ball. Default: the palette.'),
+    rainbow: z.boolean().default(false).describe('Color balls along a smooth rainbow as they come out.'),
+    team: z.string().optional(),
+    level: z.number().int().min(0).optional().describe('Merge level of each ball (random 0..level when levels is on).'),
+    levels: z.boolean().default(false).describe('Each ball gets a random merge level from 0 to level.'),
+    loop: z.boolean().default(false).describe('Keep emitting forever, replacing balls removed by drains (count = how many at once).'),
+  })
+  .strict()
+  .describe('A spawner: pours balls over time (sand, droppers, refills).');
+
+export const TerritorySchema = z
+  .object({
+    type: z.literal('territory'),
+    x: z.number().default(90).describe('Left edge.'),
+    y: z.number().default(420).describe('Top edge.'),
+    cols: z.number().int().min(2).max(120).default(20),
+    rows: z.number().int().min(2).max(120).default(24),
+    cell: z.number().positive().default(45).describe('Cell size in px.'),
+    layout: z.enum(['halves', 'quadrants', 'stripes', 'columns', 'random']).default('halves').describe('How cells are split between the teams at the start.'),
+  })
+  .strict()
+  .describe('A tiled board for territory battles: a team ball passes through its own color, bounces off other colors and repaints them.');
+
+export const PendulumSchema = z
+  .object({
+    type: z.literal('pendulum'),
+    x: z.number().default(WIDTH / 2).describe('Pivot x.'),
+    y: z.number().default(700).describe('Pivot y.'),
+    arms: z.union([z.literal(1), z.literal(2)]).default(2).describe('1 = simple pendulum, 2 = double (chaotic).'),
+    lengths: z.array(z.number().positive()).default([230, 230]).describe('Arm lengths in px.'),
+    angles: z.array(z.number()).default([120, 150]).describe('Starting angles in degrees from straight down.'),
+    count: z.number().int().min(1).max(200).default(1).describe('How many copies.'),
+    spread: z.number().default(0.001).describe('Degrees added to the last arm’s angle for each copy (chaos: 0.001).'),
+    wave: z.number().nonnegative().default(0).describe('Pendulum wave: > 0 = copies hang side by side with lengths tuned so the pattern repeats every this many seconds.'),
+    waveBase: z.number().int().positive().default(18).describe('Pendulum wave: swings of the longest pendulum per pattern.'),
+    gravity: z.number().positive().default(1400).describe('px/s².'),
+    bob: z.number().positive().default(16).describe('Bob radius in px.'),
+    colors: z.array(z.string()).optional().describe('Per copy, cycled. Default: a rainbow.'),
+    chime: z.boolean().default(true).describe('Play a note when a bob swings through the bottom.'),
+  })
+  .strict()
+  .describe('Pendulums: chaos (double pendulums a hair apart) or a pendulum wave. Drawn with trails; they don’t collide with balls.');
 
 export const BallSchema = z
   .object({
@@ -106,8 +235,30 @@ export const BallSchema = z
     frozen: z.boolean().optional().describe('Starts still and weightless; wakes up when another ball hits it (chain reactions).'),
     arrange: z.enum(['random', 'grid']).default('random').describe('With count > 1: scatter randomly within spread, or lay out in a tidy grid that never overlaps.'),
     shape: z.enum(['circle', 'square', 'triangle', 'hexagon', 'star']).optional().describe('How the ball is drawn (it spins as it moves). Collisions still use its circle.'),
+    team: z.string().optional().describe('Team name (from the scene’s teams). Sets the color and emoji unless given.'),
+    teams: z.array(z.string()).optional().describe('Per-ball teams, cycled.'),
+    level: z.number().int().min(0).optional().describe('Merge level (balls of the same level merge into the next one).'),
+    copies: z.number().int().min(1).max(64).default(1).describe('Butterfly effect: spawn this many ghost copies of each ball that never touch each other.'),
+    jitter: z.number().default(0.000001).describe('With copies: degrees added to the launch direction of each copy.'),
     weapon: z
       .object({
+        kind: z
+          .enum(['blade', 'sword', 'dagger', 'spear', 'hammer', 'scythe', 'bow', 'unarmed'])
+          .default('blade')
+          .describe('blade: plain. sword: +damage per hit. dagger: spins faster per hit. spear: longer per hit. hammer: huge knockback. scythe: long and fast. bow: fires arrows (more per hit). unarmed: no blade, body hits do damage and it speeds up per hit.'),
+        grow: z
+          .object({
+            damage: z.number().default(0),
+            spin: z.number().default(1).describe('Spin multiplier per hit.'),
+            length: z.number().default(0),
+            speed: z.number().default(1).describe('Ball speed multiplier per hit.'),
+            arrows: z.number().default(0),
+          })
+          .strict()
+          .optional()
+          .describe('How the weapon powers up with each hit it lands. Default: set by kind.'),
+        fireEvery: z.number().positive().default(1.1).describe('bow: seconds between volleys.'),
+        knockback: z.number().positive().default(1).describe('Multiplier on the push a strike gives.'),
         length: z.number().positive().default(70).describe('px beyond the ball’s edge.'),
         width: z.number().positive().default(8),
         spin: z.number().default(4).describe('rad/s. Weapons that clash reverse direction.'),
@@ -124,7 +275,7 @@ export const BallSchema = z
 const Vec = z.tuple([z.number(), z.number()]);
 
 export const ActionSchema = z.discriminatedUnion('do', [
-  z.object({ do: z.literal('grow'), amount: z.number().default(1.5), max: z.number().positive().default(380) }).strict(),
+  z.object({ do: z.literal('grow'), amount: z.number().default(1.5).describe('px of radius (negative shrinks).'), max: z.number().positive().default(380), min: z.number().positive().default(3) }).strict(),
   z.object({ do: z.literal('shrinkGap'), amount: z.number().default(1), min: z.number().min(0).default(0) }).strict(),
   z.object({ do: z.literal('speedUp'), factor: z.number().positive().default(1.02), max: z.number().positive().default(3000) }).strict(),
   z
@@ -151,13 +302,49 @@ export const ActionSchema = z.discriminatedUnion('do', [
   z.object({ do: z.literal('rotateGravity'), degrees: z.number().default(90) }).strict(),
   z.object({ do: z.literal('spinUp'), factor: z.number().default(1.05), max: z.number().positive().default(8) }).strict(),
   z.object({ do: z.literal('reverseSpin') }).strict(),
+  z
+    .object({
+      do: z.literal('split'),
+      min: z.number().positive().default(6).describe('Balls smaller than this stop splitting.'),
+      angle: z.number().default(25).describe('Degrees between the two halves’ directions.'),
+      recolor: z.boolean().default(true).describe('The new half takes the next palette color.'),
+    })
+    .strict()
+    .describe('The ball splits into two, each with half the area.'),
+  z.object({ do: z.literal('absorb'), max: z.number().positive().default(400) }).strict().describe('On a hit: the bigger ball swallows the smaller and gains its area.'),
+  z
+    .object({ do: z.literal('merge'), growth: z.number().min(1).default(1.25).describe('Radius multiplier per level.'), maxLevel: z.number().int().min(1).default(10) })
+    .strict()
+    .describe('On a hit: two balls of the same level fuse into one of the next level.'),
+  z
+    .object({
+      do: z.literal('convert'),
+      mode: z.enum(['beats', 'always']).default('beats').describe('beats: only if this ball’s team beats the other’s (teams[].beats). always: the hit ball always switches.'),
+      chance: z.number().min(0).max(1).default(1).describe('Probability a hit converts (lower = slower spread).'),
+    })
+    .strict()
+    .describe('On a hit: the other ball joins this ball’s team.'),
+  z.object({ do: z.literal('clone') }).strict().describe('Leave a frozen, immovable copy of the ball where it is.'),
+  z.object({ do: z.literal('moveGap') }).strict().describe('Every gap of the ring jumps to a new random angle.'),
+  z.object({ do: z.literal('addGap'), width: z.number().positive().default(20), max: z.number().int().positive().default(8) }).strict().describe('Open another gap at a random angle.'),
+  z.object({ do: z.literal('addSide'), max: z.number().int().min(3).max(24).default(24) }).strict().describe('A polygon gains a side.'),
+  z.object({ do: z.literal('shrinkContainer'), amount: z.number().default(2).describe('px per firing (negative grows).'), min: z.number().positive().default(80) }).strict(),
+  z.object({ do: z.literal('recolor') }).strict().describe('The ball takes the next palette color.'),
+  z
+    .object({ do: z.literal('growForce'), factor: z.number().positive().default(1.05).describe('Strength multiplier.'), swallow: z.number().default(1).describe('px added to the swallow radius.'), max: z.number().positive().default(200) })
+    .strict()
+    .describe('Every force field gets stronger (a black hole that grows).'),
+  z.object({ do: z.literal('end') }).strict().describe('End the run now (the climax); the tail plays on.'),
+  z.object({ do: z.literal('freezeAll') }).strict().describe('Lock every ball where it is (a settled pile holds its picture).'),
 ]);
 
 export const RuleSchema = z
   .object({
     on: z
-      .enum(['bounce', 'escape', 'hit', 'eliminate', 'strike', 'wake'])
-      .describe('bounce = ball hits a wall; hit = two balls collide; eliminate = a ball runs out of hp; strike = a weapon hits a ball; wake = a frozen ball is woken.'),
+      .enum(['bounce', 'escape', 'hit', 'eliminate', 'strike', 'wake', 'break', 'teleport', 'swallow', 'capture', 'merge', 'convert', 'corner', 'finish'])
+      .describe(
+        'bounce = ball hits a wall; hit = two balls collide; eliminate = a ball runs out of hp; strike = a weapon hits a ball; wake = a frozen ball is woken; break = a ball breaks a brick, ring segment or ring; teleport = through a portal; swallow = eaten by a black hole, drain or bigger ball; capture = repaints a territory cell; merge = two balls fused; convert = a ball switched team; corner = a polygon bounce right in a corner; finish = a ball crossed a finish zone.',
+      ),
     do: z.array(ActionSchema).min(1).optional(),
     script: z
       .string()
@@ -177,17 +364,60 @@ export const TimelineSchema = z
   })
   .strict();
 
-export const EntitySchema = z.discriminatedUnion('type', [RingSchema, PolygonSchema, WallSchema, PegSchema, ZoneSchema, BallSchema]);
+export const EntitySchema = z.discriminatedUnion('type', [
+  RingSchema,
+  PolygonSchema,
+  WallSchema,
+  PegSchema,
+  ZoneSchema,
+  BallSchema,
+  BrickSchema,
+  SpinnerSchema,
+  PortalSchema,
+  ForceSchema,
+  EmitterSchema,
+  TerritorySchema,
+  PendulumSchema,
+]);
 
 export const SceneSchema = z
   .object({
     version: z.literal(1).default(1),
     title: z.string().default('Untitled'),
+    category: z.enum(['escape', 'destruction', 'teams', 'battle', 'forces', 'surreal', 'chaos', 'satisfying', 'music']).optional().describe('Gallery family.'),
+    teams: z
+      .array(
+        z
+          .object({
+            name: z.string(),
+            color: z.string().optional(),
+            emoji: z.string().optional(),
+            beats: z.array(z.string()).default([]).describe('Teams this one converts on a hit (rock beats scissors).'),
+          })
+          .strict(),
+      )
+      .default([])
+      .describe('Teams for territory, conversion and team battles.'),
+    camera: z
+      .object({
+        mode: z.enum(['fixed', 'follow', 'zoomOut']).default('fixed').describe('follow: gently keep the action centered. zoomOut: frame the innermost ring the ball is still inside (for dozens of nested rings).'),
+        zoom: z.number().min(0.2).max(4).default(1),
+        shake: z.number().min(0).max(3).default(0).describe('Screen shake on breaks, knockouts and escapes (0 = off).'),
+        slowmo: z.number().min(0).max(10).default(0).describe('Seconds of slow motion starting just before the climax (0 = off).'),
+        slowmoFactor: z.number().min(0.05).max(1).default(0.25),
+        slowmoLead: z.number().min(0).max(3).default(0.6).describe('Seconds of the run before the climax that are already slowed.'),
+        countdown: z.number().int().min(0).max(5).default(0).describe('A 3-2-1-GO intro: this many counts with the run frozen.'),
+      })
+      .strict()
+      .default({}),
     seed: z.number().int().default(1),
     duration: z
       .object({
         max: z.number().positive().default(60).describe('Hard cap in seconds.'),
-        endOn: z.enum(['firstEscape', 'allEscaped', 'lastStanding', 'never']).default('firstEscape'),
+        endOn: z
+          .enum(['firstEscape', 'allEscaped', 'lastStanding', 'never', 'oneTeam', 'finish', 'cleared'])
+          .default('firstEscape')
+          .describe('oneTeam = every ball left is on one team; finish = a ball reaches a finish zone; cleared = every brick and breakable ring is gone.'),
         tail: z.number().nonnegative().default(2).describe('Seconds to keep rolling after the ending event.'),
         trimStart: z.number().nonnegative().default(0).describe('Export skips this many seconds (the simulation still runs from 0). Perfect loops use it.'),
       })
@@ -199,6 +429,7 @@ export const SceneSchema = z
         keepEnergy: z.boolean().default(true).describe('Hold each ball’s energy constant so bounces never die out.'),
         restitution: z.number().min(0).max(1.5).default(1),
         friction: z.number().min(0).max(1).default(0).describe('Share of sliding speed lost on each wall/peg contact. 0 = frictionless.'),
+        damping: z.number().min(0).max(20).default(0).describe('Velocity lost per second (air drag). Helps piles settle; 0 = none.'),
         maxBalls: z.number().int().positive().default(300),
         speedScale: z.number().positive().default(1).describe('Multiplies every ball launch speed. The Director tunes this.'),
         spinScale: z.number().default(1).describe('Multiplies every container spin. The Director tunes this.'),
@@ -220,6 +451,26 @@ export const SceneSchema = z
         renderer: z.enum(['auto', 'canvas', 'webgl']).default('auto').describe('Ball drawing: webgl handles thousands of balls; auto picks it for crowd scenes.'),
         backgroundImage: z.string().optional().describe('A picture from images/ filling the background (cropped to fit).'),
         backgroundDim: z.number().min(0).max(1).default(0.45).describe('How much to darken the background picture so balls stand out.'),
+        theme: z.enum(['neon', 'pastel', 'paper', 'retro', 'vaporwave', 'noir', 'blueprint', 'candy']).optional().describe('A look: fills in colors and styles you haven’t set.'),
+        ballStyle: z.enum(['flat', 'glossy', '3d', 'outline', 'glass']).default('flat'),
+        ringStyle: z.enum(['solid', 'dashed', 'double', 'rainbow', 'segments']).default('solid'),
+        trailStyle: z.enum(['dots', 'ribbon', 'comet', 'rainbow']).default('dots'),
+        colorMode: z.enum(['fixed', 'bounce', 'rainbow', 'speed']).default('fixed').describe('bounce: new color every bounce; rainbow: hue drifts; speed: blue when slow, white-hot when fast.'),
+        lines: z.enum(['none', 'center', 'web', 'star', 'tether']).default('none').describe('String art: center = each bounce point to the ring center; web = to the previous bounce point; star = to the bounce 5 back; tether = a live line from ball to center.'),
+        lineAlpha: z.number().min(0).max(1).default(0.35),
+        backdrop: z.enum(['none', 'stars', 'grid', 'gradient', 'ripples']).default('none'),
+        vignette: z.boolean().default(false),
+        grain: z.boolean().default(false),
+        scanlines: z.boolean().default(false),
+        chromatic: z.boolean().default(false).describe('Color fringing on big hits.'),
+        bloom: z.boolean().default(false),
+        confetti: z.boolean().default(false).describe('Confetti on escapes and wins.'),
+        reveal: z
+          .object({ text: z.string().optional(), image: z.string().optional().describe('A picture from images/.'), at: z.number().nonnegative().optional().describe('Sample landing spots at this time (default: the end).') })
+          .strict()
+          .optional()
+          .describe('Picture reveal: each ball is colored by where it will land, so the run ends in this word or picture.'),
+        revealColors: z.array(z.string()).optional().describe('Filled in by the studio for a reveal: color per ball id.'),
       })
       .strict()
       .default({}),
@@ -246,7 +497,10 @@ export const SceneSchema = z
           .describe('Keep bounces in time with the MIDI song: after each bounce the ball’s speed is set so it reaches the wall exactly on the next note. Needs zero gravity, one ball and a ring.'),
         tempo: z.number().positive().optional().describe('With rhythmLock: song speed multiplier. Default: chosen so the ball keeps roughly its launch speed.'),
         transpose: z.number().int().default(0),
-        instrument: z.enum(['pluck', 'bell', 'marimba']).default('pluck'),
+        instrument: z.enum(['pluck', 'bell', 'marimba', 'glass', 'chip', 'piano', 'kalimba', 'pop', 'synth', 'meow']).default('pluck'),
+        climax: z.enum(['none', 'drop', 'swell', 'gong']).default('none').describe('A big sound at the climax.'),
+        pitchBy: z.enum(['melody', 'size', 'height', 'speed']).default('melody').describe('size: bigger balls play lower; height: higher on screen plays higher; speed: faster plays higher.'),
+        eventSounds: z.boolean().default(true).describe('Sounds for breaks, portals, merges, captures and swallows.'),
         volume: z.number().min(0).max(1).default(0.7),
         escapeSound: z.boolean().default(true),
         hitSound: z.boolean().default(true).describe('Click when balls hit each other.'),
@@ -266,7 +520,12 @@ export const SceneSchema = z
         counterY: z.number().min(100).max(1900).optional().describe('Where the counter and timer sit. Default: near the bottom.'),
         labelSize: z.number().min(10).max(80).default(26).describe('Size of the names under balls.'),
         timer: z.boolean().default(true),
-        counter: z.enum(['none', 'bounces', 'balls', 'escaped']).default('bounces'),
+        counter: z.enum(['none', 'bounces', 'balls', 'escaped', 'teams', 'rings', 'bricks', 'hp']).default('bounces'),
+        endCard: z.string().optional().describe('Text shown over the tail after the climax ("Follow for part 2").'),
+        reveal: z.string().optional().describe('A message revealed one word (or letter) per bounce.'),
+        revealBy: z.enum(['words', 'letters']).default('words'),
+        progress: z.enum(['none', 'bar', 'ring']).default('none').describe('Time left, as a bar under the title or a ring around the counter.'),
+        teamBar: z.boolean().default(true).describe('Show each team’s share as a bar (team formats).'),
         winner: z.boolean().default(true).describe('Show a winner banner when a race or battle ends.'),
         zones: z.boolean().default(true).describe('Show zone counts.'),
       })
@@ -281,6 +540,7 @@ export type PolygonSpec = z.output<typeof PolygonSchema>;
 export type BallSpec = z.output<typeof BallSchema>;
 export type Action = z.output<typeof ActionSchema>;
 export type TimelineEntry = z.output<typeof TimelineSchema>;
+export type TeamSpec = Scene['teams'][number];
 
 /** Parse and fill defaults. Throws an Error listing every problem by path. */
 export function parseScene(input: unknown): Scene {
@@ -289,8 +549,13 @@ export function parseScene(input: unknown): Scene {
     const lines = result.error.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`);
     throw new Error(`Invalid scene:\n${lines.join('\n')}`);
   }
-  if (!result.data.entities.some((e) => e.type === 'ball')) {
-    throw new Error('Invalid scene:\nentities: needs at least one ball (count 0 is fine for a spawn template)');
+  if (!result.data.entities.some((e) => e.type === 'ball' || e.type === 'emitter' || e.type === 'pendulum')) {
+    throw new Error('Invalid scene:\nentities: needs at least one ball, emitter or pendulum (a ball with count 0 is fine as a spawn template)');
+  }
+  const teamNames = new Set(result.data.teams.map((t) => t.name));
+  for (const [i, e] of result.data.entities.entries()) {
+    const used = e.type === 'ball' ? [e.team, ...(e.teams ?? [])] : e.type === 'emitter' ? [e.team] : [];
+    for (const t of used) if (t !== undefined && !teamNames.has(t)) throw new Error(`Invalid scene:\nentities.${i}: unknown team "${t}" (add it to "teams")`);
   }
   for (const [i, t] of result.data.timeline.entries()) {
     if ((t.at === undefined) === (t.every === undefined)) throw new Error(`Invalid scene:\ntimeline.${i}: set exactly one of "at" or "every"`);

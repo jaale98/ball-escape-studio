@@ -1,0 +1,44 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Split swarm",
+  "category": "surreal",
+  "seed": 1,
+  "modifiers": [
+    {
+      "use": "split",
+      "min": 6,
+      "max": 400
+    },
+    "rainbow"
+  ],
+  "duration": {
+    "max": 30,
+    "tail": 0
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 470,
+      "thickness": 12,
+      "spin": 0,
+      "gaps": []
+    },
+    {
+      "type": "ball",
+      "radius": 60,
+      "speed": 600
+    }
+  ],
+  "style": {
+    "trail": 0.6
+  },
+  "audio": {
+    "instrument": "pop"
+  },
+  "overlay": {
+    "title": "Every bounce splits it"
+  }
+}

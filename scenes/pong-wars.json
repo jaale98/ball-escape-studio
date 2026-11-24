@@ -1,0 +1,66 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Pong wars",
+  "category": "teams",
+  "seed": 7,
+  "duration": {
+    "max": 40,
+    "endOn": "oneTeam",
+    "tail": 2
+  },
+  "world": {
+    "gravity": 0
+  },
+  "teams": [
+    {
+      "name": "Day",
+      "color": "#d9e8e3"
+    },
+    {
+      "name": "Night",
+      "color": "#114c5a"
+    }
+  ],
+  "entities": [
+    {
+      "type": "territory",
+      "x": 90,
+      "y": 440,
+      "cols": 20,
+      "rows": 24,
+      "cell": 45,
+      "layout": "halves"
+    },
+    {
+      "type": "ball",
+      "team": "Day",
+      "x": 320,
+      "y": 900,
+      "radius": 20,
+      "speed": 950,
+      "color": "#114c5a"
+    },
+    {
+      "type": "ball",
+      "team": "Night",
+      "x": 760,
+      "y": 1000,
+      "radius": 20,
+      "speed": 950,
+      "color": "#d9e8e3"
+    }
+  ],
+  "style": {
+    "trail": 0,
+    "glow": false,
+    "background": "#0b1d22"
+  },
+  "audio": {
+    "instrument": "kalimba"
+  },
+  "overlay": {
+    "title": "Day vs night",
+    "counter": "teams",
+    "winner": true
+  }
+}
