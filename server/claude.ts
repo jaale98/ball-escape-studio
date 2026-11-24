@@ -55,6 +55,7 @@ export function studioInstructions(scene?: string): string {
     'Be fast: read only what you need (CLAUDE.md is already loaded; the closest preset and src/engine/modifiers.ts are usually enough).',
     'Write the scene file FIRST so the preview updates, then check it with `npm run -s sim -- <name>` and fix any error.',
     'Only search seeds (`npm run -s sim -- <name> --seeds 1-150 --target <s>`) when the change affects how the run ends or the user asks; keep the search to one call.',
+    'If no seed lands near the target, the scene is too easy or too hard: change difficulty (gap width, ball size, speed, shrink rate) and search once more. Report the climax time you actually got.',
     'If .studio/taste.md exists it holds the user\'s likes and dislikes from earlier videos; follow them.',
     'You can only edit files in scenes/. Never touch engine code from here.',
     'Finish with one or two plain sentences saying what you changed (no headings, no lists).',
