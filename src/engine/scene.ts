@@ -234,8 +234,12 @@ export const SceneSchema = z
           .optional()
           .describe('Inline melody as MIDI note numbers; an array is a chord. Overrides melody.'),
         chords: z.boolean().default(false).describe('With a MIDI melody: play every note struck together, not just the top one.'),
-        parts: z.array(z.number().int().min(0)).optional().describe('With a MIDI melody: which parts (track/channel pairs, numbered from 0) feed the melody. Default: all.'),
+        parts: z.array(z.number().int().min(0)).optional().describe('With a MIDI melody: which parts (track/channel pairs, numbered from 0) play on bounces. Default: the detected melody part.'),
         noteTimes: z.array(z.number()).optional().describe('Filled in by the studio from the MIDI file: when each melody note falls in the song (seconds). Used for rhythm sync.'),
+        backing: z.boolean().default(false).describe('With rhythm lock: play the rest of the song (the parts not on bounces) in time underneath.'),
+        backingParts: z.array(z.number().int().min(0)).optional().describe('Which parts play as backing. Default: every part not on bounces.'),
+        backingVolume: z.number().min(0).max(1).default(0.5),
+        backingNotes: z.array(z.tuple([z.number(), z.number()])).optional().describe('Filled in by the studio: [time, note] of every backing note.'),
         rhythmLock: z
           .boolean()
           .default(false)
@@ -296,6 +300,17 @@ export function parseScene(input: unknown): Scene {
     if (!r.do && !r.script) throw new Error(`Invalid scene:\nrules.${i}: needs "do" or "script"`);
   }
   return result.data;
+}
+
+/**
+ * How long one pass through a song's notes lasts (seconds), for looping: from
+ * the first note to the last, plus the last note's own length. Rhythm lock and
+ * the backing track both use this, so they stay aligned on every loop.
+ */
+export function songLoopLength(noteTimes: number[]): number {
+  const n = noteTimes.length;
+  if (n < 2) return 1;
+  return noteTimes[n - 1] - noteTimes[0] + Math.max(0.25, noteTimes[n - 1] - noteTimes[n - 2]);
 }
 
 /** Gravity as a vector. */

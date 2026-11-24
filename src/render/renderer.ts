@@ -547,7 +547,8 @@ export class Renderer {
     if (overlay.counter === 'balls') parts.push(`${world.aliveCount} ${world.aliveCount === 1 ? 'ball' : 'balls'}`);
     if (overlay.counter === 'escaped') parts.push(`${world.uniqueEscapes} escaped`);
     if (overlay.timer) {
-      const secs = world.stepCount / PHYSICS_HZ;
+      // The timer stops at the climax (escape, knockout…); the tail after it doesn't count.
+      const secs = (world.climaxStep >= 0 ? Math.min(world.stepCount, world.climaxStep) : world.stepCount) / PHYSICS_HZ;
       parts.push(`${Math.floor(secs / 60)}:${(secs % 60).toFixed(1).padStart(4, '0')}`);
     }
     if (parts.length) {

@@ -1,7 +1,7 @@
 /** Load every scene source in scenes/ (Node only). */
 import { readdirSync, readFileSync } from 'node:fs';
 import { basename } from 'node:path';
-import { readMidi, songGroups } from '../src/audio/midi';
+import { applySong, readMidi } from '../src/audio/midi';
 import type { Scene } from '../src/engine/scene';
 import { resolveScene } from '../src/engine/source';
 
@@ -29,9 +29,7 @@ export function resolveWithSongs(name: string, sources = loadSources()): Scene {
     const buf = readFileSync(`songs/${scene.audio.melody.slice(5)}.mid`);
     const ab = new ArrayBuffer(buf.length);
     new Uint8Array(ab).set(buf);
-    const { groups, times } = songGroups(readMidi(ab), scene.audio.parts);
-    scene.audio.notes = groups;
-    scene.audio.noteTimes = times;
+    applySong(scene.audio, readMidi(ab));
   }
   return scene;
 }

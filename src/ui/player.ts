@@ -19,8 +19,8 @@ export class Player {
     private readonly scale: number,
     private readonly audio: () => { ctx: AudioContext; master: AudioNode } | null = () => null,
   ) {
-    this.mapper = new SoundMapper(scene);
     this.world = new World(scene);
+    this.mapper = new SoundMapper(scene, this.world.rhythmK);
     this.renderer = new Renderer(canvas, scene, { scale, glow: scale >= 0.5 });
     this.renderer.render(this.world, 0);
   }
@@ -30,7 +30,7 @@ export class Player {
     this.renderer = new Renderer(this.canvas, this.scene, { scale: this.scale, glow: this.scale >= 0.5 });
     this.acc = 0;
     this.endedFor = 0;
-    this.mapper = new SoundMapper(this.scene);
+    this.mapper = new SoundMapper(this.scene, this.world.rhythmK);
     this.cursor = 0;
   }
 
@@ -47,8 +47,7 @@ export class Player {
     const events = this.world.events;
     if (a && a.ctx.state === 'running') {
       for (; this.cursor < events.length; this.cursor++) {
-        const v = this.mapper.map(events[this.cursor]);
-        if (v) playVoice(a.ctx, a.master, v, a.ctx.currentTime + 0.03, this.scene.audio.instrument);
+        for (const v of this.mapper.map(events[this.cursor])) playVoice(a.ctx, a.master, v, a.ctx.currentTime + 0.03 + v.delay, this.scene.audio.instrument);
       }
     } else this.cursor = events.length;
     this.renderer.render(this.world, dt);

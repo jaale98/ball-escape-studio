@@ -94,10 +94,9 @@ export async function exportMp4(scene: Scene, onProgress: ExportProgress = () =>
   onProgress('audio', 0);
   const actx = new OfflineAudioContext(2, Math.ceil(fullSeconds * SAMPLE_RATE) + SAMPLE_RATE, SAMPLE_RATE);
   const master = createMaster(actx, scene.audio.volume);
-  const mapper = new SoundMapper(scene);
+  const mapper = new SoundMapper(scene, pre.rhythmK);
   for (const e of pre.events) {
-    const v = mapper.map(e);
-    if (v) playVoice(actx, master, v, v.time, scene.audio.instrument);
+    for (const v of mapper.map(e)) playVoice(actx, master, v, v.time, scene.audio.instrument);
   }
   const audio = await actx.startRendering();
 

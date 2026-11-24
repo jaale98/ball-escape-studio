@@ -1,5 +1,5 @@
 import { Rng } from './rng';
-import { type Action, ActionSchema, type BallSpec, gravityVec, HEIGHT, PHYSICS_HZ, type Scene, WIDTH } from './scene';
+import { type Action, ActionSchema, type BallSpec, gravityVec, HEIGHT, PHYSICS_HZ, type Scene, songLoopLength, WIDTH } from './scene';
 import { compileScript, type ScriptContext, type ScriptFn } from './script';
 
 export const DT = 1 / PHYSICS_HZ;
@@ -212,6 +212,8 @@ export class World {
   uniqueEscapes = 0;
   eliminations = 0;
   firstEscapeStep = -1;
+  /** Step at which the run's ending happened (escape, last elimination, fill, script end), or -1. The on-screen timer stops here; the tail plays on after it. */
+  climaxStep = -1;
   /** Winning ball id (race or battle), or -1. */
   winner = -1;
   done = false;
@@ -223,8 +225,8 @@ export class World {
 
   private endStep = Infinity;
   private filled = false;
-  /** Rhythm lock: seconds of real time per second of song, or 0 when off. */
-  private rhythmK = 0;
+  /** Rhythm lock: seconds of real time per second of song, or 0 when off. (The sound mapper reads it to time the backing track.) */
+  rhythmK = 0;
   private nextBallId = 0;
   private startingBalls = 0;
   private readonly rngSpawn: Rng;
@@ -894,7 +896,7 @@ export class World {
     const nt = this.scene.audio.noteTimes!;
     const c = this.containers.find((_, k) => !b.escaped[k]);
     if (!c || this.aliveCount !== 1) return;
-    const songLength = nt[nt.length - 1] - nt[0] + Math.max(0.25, nt[nt.length - 1] - nt[nt.length - 2]);
+    const songLength = songLoopLength(nt);
     let dt = 0;
     for (let j = i; dt < 1e-6 && j < i + nt.length; j++) {
       const a = nt[j % nt.length] + Math.floor(j / nt.length) * songLength;
@@ -1104,6 +1106,7 @@ export class World {
         end: () => {
           if (world.endStep === Infinity) {
             world.endReason = 'script';
+            world.climaxStep = world.stepCount;
             world.endStep = world.stepCount + Math.round(world.scene.duration.tail * PHYSICS_HZ);
           }
         },
@@ -1230,6 +1233,7 @@ export class World {
       }
       if (reason) {
         this.endReason = reason;
+        this.climaxStep = reason === 'escaped' && this.firstEscapeStep >= 0 ? this.firstEscapeStep : this.stepCount;
         this.endStep = this.stepCount + Math.round(duration.tail * PHYSICS_HZ);
       }
     }

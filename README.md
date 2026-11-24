@@ -213,6 +213,16 @@ Turn it on in the **Music** tab, or set `"audio": { "melody": "midi:<song>", "rh
 
 Some paths can't hit a particular beat (a ball skimming along the wall, say), so not every seed stays in time. **Find a seed that stays in time** (or the Director's *In time with the song* story) tries 150 seeds and keeps the best; with it, ring escapes, gravity flips, polygons and the bouncing square typically land 85–100% of notes on time. The tempo is chosen automatically between half and double the song's own; the Tempo slider overrides it.
 
+### Multitrack songs
+
+A MIDI file usually has several tracks (melody, piano, bass…). The **Music** tab lists them with their real names, instrument, range and note count, each with a ▶ preview:
+
+- **Bounces play**: the melody track, auto-detected (the busiest high, single-line part, so a chordal piano part doesn't win just by sitting higher), or any one track, or everything merged. **Play chords** plays every note struck together instead of just the top one.
+- **Backing** (with rhythm lock): the other tracks play in time underneath, each switchable, with its own volume. Without rhythm lock the bounces have no timing to follow, so backing is off.
+- Drum tracks are skipped (they have no notes to play on a bounce), and the tab says so.
+
+In a scene file: `"parts": [2]` picks the bounce track (default: the detected melody), `"backing": true` turns backing on, `"backingParts": [0, 3]` limits it, `"backingVolume": 0.5`.
+
 The songbook lives in [`scripts/songbook.ts`](scripts/songbook.ts) in a compact note notation; `npm run songs` regenerates `songs/*.mid` and `songs/songs.json`.
 
 ## Finding the perfect seed

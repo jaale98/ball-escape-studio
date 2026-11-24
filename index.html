@@ -152,15 +152,18 @@
           </div>
           <label id="tempo-auto-row" class="check" hidden><input id="tempo-auto" type="checkbox" checked /> Automatic tempo</label>
         </div>
-        <div id="parts-row" hidden>
-          <span class="field-label">Parts that play</span>
-          <div class="row buttons">
-            <button id="parts-melody" title="Use only the part that looks like the melody">Melody only</button>
-            <button id="parts-all">All parts</button>
+        <div id="parts-row" class="tracks" hidden>
+          <label class="field"><span>Bounces play</span><select id="bounce-part"></select></label>
+          <label class="check"><input id="chords" type="checkbox" /> <span>Play chords (every note struck together, not just the top one)</span></label>
+          <div class="backing">
+            <label class="check"><input id="backing" type="checkbox" /> <span><b>Backing</b>: play the rest of the song in time underneath</span></label>
+            <p id="backing-why" class="muted"></p>
+            <label id="backing-vol-row" class="slider"><span>Backing volume</span><input id="backing-volume" type="range" min="0" max="1" step="0.05" /><output id="backing-vol-out"></output></label>
           </div>
-          <div id="parts"></div>
+          <span class="field-label">Tracks in this song</span>
+          <ol id="parts" class="track-list"></ol>
+          <p id="drums-note" class="muted"></p>
         </div>
-        <label class="check"><input id="chords" type="checkbox" /> Play chords (every note struck together)</label>
         <p id="music-msg" class="muted">Drop a .mid file anywhere on the studio to add your own song.</p>
       </section>
 

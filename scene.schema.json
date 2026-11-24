@@ -771,7 +771,7 @@
                 "type": "integer",
                 "minimum": 0
               },
-              "description": "With a MIDI melody: which parts (track/channel pairs, numbered from 0) feed the melody. Default: all."
+              "description": "With a MIDI melody: which parts (track/channel pairs, numbered from 0) play on bounces. Default: the detected melody part."
             },
             "noteTimes": {
               "type": "array",
@@ -779,6 +779,42 @@
                 "type": "number"
               },
               "description": "Filled in by the studio from the MIDI file: when each melody note falls in the song (seconds). Used for rhythm sync."
+            },
+            "backing": {
+              "type": "boolean",
+              "default": false,
+              "description": "With rhythm lock: play the rest of the song (the parts not on bounces) in time underneath."
+            },
+            "backingParts": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "description": "Which parts play as backing. Default: every part not on bounces."
+            },
+            "backingVolume": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.5
+            },
+            "backingNotes": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "description": "Filled in by the studio: [time, note] of every backing note."
             },
             "rhythmLock": {
               "type": "boolean",

@@ -1,4 +1,4 @@
-import { songGroups } from './audio/midi';
+import { applySong } from './audio/midi';
 import { createMaster, playVoice, SoundMapper } from './audio/sound';
 import { caption, captionText } from './director/caption';
 import { hasScripts, preflight } from './director/check';
@@ -247,11 +247,7 @@ async function loadScene(rebuild = true): Promise<void> {
     let song = null;
     if (resolved.audio.melody.startsWith('midi:')) {
       song = await loadSong(songUrl(resolved.audio.melody.slice(5)));
-      if (!resolved.audio.notes) {
-        const { groups, times } = songGroups(song, resolved.audio.parts);
-        resolved.audio.notes = groups;
-        resolved.audio.noteTimes = times;
-      }
+      if (!resolved.audio.notes) applySong(resolved.audio, song);
     }
     const missingImages = await ensureImages(resolved);
     if (token !== loadToken) return;
@@ -341,7 +337,7 @@ function restart(): void {
   if (!scene) return;
   world = new World(scene);
   renderer = new Renderer(canvas, scene);
-  mapper = new SoundMapper(scene);
+  mapper = new SoundMapper(scene, world.rhythmK);
   audioCursor = 0;
   endedAt = 0;
   renderer.render(world, 0);
@@ -411,9 +407,8 @@ function pumpAudio(): void {
   }
   const now = audio.ctx.currentTime + 0.03;
   for (; audioCursor < events.length; audioCursor++) {
-    const v = mapper.map(events[audioCursor]);
-    if (v) {
-      playVoice(audio.ctx, audio.master, v, now, scene.audio.instrument);
+    for (const v of mapper.map(events[audioCursor])) {
+      playVoice(audio.ctx, audio.master, v, now + v.delay, scene.audio.instrument);
       voicesPlayed++;
     }
   }
@@ -658,7 +653,14 @@ window.addEventListener('songs-updated', (e) => {
   if (scene) void loadScene();
 });
 
-initMusic({ set: (path, value) => setTweak(path, value) });
+initMusic({
+  set: (path, value) => setTweak(path, value),
+  audio: () => {
+    if (!soundOn) return null;
+    ensureAudio();
+    return audio && audio.ctx.state === 'running' ? audio : null;
+  },
+});
 initLook({ set: (path, value, rebuild) => setTweak(path, value, rebuild) });
 
 /** The shown scene's source after extends, with unsaved changes applied (what the Look and Tune tabs edit). */
@@ -840,10 +842,7 @@ initDirector({
   resolve: async (name, extra) => {
     const s = resolveScene(name, { ...sources, ...extra });
     if (s.audio.melody.startsWith('midi:') && !s.audio.notes) {
-      const song = await loadSong(songUrl(s.audio.melody.slice(5)));
-      const { groups, times } = songGroups(song, s.audio.parts);
-      s.audio.notes = groups;
-      s.audio.noteTimes = times;
+      applySong(s.audio, await loadSong(songUrl(s.audio.melody.slice(5))));
     }
     await ensureImages(s);
     return s;

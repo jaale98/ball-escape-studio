@@ -1,5 +1,5 @@
 import { Rng } from '../engine/rng';
-import { PHYSICS_HZ, type Scene, WIDTH } from '../engine/scene';
+import { PHYSICS_HZ, type Scene, songLoopLength, WIDTH } from '../engine/scene';
 import type { SimEvent } from '../engine/world';
 
 /** Public-domain melodies as MIDI note numbers. Each bounce plays the next note. */
@@ -19,8 +19,10 @@ export const MELODIES: Record<string, number[]> = {
 const PENTATONIC = [0, 2, 4, 7, 9];
 
 export interface Voice {
-  /** Seconds from the start of the run. */
+  /** Seconds from the start of the run (including any delay). */
   time: number;
+  /** Seconds after the event that caused it (backing notes fall between bounces). */
+  delay: number;
   kind: 'note' | 'escape' | 'hit' | 'pop';
   /** Notes to play together (one for a melody, several for a chord). */
   midi: number[];
@@ -51,41 +53,83 @@ export class SoundMapper {
   private recentHits: number[] = [];
   private readonly rng: Rng;
   private readonly melody: number[][] | null;
+  /** Backing notes folded into one pass of the song: [song time, note], sorted. */
+  private readonly backing: [number, number][] = [];
+  private readonly loop: number = 1;
 
-  constructor(private readonly scene: Scene) {
+  /** `rhythmK`: the world's rhythm-lock tempo (0 = off); backing only plays when locked. */
+  constructor(
+    private readonly scene: Scene,
+    private readonly rhythmK = 0,
+  ) {
     this.rng = new Rng(scene.seed, 'melody');
     this.melody = melodyFor(scene.audio);
+    const nt = scene.audio.noteTimes;
+    if (rhythmK > 0 && nt && nt.length > 1 && scene.audio.backingNotes?.length) {
+      this.loop = songLoopLength(nt);
+      const t0 = nt[0];
+      this.backing = scene.audio.backingNotes.map(([t, n]) => [t0 + ((((t - t0) % this.loop) + this.loop) % this.loop), n] as [number, number]).sort((a, b) => a[0] - b[0]);
+    }
   }
 
-  map(e: SimEvent): Voice | null {
+  /** The sounds an event makes (none, one, or a bounce note plus the backing notes until the next bounce). */
+  map(e: SimEvent): Voice[] {
     const time = e.step / PHYSICS_HZ;
     const pan = Math.max(-1, Math.min(1, (e.x - WIDTH / 2) / (WIDTH / 2))) * 0.5;
     const { audio } = this.scene;
+    const one = (v: Omit<Voice, 'time' | 'delay'>): Voice[] => [{ time, delay: 0, ...v }];
     if (e.type === 'bounce') {
+      // Under rhythm lock bounce i is note i, so the melody must advance on
+      // every bounce even when a note is too crowded to sound.
+      const locked = this.rhythmK > 0;
+      const index = this.noteIndex;
       // At most 4 notes in any 60 ms window keeps big crowds from turning to noise.
       this.recent = this.recent.filter((t) => t > time - 0.06);
-      if (this.recent.length >= 4) return null;
-      this.recent.push(time);
-      const gain = Math.max(0.35, Math.min(1, 0.35 + e.speed / 2500));
-      return { time, kind: 'note', midi: this.nextNote(), gain, pan };
+      const crowded = this.recent.length >= 4;
+      if (crowded && !locked) return [];
+      const note = this.nextNote();
+      const out: Voice[] = [];
+      if (!crowded) {
+        this.recent.push(time);
+        out.push({ time, delay: 0, kind: 'note', midi: note, gain: Math.max(0.35, Math.min(1, 0.35 + e.speed / 2500)), pan });
+      }
+      if (locked && this.backing.length) out.push(...this.backingAfter(index, time));
+      return out;
     }
-    if (e.type === 'escape' && audio.escapeSound) return { time, kind: 'escape', midi: [72], gain: 1, pan };
-    if (e.type === 'eliminate') return { time, kind: 'pop', midi: [], gain: 1, pan };
-    if (e.type === 'strike' && audio.hitSound) return { time, kind: 'hit', midi: [], gain: 1, pan };
-    if (e.type === 'clash' && audio.hitSound) return { time, kind: 'note', midi: [96, 103], gain: 0.5, pan };
+    if (e.type === 'escape' && audio.escapeSound) return one({ kind: 'escape', midi: [72], gain: 1, pan });
+    if (e.type === 'eliminate') return one({ kind: 'pop', midi: [], gain: 1, pan });
+    if (e.type === 'strike' && audio.hitSound) return one({ kind: 'hit', midi: [], gain: 1, pan });
+    if (e.type === 'clash' && audio.hitSound) return one({ kind: 'note', midi: [96, 103], gain: 0.5, pan });
     if (e.type === 'wake') {
       this.recent = this.recent.filter((t) => t > time - 0.06);
-      if (this.recent.length >= 4) return null;
+      if (this.recent.length >= 4) return [];
       this.recent.push(time);
-      return { time, kind: 'note', midi: this.nextNote(), gain: 0.6, pan };
+      return one({ kind: 'note', midi: this.nextNote(), gain: 0.6, pan });
     }
     if (e.type === 'hit' && audio.hitSound) {
       this.recentHits = this.recentHits.filter((t) => t > time - 0.05);
-      if (this.recentHits.length >= 3) return null;
+      if (this.recentHits.length >= 3) return [];
       this.recentHits.push(time);
-      return { time, kind: 'hit', midi: [], gain: Math.max(0.3, Math.min(1, e.speed / 1500)), pan };
+      return one({ kind: 'hit', midi: [], gain: Math.max(0.3, Math.min(1, e.speed / 1500)), pan });
     }
-    return null;
+    return [];
+  }
+
+  /** Backing notes between melody note `i` and the next one, timed by the rhythm-lock tempo. */
+  private backingAfter(i: number, time: number): Voice[] {
+    const nt = this.scene.audio.noteTimes!;
+    const n = nt.length;
+    const a = nt[i % n];
+    const b = i % n === n - 1 ? nt[0] + this.loop : nt[(i % n) + 1];
+    const gain = this.scene.audio.backingVolume * 0.6;
+    const out: Voice[] = [];
+    for (const [t, note] of this.backing) {
+      if (t < a) continue;
+      if (t >= b) break;
+      const delay = (t - a) * this.rhythmK;
+      out.push({ time: time + delay, delay, kind: 'note', midi: [note + this.scene.audio.transpose], gain, pan: 0 });
+    }
+    return out;
   }
 
   private nextNote(): number[] {

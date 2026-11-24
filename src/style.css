@@ -284,6 +284,15 @@ body.dropping::after {
 #critic-list li.warn::before { background: #ffb547; }
 #critic-list li.good::before { background: #7cff6b; }
 
+/* Music tab: tracks */
+.tracks { display: flex; flex-direction: column; gap: 8px; }
+.backing { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.backing p { margin: 0; }
+.track-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.track-list li { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 8px; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; }
+.track-list li em { color: var(--accent); font-style: normal; font-size: 11px; }
+.icon-small { width: 28px; height: 26px; padding: 0; font-size: 11px; }
+
 /* Look tab */
 .color-field input[type="color"] { width: 100%; height: 34px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: #1c1c27; }
 .look-sliders .slider { grid-template-columns: 110px 1fr 52px; }
