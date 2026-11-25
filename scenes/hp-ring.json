@@ -59,7 +59,7 @@
   "overlay": {
     "title": "45 hits in 30 seconds?",
     "counter": "hp",
-    "timer": true,
+    "timer": false,
     "counterY": 1515
   }
 }

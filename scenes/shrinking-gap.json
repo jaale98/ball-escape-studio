@@ -57,7 +57,7 @@
   "overlay": {
     "title": "The gap loses 1.5° per hit",
     "counter": "gap",
-    "timer": true,
+    "timer": false,
     "titleSize": 64,
     "counterY": 1515
   },

@@ -1,14 +1,26 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Gravity flip",
-  "seed": 17,
+  "seed": 207,
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
     "tail": 1.3
   },
+  "clock": {
+    "seconds": 30,
+    "final": 5,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
   "world": {
-    "gravity": 900
+    "gravity": 900,
+    "speedScale": 1.057,
+    "spinScale": 0.921
   },
   "entities": [
     {

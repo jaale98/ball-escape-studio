@@ -8,6 +8,10 @@
     "endOn": "mostTerritory",
     "tail": 2
   },
+  "clock": {
+    "seconds": 24,
+    "final": 5
+  },
   "world": {
     "gravity": 0
   },
@@ -73,7 +77,7 @@
     "counterY": 1560,
     "titleSize": 64,
     "resultPosition": "title",
-    "progress": "bar",
+    "progress": "none",
     "titleY": 302
   }
 }

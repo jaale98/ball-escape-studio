@@ -78,7 +78,7 @@
   },
   "overlay": {
     "title": "Which portal leads outside?",
-    "timer": true,
+    "timer": false,
     "titleSize": 62,
     "counter": "none"
   }

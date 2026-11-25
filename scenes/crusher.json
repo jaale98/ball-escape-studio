@@ -2,15 +2,28 @@
   "$schema": "../scene.schema.json",
   "title": "Crusher",
   "category": "destruction",
-  "seed": 47,
+  "seed": 64,
   "duration": {
     "max": 60,
     "endOn": "allEscaped",
     "tail": 1.4
   },
+  "clock": {
+    "seconds": 35,
+    "final": 5,
+    "rush": [
+      {
+        "do": "speedUp",
+        "factor": 1.06,
+        "max": 3200
+      }
+    ]
+  },
   "world": {
     "gravity": 900,
-    "maxBalls": 220
+    "maxBalls": 220,
+    "speedScale": 0.972,
+    "spinScale": 0.996
   },
   "entities": [
     {

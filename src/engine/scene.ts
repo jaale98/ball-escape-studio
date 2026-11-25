@@ -536,7 +536,10 @@ export const SceneSchema = z
         counterSize: z.number().min(16).max(160).default(52),
         counterY: z.number().min(100).max(1900).optional().describe('Where the counter and timer sit. Default: near the bottom.'),
         labelSize: z.number().min(10).max(80).default(26).describe('Size of the names under balls.'),
-        timer: z.boolean().default(true),
+        timer: z.boolean().default(true).describe('Elapsed time on the counter line (scenes without a clock).'),
+        clock: z.boolean().default(true).describe('Show the clock’s countdown (big digits and a draining bar under the title). Needs a scene clock.'),
+        clockY: z.number().min(100).max(1900).optional().describe('Where the countdown digits sit. Default: just under the title.'),
+        clockSize: z.number().min(30).max(240).default(96),
         counter: z.enum(['none', 'bounces', 'balls', 'escaped', 'teams', 'rings', 'bricks', 'hp', 'sides', 'gap', 'gravity', 'diameter', 'level', 'swallowed']).default('bounces'),
         endCard: z.string().optional().describe('Text shown over the tail after the climax ("Follow for part 2").'),
         reveal: z.string().optional().describe('A message revealed one word (or letter) per bounce.'),
@@ -600,6 +603,17 @@ export function songLoopLength(noteTimes: number[]): number {
   const n = noteTimes.length;
   if (n < 2) return 1;
   return noteTimes[n - 1] - noteTimes[0] + Math.max(0.25, noteTimes[n - 1] - noteTimes[n - 2]);
+}
+
+/**
+ * The scene has a clock and an ending that can beat it (an endOn other than
+ * never / mostTerritory, or a rule or timeline that ends the run), rather
+ * than a contest that always runs the clock down.
+ */
+export function racesClock(scene: Scene): boolean {
+  if (!scene.clock || scene.duration.endOn === 'mostTerritory') return false;
+  if (scene.duration.endOn !== 'never') return true;
+  return /world\.end\(|"do":"end"/.test(JSON.stringify(scene.rules) + JSON.stringify(scene.timeline));
 }
 
 /** Gravity as a vector. */

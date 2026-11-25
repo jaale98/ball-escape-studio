@@ -1,15 +1,27 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Multiply on escape",
-  "seed": 5,
+  "seed": 22,
   "duration": {
     "max": 44,
     "endOn": "firstEscape",
     "tail": 1
   },
+  "clock": {
+    "seconds": 30,
+    "final": 5,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
   "world": {
     "gravity": 900,
-    "maxBalls": 165
+    "maxBalls": 165,
+    "speedScale": 0.952,
+    "spinScale": 0.924
   },
   "entities": [
     {

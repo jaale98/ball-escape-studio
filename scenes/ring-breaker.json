@@ -2,14 +2,26 @@
   "$schema": "../scene.schema.json",
   "title": "Ring breaker",
   "category": "destruction",
-  "seed": 14,
+  "seed": 11,
   "duration": {
     "max": 60,
     "endOn": "allEscaped",
     "tail": 1.4
   },
+  "clock": {
+    "seconds": 30,
+    "final": 5,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
   "world": {
-    "gravity": 0
+    "gravity": 0,
+    "speedScale": 1.044,
+    "spinScale": 0.968
   },
   "entities": [
     {

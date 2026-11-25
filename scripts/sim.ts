@@ -13,6 +13,7 @@
  *       --target defaults to the scene's (with a clock: just before zero)
  */
 import { candidates, defaultTarget, refinements, type RunScore, scoreRun, type Template, TEMPLATES } from '../src/director/score';
+import { racesClock } from '../src/engine/scene';
 import { World } from '../src/engine/world';
 import { loadSources, resolveWithSongs, sceneName } from './scenes';
 
@@ -107,7 +108,8 @@ if (seeds) {
   console.log(`ended        ${r.end} at ${fmt(r.length)}`);
   console.log(`climax       ${fmt(r.climax)}`);
   const left = r.world.clockLeft();
-  if (left !== null) console.log(`clock        ${r.end === 'timeUp' ? 'ran out' : `${left.toFixed(2)}s to spare of ${base.clock!.seconds}s`}`);
+  if (left !== null)
+    console.log(`clock        ${!racesClock(base) ? `counted down ${base.clock!.seconds}s` : r.end === 'timeUp' ? 'ran out' : `${left.toFixed(2)}s to spare of ${base.clock!.seconds}s`}`);
   if (r.winner) console.log(`winner       ${r.winner}`);
   console.log(`bounces      ${r.bounces}`);
   console.log(`escapes      ${r.escapes}`);

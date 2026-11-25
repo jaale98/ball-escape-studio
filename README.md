@@ -148,7 +148,7 @@ Most formats are a base scene plus a twist. For example, this variation adds mul
 | `timeline` | Do the same actions `at` a time or `every` N seconds (spawners, gravity flips…) |
 | `duration` | Length cap and what ends the run: `firstEscape`, `allEscaped`, `lastStanding`, `oneTeam`, `finish`, `cleared`, `mostTerritory`, `never`; `trimStart` for loops |
 | `camera` | `mode` (fixed, follow, zoomOut), zoom, circular `aperture`, `shake`, `slowmo` (+ factor, lead), `countdown` |
-| `clock` | A countdown: `seconds`, the red ticking `final` stretch, `rush` actions fired every `rushEvery` s through it, `ticks`, `timeUpText`. Ends the run at zero (`endReason: timeUp`) and sets `duration.max` |
+| `clock` | A countdown: `seconds`, the red ticking `final` stretch, `rush` actions fired every `rushEvery` s through it, `ticks`, `timeUpText`. Ends the run at zero (`endReason: timeUp`) and sets `duration.max`. Shown as a countdown under the title (`overlay.clock`, `clockY`, `clockSize`) |
 | `world` | Gravity (number or `[x, y]`), energy keeping, restitution, friction, ball cap |
 | `style` | Background color or picture, palette, ring color, `theme`, ball / ring / trail style, `colorMode`, string-art `lines`, `backdrop`, bloom, vignette, grain, scanlines, chromatic, confetti, trail length, glow, paint, hp rings, picture `reveal` |
 | `audio` | Melody (`pentatonic`, `ode-to-joy`, `fur-elise`, `midi:<file>`) or inline `notes`, chords, transpose, instrument (10), `pitchBy`, minimum audible `bounceSpacing` in seconds, `climax` sound, event sounds |
@@ -161,6 +161,8 @@ The full schema with every default lives in [`src/engine/scene.ts`](src/engine/s
 ### The presets
 
 The [scene-by-scene review](docs/preset-review.md) covers all 50 presets, their opening hooks, endings and measured playback times before and after tuning.
+
+**Countdown clocks.** 33 presets race a `clock`: a big countdown under the title with a draining bar that turns amber at half time and red, pulsing and ticking in the final five seconds. Escapes, breakouts, battles, takeovers, corner-hit and multiply are tuned to finish 0.3–1.5 s before zero (a beaten clock freezes green with the time to spare; otherwise "TIME'S UP"). The territory games (pong-wars, color-war, paint-the-ring) count down to their scoring moment. The music, loop, pour and pendulum scenes have no clock, since they have nothing to beat.
 
 | Scene | Format | Built from |
 | --- | --- | --- |
@@ -228,6 +230,7 @@ Click **Director** in the studio. Pick a story, set when the climax should land,
 | --- | --- |
 | Slow burn | Climax near the target, near-misses building toward it, no dead stretches |
 | Last-second escape | Climax almost exactly on the target, lots of near-misses |
+| Beat the clock | Scenes with a `clock`: the climax lands 0.3–1.5 s before zero after rising near-misses; running out of time scores low (default story and target for clock scenes) |
 | Chaos | As many hits and balls as possible |
 | Comeback | Races and battles where the lead changes and the winner was behind at halftime |
 | In time with the song | Bounces that follow the MIDI song's note timing |

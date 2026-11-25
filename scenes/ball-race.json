@@ -1,14 +1,26 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Ball race",
-  "seed": 9,
+  "seed": 100,
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
     "tail": 1.8
   },
+  "clock": {
+    "seconds": 20,
+    "final": 5,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
   "world": {
-    "gravity": 900
+    "gravity": 900,
+    "speedScale": 1.048,
+    "spinScale": 1.01
   },
   "entities": [
     {

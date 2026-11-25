@@ -2,14 +2,27 @@
   "$schema": "../scene.schema.json",
   "title": "Weapon legends",
   "category": "battle",
-  "seed": 14,
+  "seed": 18,
   "duration": {
     "max": 60,
     "endOn": "lastStanding",
     "tail": 1.7
   },
+  "clock": {
+    "seconds": 25,
+    "final": 5,
+    "rush": [
+      {
+        "do": "speedUp",
+        "factor": 1.06,
+        "max": 3200
+      }
+    ]
+  },
   "world": {
-    "gravity": 900
+    "gravity": 900,
+    "speedScale": 0.995,
+    "spinScale": 1.058
   },
   "entities": [
     {

@@ -2340,7 +2340,25 @@
             },
             "timer": {
               "type": "boolean",
-              "default": true
+              "default": true,
+              "description": "Elapsed time on the counter line (scenes without a clock)."
+            },
+            "clock": {
+              "type": "boolean",
+              "default": true,
+              "description": "Show the clock’s countdown (big digits and a draining bar under the title). Needs a scene clock."
+            },
+            "clockY": {
+              "type": "number",
+              "minimum": 100,
+              "maximum": 1900,
+              "description": "Where the countdown digits sit. Default: just under the title."
+            },
+            "clockSize": {
+              "type": "number",
+              "minimum": 30,
+              "maximum": 240,
+              "default": 96
             },
             "counter": {
               "type": "string",

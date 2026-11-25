@@ -1,14 +1,26 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Nested rings",
-  "seed": 105,
+  "seed": 68,
   "duration": {
     "max": 60,
     "endOn": "allEscaped",
     "tail": 1.3
   },
+  "clock": {
+    "seconds": 35,
+    "final": 5,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
   "world": {
-    "gravity": 0
+    "gravity": 0,
+    "speedScale": 0.921,
+    "spinScale": 1.023
   },
   "entities": [
     {

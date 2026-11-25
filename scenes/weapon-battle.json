@@ -1,14 +1,27 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Weapon battle",
-  "seed": 48,
+  "seed": 6,
   "duration": {
     "max": 60,
     "endOn": "lastStanding",
     "tail": 1.7
   },
+  "clock": {
+    "seconds": 25,
+    "final": 5,
+    "rush": [
+      {
+        "do": "speedUp",
+        "factor": 1.06,
+        "max": 3200
+      }
+    ]
+  },
   "world": {
-    "gravity": 500
+    "gravity": 500,
+    "speedScale": 0.959,
+    "spinScale": 0.927
   },
   "entities": [
     {

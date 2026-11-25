@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "title": "Clone trail",
   "category": "surreal",
-  "seed": 49,
+  "seed": 128,
   "modifiers": [
     {
       "use": "clone-trail",
@@ -14,8 +14,20 @@
     "endOn": "firstEscape",
     "tail": 1.4
   },
+  "clock": {
+    "seconds": 25,
+    "final": 5,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
   "world": {
-    "gravity": 900
+    "gravity": 900,
+    "speedScale": 1.065,
+    "spinScale": 0.956
   },
   "entities": [
     {

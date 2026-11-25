@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "title": "Meow escape",
   "category": "surreal",
-  "seed": 36,
+  "seed": 108,
   "modifiers": [
     "meow"
   ],
@@ -11,8 +11,20 @@
     "endOn": "firstEscape",
     "tail": 2.1
   },
+  "clock": {
+    "seconds": 30,
+    "final": 5,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
   "world": {
-    "gravity": 900
+    "gravity": 900,
+    "speedScale": 0.973,
+    "spinScale": 1.052
   },
   "entities": [
     {

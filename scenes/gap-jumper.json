@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "title": "Gap jumper",
   "category": "surreal",
-  "seed": 34,
+  "seed": 99,
   "modifiers": [
     "gap-jump"
   ],
@@ -11,8 +11,20 @@
     "endOn": "firstEscape",
     "tail": 1.25
   },
+  "clock": {
+    "seconds": 30,
+    "final": 5,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
   "world": {
-    "gravity": 900
+    "gravity": 900,
+    "speedScale": 1.028,
+    "spinScale": 0.957
   },
   "entities": [
     {

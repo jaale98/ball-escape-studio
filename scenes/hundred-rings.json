@@ -2,14 +2,26 @@
   "$schema": "../scene.schema.json",
   "title": "Hundred rings",
   "category": "escape",
-  "seed": 50,
+  "seed": 6,
   "duration": {
     "max": 55,
     "endOn": "allEscaped",
     "tail": 1.4
   },
+  "clock": {
+    "seconds": 35,
+    "final": 5,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
   "world": {
-    "gravity": 160
+    "gravity": 160,
+    "speedScale": 0.959,
+    "spinScale": 0.927
   },
   "entities": [
     {
@@ -54,6 +66,7 @@
     "counter": "rings",
     "timer": false,
     "subtitle": "100 rings rotate together",
-    "counterY": 1515
+    "counterY": 1515,
+    "clockSize": 72
   }
 }

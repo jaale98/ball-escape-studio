@@ -5,7 +5,7 @@
  * Pure and deterministic: works in the browser, in Web Workers, and in Node
  * (`npm run sim -- <scene> --director <template>`).
  */
-import { PHYSICS_HZ, type Scene } from '../engine/scene';
+import { PHYSICS_HZ, racesClock, type Scene } from '../engine/scene';
 import { type RingContainer, World } from '../engine/world';
 
 export type Template = 'slow-burn' | 'last-second' | 'beat-the-clock' | 'chaos' | 'comeback' | 'music-sync' | 'perfect-loop' | 'underdog' | 'photo-finish' | 'destruction';
@@ -38,10 +38,7 @@ export function defaultTemplate(scene: Scene): Template {
   return 'slow-burn';
 }
 
-/** The scene has a clock and an ending that can beat it (not a run that always goes the distance). */
-export function racesClock(scene: Scene): boolean {
-  return !!scene.clock && scene.duration.endOn !== 'never' && scene.duration.endOn !== 'mostTerritory';
-}
+export { racesClock };
 
 /** Where a story's climax should land by default (seconds). With a clock: just before zero. */
 export function defaultTarget(scene: Scene): number {

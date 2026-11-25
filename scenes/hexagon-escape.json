@@ -56,6 +56,6 @@
   "overlay": {
     "title": "30 seconds to find the exit",
     "counter": "none",
-    "timer": true
+    "timer": false
   }
 }

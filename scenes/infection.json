@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "title": "Infection",
   "category": "teams",
-  "seed": 7,
+  "seed": 285,
   "modifiers": [
     {
       "use": "infection",
@@ -13,8 +13,21 @@
     "max": 60,
     "tail": 1.5
   },
+  "clock": {
+    "seconds": 35,
+    "final": 5,
+    "rush": [
+      {
+        "do": "speedUp",
+        "factor": 1.06,
+        "max": 3200
+      }
+    ]
+  },
   "world": {
-    "gravity": 0
+    "gravity": 0,
+    "speedScale": 0.971,
+    "spinScale": 0.944
   },
   "entities": [
     {

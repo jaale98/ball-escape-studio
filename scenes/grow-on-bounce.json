@@ -1,14 +1,26 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Grow on bounce",
-  "seed": 110,
+  "seed": 184,
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
     "tail": 1.25
   },
+  "clock": {
+    "seconds": 30,
+    "final": 5,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
   "world": {
-    "gravity": 900
+    "gravity": 900,
+    "speedScale": 0.986,
+    "spinScale": 0.994
   },
   "modifiers": [
     {

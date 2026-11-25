@@ -1,5 +1,5 @@
 import { Rng } from '../engine/rng';
-import { HEIGHT, PHYSICS_HZ, type Scene, WIDTH } from '../engine/scene';
+import { HEIGHT, PHYSICS_HZ, racesClock, type Scene, WIDTH } from '../engine/scene';
 import type { Ball, Container, Pendulum, Solid, World } from '../engine/world';
 import { getImage } from '../images';
 import { GlBallLayer } from './gl';
@@ -117,6 +117,8 @@ export class Renderer {
   private escapeFlash = 0;
   private lastFlashStep = -Infinity;
   private banner = 0;
+  /** Where the countdown sits (fixed on the first frame drawn). */
+  private countdownY = -1;
   private finishers: { ball: number; step: number }[] = [];
   private readonly scale: number;
   private readonly glowAllowed: boolean;
@@ -1827,16 +1829,21 @@ export class Renderer {
     const hasResult = overlay.winner && !!world.endReason && (world.winner >= 0 || !!team || tied);
     const titleResult = hasResult && overlay.resultPosition === 'title';
     let y = overlay.titleY;
+    // Baseline of the last line of title text (for placing the countdown under it).
+    let textBottom = safeText ? TIKTOK_ZONES.top : 60;
     if (overlay.title && !titleResult) {
       ctx.font = `800 ${overlay.titleSize}px ${font}`;
-      y = this.fillWrapped(overlay.title, WIDTH / 2, Math.max(y, safeText ? TIKTOK_ZONES.top + overlay.titleSize : y), 940, overlay.titleSize * 1.16) + overlay.subtitleSize * 1.75;
+      textBottom = this.fillWrapped(overlay.title, WIDTH / 2, Math.max(y, safeText ? TIKTOK_ZONES.top + overlay.titleSize : y), 940, overlay.titleSize * 1.16);
+      y = textBottom + overlay.subtitleSize * 1.75;
     }
     if (overlay.subtitle && !titleResult) {
       ctx.font = `500 ${overlay.subtitleSize}px ${font}`;
       ctx.globalAlpha = 0.8;
-      this.fillWrapped(overlay.subtitle, WIDTH / 2, y, 900, overlay.subtitleSize * 1.25);
+      textBottom = this.fillWrapped(overlay.subtitle, WIDTH / 2, y, 900, overlay.subtitleSize * 1.25);
       ctx.globalAlpha = 1;
     }
+    // The countdown keeps the spot it took on the first frame (the title may give way to a result later).
+    if (this.countdownY < 0) this.countdownY = overlay.clockY ?? textBottom + 50 + overlay.clockSize * 0.8;
 
     // The timer stops at the climax (escape, knockout…); the tail after it doesn't count.
     const secs = (world.climaxStep >= 0 ? Math.min(world.stepCount, world.climaxStep) : world.stepCount) / PHYSICS_HZ;
@@ -1878,8 +1885,8 @@ export class Renderer {
     if (overlay.timer && !clock) parts.push(clockText(secs));
     if (overlay.counter === 'teams') this.drawTeams(world, counterY, font);
     else if (overlay.teamBar && (world.territory || world.teams.length > 1)) this.drawTeams(world, counterY, font, true);
-    if (overlay.timer && clock && left !== null) this.drawClock(world, clock, left, parts, counterY, font);
-    else if (parts.length) {
+    if (overlay.clock && clock && left !== null) this.drawCountdown(world, clock, left, font);
+    if (parts.length) {
       ctx.font = `700 ${overlay.counterSize}px ${font}`;
       ctx.fillStyle = overlay.textColor;
       ctx.fillText(parts.join('   ·   '), WIDTH / 2, counterY);
@@ -2022,44 +2029,61 @@ export class Renderer {
   }
 
   /**
-   * The countdown, after the counter on its line. Calm while there's time;
-   * red, pulsing once a second and growing through the final stretch; green
-   * and frozen when the climax beat it, showing the time to spare.
+   * The countdown: big digits under the title with a draining bar beneath.
+   * Calm while there's time; red, pulsing each second and growing through
+   * the final stretch; green and frozen with the time to spare when the
+   * climax beats it.
    */
-  private drawClock(world: World, clock: NonNullable<Scene['clock']>, left: number, parts: string[], y: number, font: string): void {
+  private drawCountdown(world: World, clock: NonNullable<Scene['clock']>, left: number, font: string): void {
     const { ctx } = this;
     const { overlay } = this.scene;
-    const sep = '   ·   ';
-    const beat = world.climaxStep >= 0 && world.endReason !== 'timeUp';
-    const final = !beat && left <= clock.final && clock.final > 0;
-    const text = beat ? `${left.toFixed(2)}s left` : clockText(left, left < 10);
-    ctx.font = `700 ${overlay.counterSize}px ${font}`;
-    const rest = parts.join(sep);
-    const restW = rest ? ctx.measureText(rest + sep).width : 0;
-    const clockW = ctx.measureText(text).width;
-    let x = WIDTH / 2 - (restW + clockW) / 2;
-    ctx.textAlign = 'left';
-    ctx.fillStyle = overlay.textColor;
-    if (rest) ctx.fillText(rest + sep, x, y);
-    x += restW;
-    // Pulse on each whole second: a jump that relaxes over ~0.35 s, bigger as zero nears.
-    const frac = left - Math.floor(left);
+    const ended = world.climaxStep >= 0;
+    const beat = ended && racesClock(this.scene) && world.endReason !== 'timeUp';
+    const final = !ended && clock.final > 0 && left <= clock.final;
+    const frac = left / clock.seconds;
+    const text = beat ? `${left.toFixed(2)}s left` : left >= 10 ? `${Math.floor(Math.ceil(left) / 60)}:${String(Math.ceil(left) % 60).padStart(2, '0')}` : left.toFixed(1);
+    const size = overlay.clockSize;
+    const y = this.countdownY;
+    // A jump on each whole second that relaxes over ~0.35 s, bigger as zero nears.
+    const sub = left - Math.floor(left);
     const urgency = final ? 1 - left / Math.max(clock.final, 1e-6) : 0;
-    const pulse = final ? 1 + (0.18 + 0.22 * urgency) * Math.max(0, (frac - 0.65) / 0.35) + 0.15 * urgency : 1;
+    const pulse = final ? 1 + (0.12 + 0.18 * urgency) * Math.max(0, (sub - 0.65) / 0.35) + 0.1 * urgency : 1;
+    const color = beat ? '#7cff6b' : final || (ended && left <= 0) ? '#ff3b4f' : frac < 0.5 ? '#ffd23f' : overlay.textColor;
+
     ctx.save();
-    ctx.translate(x + clockW / 2, y - overlay.counterSize * 0.35);
+    ctx.shadowColor = final ? 'rgba(255,40,60,0.85)' : 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = final ? 28 * pulse : 16;
+    ctx.translate(WIDTH / 2, y - size * 0.36);
     ctx.scale(pulse, pulse);
-    ctx.fillStyle = beat ? '#7cff6b' : final ? '#ff3b4f' : overlay.textColor;
-    if (final) {
-      ctx.shadowColor = 'rgba(255,40,60,0.8)';
-      ctx.shadowBlur = 24 * pulse;
-    }
-    ctx.fillText(text, -clockW / 2, overlay.counterSize * 0.35);
-    ctx.restore();
+    ctx.fillStyle = color;
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `900 ${size}px ${font}`;
+    ctx.fillText(text, 0, 0);
+    ctx.restore();
+
+    // The draining bar.
+    const bw = Math.min(520, size * 5);
+    const bh = Math.max(8, Math.round(size * 0.11));
+    const bx = WIDTH / 2 - bw / 2;
+    const by = y + size * 0.22;
+    ctx.save();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255,255,255,0.16)';
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bw, bh, bh / 2);
+    ctx.fill();
+    if (frac > 0) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.roundRect(bx, by, Math.max(bh, bw * frac), bh, bh / 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
     // The final stretch tints the frame edges red, pulsing with the clock.
     if (final) {
-      const a = (0.1 + 0.25 * urgency) * (0.55 + 0.45 * Math.max(0, (frac - 0.5) / 0.5));
+      const a = (0.1 + 0.25 * urgency) * (0.55 + 0.45 * Math.max(0, (sub - 0.5) / 0.5));
       const g = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, HEIGHT * 0.38, WIDTH / 2, HEIGHT / 2, HEIGHT * 0.62);
       g.addColorStop(0, 'rgba(255,30,50,0)');
       g.addColorStop(1, `rgba(255,30,50,${a.toFixed(3)})`);
@@ -2173,8 +2197,7 @@ export class Renderer {
   }
 }
 
-/** m:ss.s (or s.ss under ten seconds when `fine`). */
-function clockText(secs: number, fine = false): string {
-  if (fine) return secs.toFixed(2);
+/** Elapsed time as m:ss.s. */
+function clockText(secs: number): string {
   return `${Math.floor(secs / 60)}:${(secs % 60).toFixed(1).padStart(4, '0')}`;
 }

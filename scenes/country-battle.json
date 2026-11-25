@@ -55,7 +55,7 @@
     "counterY": 1515,
     "resultPosition": "title"
   },
-  "seed": 19,
+  "seed": 37,
   "style": {
     "glow": false,
     "trail": 0.28
@@ -66,5 +66,9 @@
   },
   "duration": {
     "tail": 1.8
+  },
+  "world": {
+    "speedScale": 0.946,
+    "spinScale": 1.069
   }
 }

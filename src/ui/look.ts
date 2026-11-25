@@ -136,6 +136,7 @@ const STYLE_FIELDS: Field[] = [
   { path: 'camera.countdown', label: 'Countdown', kind: 'range', min: 0, max: 5, step: 1 },
   { path: 'clock.seconds', label: 'Clock (s, 0 = off)', kind: 'range', min: 0, max: 90, step: 1 },
   { path: 'clock.final', label: 'Clock final stretch (s)', kind: 'range', min: 0, max: 15, step: 1 },
+  { path: 'overlay.clock', label: 'Show countdown', kind: 'check' },
   { group: 'Text' },
   { path: 'overlay.progress', label: 'Time left', kind: 'select', options: [['none', 'Hidden'], ['bar', 'Bar'], ['ring', 'Ring']] },
   { path: 'overlay.endCard', label: 'End card', kind: 'text', placeholder: 'Follow for part 2' },

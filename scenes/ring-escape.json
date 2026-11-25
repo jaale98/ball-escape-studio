@@ -1,14 +1,26 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Ring escape",
-  "seed": 33,
+  "seed": 49,
   "duration": {
     "max": 60,
     "endOn": "allEscaped",
     "tail": 1.2
   },
+  "clock": {
+    "seconds": 35,
+    "final": 5,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
   "world": {
-    "gravity": 300
+    "gravity": 300,
+    "speedScale": 1.068,
+    "spinScale": 1.075
   },
   "entities": [
     {

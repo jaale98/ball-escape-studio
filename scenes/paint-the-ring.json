@@ -10,6 +10,10 @@
     "endOn": "mostTerritory",
     "tail": 2
   },
+  "clock": {
+    "seconds": 24,
+    "final": 5
+  },
   "entities": [
     {
       "type": "territory",
@@ -63,7 +67,7 @@
     "counterSize": 40,
     "counterY": 1540,
     "resultPosition": "title",
-    "progress": "bar",
+    "progress": "none",
     "titleY": 302
   },
   "teams": [

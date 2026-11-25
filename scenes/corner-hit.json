@@ -2,14 +2,27 @@
   "$schema": "../scene.schema.json",
   "title": "Corner hit",
   "category": "surreal",
-  "seed": 268,
+  "seed": 296,
   "duration": {
     "max": 60,
     "endOn": "never",
     "tail": 1.7
   },
+  "clock": {
+    "seconds": 30,
+    "final": 5,
+    "rush": [
+      {
+        "do": "speedUp",
+        "factor": 1.06,
+        "max": 3200
+      }
+    ]
+  },
   "world": {
-    "gravity": 0
+    "gravity": 0,
+    "speedScale": 0.994,
+    "spinScale": 0.99
   },
   "entities": [
     {
