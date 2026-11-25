@@ -4,15 +4,16 @@
   "category": "forces",
   "seed": 1,
   "duration": {
-    "max": 30,
+    "max": 42,
     "endOn": "never",
-    "tail": 0
+    "tail": 1.3
   },
   "world": {
     "gravity": 0,
     "keepEnergy": false,
     "restitution": 0.85,
-    "maxBalls": 400
+    "maxBalls": 400,
+    "damping": 0.64
   },
   "entities": [
     {
@@ -25,8 +26,8 @@
     {
       "type": "force",
       "kind": "vortex",
-      "strength": 420,
-      "inward": 0.6,
+      "strength": 980,
+      "inward": 0.83,
       "color": "#4dd4ff"
     },
     {
@@ -39,16 +40,37 @@
     },
     {
       "type": "emitter",
-      "x": 540,
-      "y": 560,
-      "rate": 14,
-      "count": 140,
-      "speed": 420,
+      "x": 560,
+      "y": 725,
+      "rate": 5.4,
+      "count": 105,
+      "speed": 240,
       "direction": 0,
       "cone": 30,
       "radius": 10,
-      "rainbow": true,
-      "loop": true
+      "rainbow": false,
+      "loop": false,
+      "colors": [
+        "#3ddad0",
+        "#71e8db"
+      ]
+    },
+    {
+      "type": "emitter",
+      "x": 520,
+      "y": 1195,
+      "rate": 5.4,
+      "count": 105,
+      "speed": 240,
+      "direction": 180,
+      "cone": 30,
+      "radius": 10,
+      "rainbow": false,
+      "loop": false,
+      "colors": [
+        "#ffa56d",
+        "#ffc481"
+      ]
     },
     {
       "type": "ball",
@@ -57,14 +79,28 @@
     }
   ],
   "style": {
-    "trail": 0.8
+    "trail": 0.7,
+    "background": "#091c29",
+    "trailStyle": "ribbon"
   },
   "audio": {
-    "instrument": "kalimba"
+    "instrument": "kalimba",
+    "pitchBy": "height",
+    "hitSound": false,
+    "volume": 0.38,
+    "bounceSpacing": 0.105
   },
   "overlay": {
-    "title": "Down the drain",
-    "counter": "none",
-    "zones": false
-  }
+    "title": "Two streams, one drain",
+    "counter": "swallowed",
+    "zones": false,
+    "timer": false,
+    "counterY": 1515
+  },
+  "rules": [
+    {
+      "on": "swallow",
+      "script": "ctx.state.drained = (ctx.state.drained ?? 0) + 1;\nif (ctx.state.drained === 210) ctx.world.end();"
+    }
+  ]
 }

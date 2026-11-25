@@ -11,7 +11,7 @@
   ],
   "duration": {
     "max": 75,
-    "tail": 3
+    "tail": 1.7
   },
   "world": {
     "gravity": 600
@@ -29,11 +29,31 @@
       "count": 8,
       "radius": 32,
       "speed": 950,
-      "spread": 260
+      "spread": 260,
+      "labels": [
+        "Rose",
+        "Sky",
+        "Gold",
+        "Lime",
+        "Plum",
+        "Tang",
+        "Pearl",
+        "Pink"
+      ],
+      "colors": [
+        "#ff4d6d",
+        "#4dd4ff",
+        "#ffd23f",
+        "#7cff6b",
+        "#c77dff",
+        "#ff9f1c",
+        "#ffffff",
+        "#ff7ad9"
+      ]
     }
   ],
   "style": {
-    "trail": 0.7,
+    "trail": 0.38,
     "palette": [
       "#ff4d6d",
       "#4dd4ff",
@@ -43,7 +63,8 @@
       "#ff9f1c",
       "#ffffff",
       "#ff7ad9"
-    ]
+    ],
+    "ballStyle": "glossy"
   },
   "audio": {
     "melody": "pentatonic",
@@ -51,7 +72,10 @@
     "volume": 0.6
   },
   "overlay": {
-    "title": "Last ball standing",
-    "counter": "balls"
+    "title": "Eight colors enter",
+    "counter": "balls",
+    "timer": false,
+    "counterY": 1515,
+    "resultPosition": "title"
   }
 }

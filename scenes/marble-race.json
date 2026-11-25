@@ -2,11 +2,11 @@
   "$schema": "../scene.schema.json",
   "title": "Marble race",
   "category": "satisfying",
-  "seed": 96,
+  "seed": 26,
   "duration": {
     "max": 60,
     "endOn": "finish",
-    "tail": 3
+    "tail": 1.8
   },
   "world": {
     "gravity": 700,
@@ -20,7 +20,8 @@
       "top": 560,
       "bottom": 1450,
       "levels": 7,
-      "opening": 110
+      "opening": 110,
+      "color": "#91a5af"
     },
     {
       "type": "zone",
@@ -44,7 +45,7 @@
       "count": 8,
       "x": 540,
       "y": 430,
-      "spread": 300,
+      "spread": 140,
       "radius": 17,
       "speed": 50,
       "arrange": "grid",
@@ -71,20 +72,24 @@
     }
   ],
   "style": {
-    "trail": 0.6,
-    "ballStyle": "3d"
+    "trail": 0.35,
+    "ballStyle": "3d",
+    "background": "#13212c"
   },
   "camera": {
-    "slowmo": 2,
-    "countdown": 3
+    "slowmo": 1.3,
+    "countdown": 0,
+    "slowmoLead": 0.75
   },
   "audio": {
     "instrument": "marimba",
     "climax": "swell"
   },
   "overlay": {
-    "title": "Which marble wins?",
+    "title": "Pick a marble",
     "counter": "none",
-    "labelSize": 20
+    "labelSize": 23,
+    "timer": false,
+    "resultPosition": "title"
   }
 }

@@ -6,7 +6,7 @@
   "duration": {
     "max": 60,
     "endOn": "allEscaped",
-    "tail": 3
+    "tail": 1.4
   },
   "world": {
     "gravity": 900,
@@ -42,19 +42,26 @@
     }
   ],
   "style": {
-    "trail": 0.5,
+    "trail": 0.35,
     "theme": "candy"
   },
   "camera": {
-    "shake": 1.2,
+    "shake": 0.48,
     "slowmo": 1.2
   },
   "audio": {
     "instrument": "pop",
-    "climax": "drop"
+    "climax": "drop",
+    "hitSound": false,
+    "volume": 0.48,
+    "bounceSpacing": 0.07
   },
   "overlay": {
-    "title": "Every paddle hit makes another",
-    "counter": "hp"
+    "title": "The paddle makes copies",
+    "counter": "hp",
+    "timer": false,
+    "subtitle": "Can they crack the shell?",
+    "titleSize": 66,
+    "counterY": 1515
   }
 }

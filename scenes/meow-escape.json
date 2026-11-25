@@ -9,7 +9,7 @@
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
-    "tail": 3
+    "tail": 2.1
   },
   "world": {
     "gravity": 900
@@ -38,12 +38,22 @@
   ],
   "style": {
     "trail": 0.8,
-    "theme": "pastel"
+    "theme": "pastel",
+    "ballStyle": "flat",
+    "trailStyle": "comet"
   },
   "audio": {
-    "melody": "midi:twinkle-twinkle"
+    "melody": "midi:twinkle-twinkle",
+    "parts": [
+      0
+    ],
+    "volume": 0.5
   },
   "overlay": {
-    "title": "Can the cat escape?"
+    "title": "Name that meow",
+    "timer": false,
+    "endCard": "Twinkle, Twinkle, Little Star",
+    "counter": "none",
+    "subtitle": "Each bounce sings a note"
   }
 }

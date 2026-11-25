@@ -4,7 +4,7 @@
   "category": "satisfying",
   "seed": 1,
   "duration": {
-    "max": 30,
+    "max": 25,
     "endOn": "never",
     "tail": 0
   },
@@ -13,15 +13,17 @@
     "keepEnergy": false,
     "restitution": 0.15,
     "friction": 0.35,
-    "maxBalls": 1500
+    "maxBalls": 1500,
+    "damping": 0.65
   },
   "entities": [
     {
       "type": "funnel",
       "y": 640,
       "width": 820,
-      "gap": 70,
-      "height": 260
+      "gap": 105,
+      "height": 260,
+      "color": "#c1b09b"
     },
     {
       "type": "pegboard",
@@ -60,13 +62,102 @@
       "x": 540,
       "y": 470,
       "rate": 55,
-      "count": 1300,
+      "count": 190,
       "speed": 120,
       "direction": 90,
       "cone": 60,
       "jitter": 60,
       "radius": 7,
-      "rainbow": true
+      "rainbow": false,
+      "start": 0.0,
+      "colors": [
+        "#a47ed4"
+      ]
+    },
+    {
+      "type": "emitter",
+      "x": 540,
+      "y": 470,
+      "rate": 55,
+      "count": 190,
+      "speed": 120,
+      "direction": 90,
+      "cone": 60,
+      "jitter": 60,
+      "radius": 7,
+      "rainbow": false,
+      "start": 3.5,
+      "colors": [
+        "#6795d6"
+      ]
+    },
+    {
+      "type": "emitter",
+      "x": 540,
+      "y": 470,
+      "rate": 55,
+      "count": 190,
+      "speed": 120,
+      "direction": 90,
+      "cone": 60,
+      "jitter": 60,
+      "radius": 7,
+      "rainbow": false,
+      "start": 7.0,
+      "colors": [
+        "#65c2c2"
+      ]
+    },
+    {
+      "type": "emitter",
+      "x": 540,
+      "y": 470,
+      "rate": 55,
+      "count": 190,
+      "speed": 120,
+      "direction": 90,
+      "cone": 60,
+      "jitter": 60,
+      "radius": 7,
+      "rainbow": false,
+      "start": 10.5,
+      "colors": [
+        "#b6d89b"
+      ]
+    },
+    {
+      "type": "emitter",
+      "x": 540,
+      "y": 470,
+      "rate": 55,
+      "count": 190,
+      "speed": 120,
+      "direction": 90,
+      "cone": 60,
+      "jitter": 60,
+      "radius": 7,
+      "rainbow": false,
+      "start": 14.0,
+      "colors": [
+        "#ffc370"
+      ]
+    },
+    {
+      "type": "emitter",
+      "x": 540,
+      "y": 470,
+      "rate": 55,
+      "count": 190,
+      "speed": 120,
+      "direction": 90,
+      "cone": 60,
+      "jitter": 60,
+      "radius": 7,
+      "rainbow": false,
+      "start": 17.5,
+      "colors": [
+        "#f58280"
+      ]
     },
     {
       "type": "ball",
@@ -76,15 +167,19 @@
   ],
   "style": {
     "trail": 0,
-    "glow": false
+    "glow": false,
+    "background": "#151a22"
   },
   "audio": {
     "instrument": "kalimba",
     "hitSound": false,
-    "volume": 0.4
+    "volume": 0.3,
+    "pitchBy": "height",
+    "bounceSpacing": 0.115
   },
   "overlay": {
-    "title": "Rainbow sand",
-    "counter": "none"
+    "title": "Six layers of sand",
+    "counter": "none",
+    "timer": false
   }
 }

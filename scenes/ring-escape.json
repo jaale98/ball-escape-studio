@@ -5,7 +5,7 @@
   "duration": {
     "max": 60,
     "endOn": "allEscaped",
-    "tail": 2.5
+    "tail": 1.2
   },
   "world": {
     "gravity": 300
@@ -22,44 +22,48 @@
       "gapShrink": 3,
       "gapOffset": 130,
       "colors": [
-        "#ff00e5",
-        "#9d4dff",
-        "#00f0ff",
-        "#39ff9a",
-        "#fff23f"
+        "#f6f0dc",
+        "#e1e6b6",
+        "#b8df8c",
+        "#89cb82",
+        "#66b799"
       ]
     },
     {
       "type": "ball",
       "radius": 16,
       "speed": 800,
-      "color": "#ffffff"
+      "color": "#caff42"
     }
   ],
   "style": {
-    "background": "#232323",
-    "trail": 0.95,
-    "glow": true,
+    "background": "#101b19",
+    "trail": 0.8,
+    "glow": false,
     "palette": [
       "#ff00e5",
       "#9d4dff",
       "#00f0ff",
       "#39ff9a",
       "#fff23f"
-    ]
+    ],
+    "ringColor": "#f6f0dc",
+    "trailStyle": "comet"
   },
   "audio": {
     "melody": "midi:habanera",
-    "instrument": "bell",
+    "instrument": "kalimba",
     "parts": [
       0
-    ]
+    ],
+    "volume": 0.62
   },
   "overlay": {
-    "title": "Escape the rings",
-    "counter": "bounces",
-    "titleY": 400,
+    "title": "Five rings. One way out.",
+    "counter": "rings",
+    "titleY": 280,
     "counterSize": 46,
-    "counterY": 1610
+    "counterY": 1515,
+    "timer": false
   }
 }

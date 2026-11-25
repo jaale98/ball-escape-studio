@@ -1,14 +1,14 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Psychedelic escape",
-  "seed": 1,
+  "seed": 54,
   "modifiers": [
     "zero-g"
   ],
   "duration": {
     "max": 60,
     "endOn": "allEscaped",
-    "tail": 2.5
+    "tail": 1.5
   },
   "entities": [
     {
@@ -38,17 +38,24 @@
   ],
   "style": {
     "background": "#0b0014",
-    "trail": 0.93,
+    "trail": 0.76,
     "ringColor": "#f0c8ff",
-    "glow": true
+    "glow": true,
+    "trailStyle": "ribbon"
   },
   "audio": {
-    "melody": "pentatonic",
-    "instrument": "bell"
+    "melody": "midi:can-can",
+    "instrument": "glass",
+    "parts": [
+      0
+    ],
+    "rhythmLock": true,
+    "volume": 0.52
   },
   "overlay": {
-    "title": "Don't look too long",
-    "subtitle": "Six rings. Wrong colors.",
-    "counter": "escaped"
+    "title": "Six rings play the can-can",
+    "counter": "rings",
+    "timer": false,
+    "counterY": 1515
   }
 }

@@ -26,8 +26,8 @@ export function critique(scene: Scene, r: RunScore): Note[] {
     else if (r.climax > 50) warn(`The climax comes late (${r.climax.toFixed(1)}s); many viewers will have scrolled on. Make the ending easier or use the Director.`);
   }
   if (s.deadTime > 4 && !loopScene) warn(`There's a ${s.deadTime.toFixed(1)}s stretch where nothing hits anything.`);
-  // Pendulums and territory boards don't bounce off walls: no 'quiet' note for them.
-  const bounceless = scene.entities.some((e) => e.type === 'pendulum' || e.type === 'territory');
+  // Chimes, captures and drains provide their own cadence without wall bounces.
+  const bounceless = scene.entities.some((e) => e.type === 'pendulum' || e.type === 'territory' || (e.type === 'zone' && e.kill));
   if (s.bounceRate < 0.6 && !loopScene && !bounceless) warn(`It's quiet: ${s.bounceRate.toFixed(1)} bounces a second. More speed or a smaller container would add energy.`);
   // Near-misses are measured at ring gaps; polygons and gapless (breakable) rings don't have them.
   const gapRings = scene.entities.some((e) => e.type === 'ring' && e.gaps.length > 0);

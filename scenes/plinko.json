@@ -3,7 +3,7 @@
   "title": "Plinko",
   "seed": 8,
   "duration": {
-    "max": 34,
+    "max": 28,
     "endOn": "never"
   },
   "world": {
@@ -28,8 +28,8 @@
       "count": 9,
       "x1": 108,
       "x2": 972,
-      "top": 1290,
-      "bottom": 1700,
+      "top": 1260,
+      "bottom": 1515,
       "wallTop": 500
     },
     {
@@ -42,13 +42,13 @@
   "timeline": [
     {
       "every": 0.25,
-      "until": 24,
+      "until": 21,
       "do": [
         {
           "do": "spawn",
           "x": 540,
           "y": 420,
-          "spread": 3,
+          "spread": 15,
           "speed": 80,
           "direction": 90
         }
@@ -56,17 +56,23 @@
     }
   ],
   "style": {
-    "trail": 0.6,
-    "ringColor": "#9aa4ff"
+    "trail": 0.23,
+    "ringColor": "#a7c9c3",
+    "background": "#121d26",
+    "ballStyle": "glossy"
   },
   "audio": {
     "melody": "pentatonic",
     "instrument": "marimba",
-    "volume": 0.5,
-    "escapeSound": false
+    "volume": 0.43,
+    "escapeSound": false,
+    "pitchBy": "height",
+    "hitSound": false,
+    "bounceSpacing": 0.085
   },
   "overlay": {
-    "title": "Where do they land?",
-    "counter": "none"
+    "title": "Pick the fullest bin",
+    "counter": "none",
+    "timer": false
   }
 }

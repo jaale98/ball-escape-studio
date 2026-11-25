@@ -5,7 +5,7 @@
   "duration": {
     "max": 60,
     "endOn": "allEscaped",
-    "tail": 2.5
+    "tail": 1.3
   },
   "world": {
     "gravity": 0
@@ -20,12 +20,12 @@
       "spin": 1.1,
       "spinFalloff": 0.9,
       "gapWidth": 34,
-      "gapShrink": 2.2,
+      "gapShrink": 1.7,
       "minGap": 6,
       "gapOffset": 120,
       "segments": 14,
       "segmentHp": 2,
-      "segmentHpGrow": 0.4,
+      "segmentHpGrow": 0.24,
       "rainbow": true
     },
     {
@@ -37,7 +37,9 @@
   ],
   "style": {
     "trail": 0.8,
-    "ringStyle": "segments"
+    "ringStyle": "segments",
+    "trailStyle": "ribbon",
+    "background": "#0d1123"
   },
   "camera": {
     "shake": 0.4,
@@ -49,7 +51,10 @@
     "climax": "drop"
   },
   "overlay": {
-    "title": "14 rings. 1 ball.",
-    "counter": "escaped"
+    "title": "Slip through or break through?",
+    "counter": "rings",
+    "timer": false,
+    "titleSize": 64,
+    "counterY": 1515
   }
 }

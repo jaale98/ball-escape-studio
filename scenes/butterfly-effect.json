@@ -12,7 +12,7 @@
   "duration": {
     "max": 60,
     "endOn": "allEscaped",
-    "tail": 3
+    "tail": 1.25
   },
   "world": {
     "gravity": 900
@@ -38,15 +38,20 @@
     }
   ],
   "style": {
-    "trail": 0.85,
-    "trailStyle": "ribbon"
+    "trail": 0.92,
+    "trailStyle": "ribbon",
+    "background": "#12152a",
+    "glow": false
   },
   "audio": {
     "instrument": "glass"
   },
   "overlay": {
-    "title": "12 balls, a millionth of a degree apart",
-    "titleSize": 62,
-    "counter": "escaped"
+    "title": "It starts as one dot",
+    "titleSize": 68,
+    "counter": "escaped",
+    "timer": false,
+    "subtitle": "Twelve paths, almost identical",
+    "counterY": 1515
   }
 }

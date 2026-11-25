@@ -8,13 +8,13 @@ const TAGS: [RegExp | ((s: Scene) => boolean), string[]][] = [
   [(s) => s.duration.endOn === 'lastStanding', ['#battleroyale', '#whowins']],
   [(s) => s.entities.some((e) => e.type === 'ball' && !!e.weapon), ['#weapons']],
   [(s) => s.entities.some((e) => e.type === 'peg'), ['#plinko', '#galtonboard']],
-  [(s) => s.style.paint, ['#paint', '#oddlysatisfying']],
+  [(s) => s.style.paint || s.entities.some((e) => e.type === 'territory' && e.layout === 'paint'), ['#paint', '#oddlysatisfying']],
   [(s) => s.audio.melody.startsWith('midi:') || s.audio.rhythmLock, ['#music', '#asmr']],
   [(s) => s.duration.trimStart > 0, ['#loop', '#infiniteloop']],
   [(s) => s.entities.some((e) => e.type === 'ball' && e.frozen), ['#chainreaction']],
   [(s) => s.duration.endOn === 'firstEscape' || s.duration.endOn === 'allEscaped', ['#canitescape']],
   [(s) => s.teams.length > 1, ['#whowins', '#teams']],
-  [(s) => s.entities.some((e) => e.type === 'territory'), ['#pongwars']],
+  [(s) => s.entities.some((e) => e.type === 'territory' && e.layout !== 'paint'), ['#pongwars']],
   [(s) => s.teams.some((t) => /rock|paper|scissors/i.test(t.name)), ['#rockpaperscissors']],
   [(s) => s.entities.some((e) => e.type === 'brick' || (e.type === 'ring' && (e.hp !== undefined || e.segments !== undefined))), ['#destruction', '#oddlysatisfying']],
   [(s) => s.entities.some((e) => e.type === 'pendulum'), ['#chaostheory', '#pendulum']],
@@ -33,7 +33,7 @@ export interface Caption {
 }
 
 export function caption(scene: Scene, facts: string[] = [], winner = ''): Caption {
-  const hook = scene.overlay.title ?? scene.title;
+  const hook = scene.overlay.title?.trim() || scene.title;
   const lines: string[] = [];
   if (scene.duration.endOn === 'lastStanding' || scene.duration.endOn === 'firstEscape' || scene.duration.endOn === 'finish') {
     const names = scene.entities.flatMap((e) => (e.type === 'ball' && e.labels ? e.labels.slice(0, e.count) : []));

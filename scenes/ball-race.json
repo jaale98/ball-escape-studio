@@ -1,11 +1,11 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Ball race",
-  "seed": 88,
+  "seed": 9,
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
-    "tail": 3
+    "tail": 1.8
   },
   "world": {
     "gravity": 900
@@ -40,20 +40,24 @@
         "#4dd4ff",
         "#ffd23f",
         "#7cff6b"
-      ]
+      ],
+      "arrange": "grid"
     }
   ],
   "style": {
-    "trail": 0.8
+    "trail": 0.8,
+    "ballStyle": "glossy",
+    "trailStyle": "comet"
   },
   "audio": {
     "melody": "pentatonic",
     "instrument": "marimba"
   },
   "overlay": {
-    "title": "First one out wins",
-    "counter": "bounces",
-    "subtitle": "Pick your color"
+    "title": "Pick the first one out",
+    "counter": "none",
+    "timer": false,
+    "resultPosition": "title"
   },
   "modifiers": [
     "race"

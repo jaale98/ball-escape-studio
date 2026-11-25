@@ -13,7 +13,7 @@
     {
       "type": "ball",
       "count": 8,
-      "radius": 32,
+      "radius": 35,
       "speed": 950,
       "spread": 260,
       "labels": [
@@ -49,7 +49,22 @@
     }
   ],
   "overlay": {
-    "title": "Which country survives?",
-    "subtitle": "Comment your pick"
+    "title": "Pick your flag",
+    "timer": false,
+    "counter": "balls",
+    "counterY": 1515,
+    "resultPosition": "title"
+  },
+  "seed": 19,
+  "style": {
+    "glow": false,
+    "trail": 0.28
+  },
+  "audio": {
+    "instrument": "marimba",
+    "climax": "swell"
+  },
+  "duration": {
+    "tail": 1.8
   }
 }

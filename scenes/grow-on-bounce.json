@@ -5,7 +5,7 @@
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
-    "tail": 2.5
+    "tail": 1.25
   },
   "world": {
     "gravity": 900
@@ -38,15 +38,19 @@
   ],
   "style": {
     "trail": 0.7,
-    "ringColor": "#ffe8a3"
+    "ringColor": "#ffe8a3",
+    "ballStyle": "glossy",
+    "trailStyle": "comet"
   },
   "audio": {
     "melody": "fur-elise",
-    "instrument": "bell"
+    "instrument": "marimba",
+    "pitchBy": "size"
   },
   "overlay": {
-    "title": "It grows every bounce",
-    "subtitle": "Will it get out before it fills the ring?",
-    "counter": "bounces"
+    "title": "Will it still fit?",
+    "counter": "diameter",
+    "timer": false,
+    "counterY": 1515
   }
 }

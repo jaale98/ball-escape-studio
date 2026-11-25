@@ -12,8 +12,8 @@
     "rainbow"
   ],
   "duration": {
-    "max": 30,
-    "tail": 0
+    "max": 40,
+    "tail": 1.25
   },
   "world": {
     "gravity": 0
@@ -29,16 +29,30 @@
     {
       "type": "ball",
       "radius": 60,
-      "speed": 600
+      "speed": 305
     }
   ],
   "style": {
-    "trail": 0.6
+    "trail": 0.28,
+    "glow": false
   },
   "audio": {
-    "instrument": "pop"
+    "instrument": "pop",
+    "hitSound": false,
+    "pitchBy": "size",
+    "volume": 0.47,
+    "bounceSpacing": 0.085
   },
   "overlay": {
-    "title": "Every bounce splits it"
-  }
+    "title": "One becomes 64",
+    "timer": false,
+    "counter": "balls",
+    "counterY": 1515
+  },
+  "rules": [
+    {
+      "on": "bounce",
+      "script": "if (ctx.world.balls().length >= 64) ctx.world.end();"
+    }
+  ]
 }

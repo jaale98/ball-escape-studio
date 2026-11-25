@@ -3,16 +3,16 @@
 **Make satisfying ball-physics shorts in your browser.** Describe a scene in a small JSON file, preview it live with sound, tweak it with sliders, and export a frame-perfect 1080×1920 60 fps MP4 ready for TikTok, Reels, or Shorts.
 
 <p align="center">
-  <img src="docs/ring-escape.jpg" width="190" alt="A ball bouncing inside a spinning ring with a gap, titled 'Can it escape?'">
-  <img src="docs/nested-rings.jpg" width="190" alt="A ball inside five nested colored rings, each with a gap">
-  <img src="docs/country-battle.jpg" width="190" alt="A battle royale in a ring ending with the banner 'Canada wins!'">
+  <img src="docs/ring-escape.jpg" width="190" alt="A lime marble facing five nested ivory and mint rings">
+  <img src="docs/nested-rings.jpg" width="190" alt="A marble boring through concentric segmented shells">
+  <img src="docs/country-battle.jpg" width="190" alt="Named national teams competing inside a circular arena">
   <img src="docs/plinko.jpg" width="190" alt="A Plinko board with balls piled in nine bins, each with a count">
 </p>
 <p align="center">
-  <img src="docs/multiply.jpg" width="190" alt="A ring packed with over a hundred colored balls, titled 'Every escape makes 2 more'">
+  <img src="docs/multiply.jpg" width="190" alt="A growing crowd of colored marbles on the way to 128">
   <img src="docs/hexagon-escape.jpg" width="190" alt="A ball inside a spinning hexagon with a narrow exit">
-  <img src="docs/paint-the-ring.jpg" width="190" alt="Three balls covering the inside of a ring with red, blue and yellow paint">
-  <img src="docs/ball-race.jpg" width="190" alt="Four labeled balls racing to leave a ring, ending with 'Red wins!'">
+  <img src="docs/paint-the-ring.jpg" width="190" alt="Coral, aqua and gold brush tracks filling a circular board">
+  <img src="docs/ball-race.jpg" width="190" alt="Four color-labeled contenders racing for a single exit">
 </p>
 
 Every run is **deterministic**: the same scene and seed always produce exactly the same video, bounce for bounce. That makes it possible to search hundreds of seeds in seconds for the one with the most dramatic ending, then export exactly that run.
@@ -103,7 +103,7 @@ A scene is a JSON file in `scenes/`. Anything you leave out gets a sensible defa
 
 ### Building on other scenes
 
-Most formats are a base scene plus a twist. This is the whole `multiply` preset:
+Most formats are a base scene plus a twist. For example, this variation adds multiplication to the five-ring escape:
 
 ```json
 {
@@ -145,38 +145,42 @@ Most formats are a base scene plus a twist. This is the whole `multiply` preset:
 | `teams` | Team names, colors, emoji and who beats whom |
 | `rules` | On `bounce`, `escape`, `hit`, `eliminate`, `strike`, `wake`, `break`, `teleport`, `swallow`, `capture`, `merge`, `convert`, `corner` or `finish`: `grow`, `shrinkGap`, `speedUp`, `spawn`, `damage`, `spinUp`, `reverseSpin`, gravity changes, `split`, `absorb`, `merge`, `convert`, `clone`, `moveGap`, `addGap`, `addSide`, `shrinkContainer`, `recolor`, `growForce`, `end`, or a `script` |
 | `timeline` | Do the same actions `at` a time or `every` N seconds (spawners, gravity flips…) |
-| `duration` | Length cap and what ends the run: `firstEscape`, `allEscaped`, `lastStanding`, `oneTeam`, `finish`, `cleared`, `never`; `trimStart` for loops |
-| `camera` | `mode` (fixed, follow, zoomOut), zoom, `shake`, `slowmo` (+ factor, lead), `countdown` |
+| `duration` | Length cap and what ends the run: `firstEscape`, `allEscaped`, `lastStanding`, `oneTeam`, `finish`, `cleared`, `mostTerritory`, `never`; `trimStart` for loops |
+| `camera` | `mode` (fixed, follow, zoomOut), zoom, circular `aperture`, `shake`, `slowmo` (+ factor, lead), `countdown` |
 | `world` | Gravity (number or `[x, y]`), energy keeping, restitution, friction, ball cap |
 | `style` | Background color or picture, palette, ring color, `theme`, ball / ring / trail style, `colorMode`, string-art `lines`, `backdrop`, bloom, vignette, grain, scanlines, chromatic, confetti, trail length, glow, paint, hp rings, picture `reveal` |
-| `audio` | Melody (`pentatonic`, `ode-to-joy`, `fur-elise`, `midi:<file>`) or inline `notes`, chords, transpose, instrument (10), `pitchBy`, `climax` sound, event sounds |
-| `overlay` | Title, subtitle, font, text color, sizes and positions, counter (bounces, balls, escaped, teams, rings, bricks, hp), timer, winner banner, zone counts, `endCard`, per-bounce `reveal` text, `progress` bar |
+| `audio` | Melody (`pentatonic`, `ode-to-joy`, `fur-elise`, `midi:<file>`) or inline `notes`, chords, transpose, instrument (10), `pitchBy`, minimum audible `bounceSpacing` in seconds, `climax` sound, event sounds |
+| `overlay` | Title, subtitle, font, text color, sizes and positions, counter (bounces, balls, escaped, teams, rings, bricks, hp, sides, gap, gravity, diameter, level, swallowed), timer, winner banner (`resultPosition`), zone counts, `endCard`, per-bounce `reveal` text, `progress` bar |
+
+For timed boards, `duration.endOn: "mostTerritory"` freezes play at `max - tail` and holds the result for the tail. Teams win by owned cells and equal leaders draw. For `territory.layout: "paint"`, the last brush owns each cell it paints. Percentages are shares of painted cells. Put `overlay.resultPosition: "title"` above a race to leave the finish line visible while the runner-up margin appears.
 
 The full schema with every default lives in [`src/engine/scene.ts`](src/engine/scene.ts) and [`scene.schema.json`](scene.schema.json).
 
 ### The presets
 
+The [scene-by-scene review](docs/preset-review.md) covers all 50 presets, their opening hooks, endings and measured playback times before and after tuning.
+
 | Scene | Format | Built from |
 | --- | --- | --- |
-| [`ring-escape`](scenes/ring-escape.json) | One ball, one spinning ring, one gap | base scene |
-| [`grow-on-bounce`](scenes/grow-on-bounce.json) | Escape before you fill the ring | ring-escape + `grow-on-bounce` |
-| [`shrinking-gap`](scenes/shrinking-gap.json) | The exit narrows with every bounce | ring-escape + `zero-g` + `shrinking-gap` |
-| [`multiply`](scenes/multiply.json) | Every escape spawns two more | ring-escape + `multiply` |
-| [`gravity-flip`](scenes/gravity-flip.json) | Gravity reverses every 4 s | ring-escape + `gravity-flip` |
-| [`music-bounce`](scenes/music-bounce.json) | A ring escape where every bounce is a note of the song, in time | ring-escape + `midi:minuet-in-g` + `rhythmLock` (with gravity) |
-| [`rhythm-bounce`](scenes/rhythm-bounce.json) | Every bounce lands in time with the song | music-bounce + `zero-g` + `rhythmLock` |
-| [`ball-race`](scenes/ball-race.json) | Four named balls, first one out wins | ring-escape + `race` |
-| [`nested-rings`](scenes/nested-rings.json) | Five counter-rotating rings | `nested` prefab |
+| [`ring-escape`](scenes/ring-escape.json) | Five rotating gates and one lime marble | `nested` + Habanera on kalimba |
+| [`grow-on-bounce`](scenes/grow-on-bounce.json) | Escape before the ball outgrows the gap | ring + `grow-on-bounce` + diameter counter |
+| [`shrinking-gap`](scenes/shrinking-gap.json) | The exit loses 1.5° on every hit | ring + `zero-g` + `shrinking-gap` |
+| [`multiply`](scenes/multiply.json) | Every escape makes copies until 128 are live | ring + `multiply` + threshold rule |
+| [`gravity-flip`](scenes/gravity-flip.json) | Predict which way the next arc will bend | ring + `gravity-flip` + direction counter |
+| [`music-bounce`](scenes/music-bounce.json) | Name the tune before the answer appears | ring + `midi:minuet-in-g` + rhythm lock |
+| [`rhythm-bounce`](scenes/rhythm-bounce.json) | Six neon rings play the can-can | `nested` + `zero-g` + rhythm lock |
+| [`ball-race`](scenes/ball-race.json) | Four named colors, first out wins | ring + `race` + grid start |
+| [`nested-rings`](scenes/nested-rings.json) | Fourteen shells to slip through or break | `nested` + breakable segments |
 | [`battle-royale`](scenes/battle-royale.json) | Hit points, last ball standing | closed ring + `battle` |
 | [`country-battle`](scenes/country-battle.json) | Same battle with country names and colors | battle-royale + labels |
 | [`hexagon-escape`](scenes/hexagon-escape.json) | A spinning hexagon with a narrow exit | `polygon` |
 | [`plinko`](scenes/plinko.json) | Balls rain through pegs into counted bins | `pegboard` + `bins` + timeline spawner |
-| [`paint-the-ring`](scenes/paint-the-ring.json) | Which color covers more? | closed ring + `paint` + `zero-g` |
-| [`weapon-battle`](scenes/weapon-battle.json) | Four balls with spinning blades; strikes cost hp, clashing blades bounce | ball `weapon` |
-| [`bouncing-square`](scenes/bouncing-square.json) | A spinning square tries to escape | ring-escape + ball `shape` |
+| [`paint-the-ring`](scenes/paint-the-ring.json) | Three brushes compete for painted area over 24 seconds | `territory` paint layout + timed scoring |
+| [`weapon-battle`](scenes/weapon-battle.json) | Sword, dagger, spear and scythe duel | four ball `weapon` kinds |
+| [`bouncing-square`](scenes/bouncing-square.json) | A gold square tries to clear a round exit | ring + square ball + ribbon trail |
 | [`chain-reaction`](scenes/chain-reaction.json) | One moving ball passes its motion along a grid of frozen balls | `frozen` balls + `arrange: grid` + a `wake` rule script |
 | [`eternal-loop`](scenes/eternal-loop.json) | A seamless loop found by the Director | `trimStart` loop window |
-| [`crowd-pour`](scenes/crowd-pour.json) | 2,000 balls drain through a gap two balls wide | timeline spawner, WebGL crowd |
+| [`crowd-pour`](scenes/crowd-pour.json) | Fill a vessel with 2,000 beads, then drain it | timeline spawner + timed gate + drain count |
 
 **New in V2** (31 more):
 
@@ -186,31 +190,31 @@ The full schema with every default lives in [`src/engine/scene.ts`](src/engine/s
 | [`hp-ring`](scenes/hp-ring.json) | 45 hits to break out | ring `hp` + `climax: gong` |
 | [`crusher`](scenes/crusher.json) | A spinning paddle makes more balls until the ring bursts | `spinner` + script spawn + ring `hp` |
 | [`brick-breaker`](scenes/brick-breaker.json) | Clear the wall of numbered bricks | `brickwall` + `endOn: cleared` |
-| [`pong-wars`](scenes/pong-wars.json) | Day vs night territory | `territory` + teams |
-| [`color-war`](scenes/color-war.json) | Four colors fight for the board | `territory` quadrants |
+| [`pong-wars`](scenes/pong-wars.json) | Day and Night trade territory for 24 seconds | split `territory` board + timed scoring |
+| [`color-war`](scenes/color-war.json) | Four colors have 28 seconds to take the board | quadrant `territory` board + timed scoring |
 | [`rock-paper-scissors`](scenes/rock-paper-scissors.json) | Who takes over? | `rps` |
 | [`infection`](scenes/infection.json) | 1 zombie vs 30 humans | `infection` |
 | [`absorb`](scenes/absorb.json) | Bigger eats smaller | `absorb` |
 | [`weapon-legends`](scenes/weapon-legends.json) | Sword vs dagger vs spear vs bow vs fists vs hammer | weapon `kind`s that power up |
 | [`shrinking-arena`](scenes/shrinking-arena.json) | Battle royale with a storm | `battle` + `storm` |
 | [`survival`](scenes/survival.json) | Dodge the spinning blade | deadly `spinner` + `storm` |
-| [`black-hole`](scenes/black-hole.json) | Don't get eaten | `black-hole` |
+| [`black-hole`](scenes/black-hole.json) | Which of seven moons will survive? | `black-hole` + named contenders |
 | [`orbit-escape`](scenes/orbit-escape.json) | Slingshot out of a sun's pull | `force: attract` |
-| [`vortex-drain`](scenes/vortex-drain.json) | Marbles spiral down a drain, forever | `force: vortex` + `kill` zone + looping `emitter` |
+| [`vortex-drain`](scenes/vortex-drain.json) | Two opposite streams spiral into a single drain | `force: vortex` + two finite emitters + drain count |
 | [`portal-escape`](scenes/portal-escape.json) | The only way out is a portal | `portal` |
 | [`meow-escape`](scenes/meow-escape.json) | The cat meows the song | `meow` + emoji |
 | [`gap-jumper`](scenes/gap-jumper.json) | The exit keeps moving | `gap-jump` |
 | [`every-bounce-a-side`](scenes/every-bounce-a-side.json) | Triangle to circle | `add-side` |
 | [`clone-trail`](scenes/clone-trail.json) | Every bounce leaves a clone | `clone-trail` |
-| [`split-swarm`](scenes/split-swarm.json) | Every bounce splits it | `split` + `rainbow` |
-| [`merge-jar`](scenes/merge-jar.json) | Two of a kind merge | `emitter` levels + `merge` |
+| [`split-swarm`](scenes/split-swarm.json) | One marble branches into 64 | `split` + `rainbow` + threshold rule |
+| [`merge-jar`](scenes/merge-jar.json) | Combine equal pairs until the first level seven | `emitter` levels + `merge` + threshold rule |
 | [`corner-hit`](scenes/corner-hit.json) | Will it hit the corner? | `corner` rule + `end` |
 | [`chaos-pendulums`](scenes/chaos-pendulums.json) | 8 double pendulums 0.001° apart | `pendulum` |
-| [`pendulum-wave`](scenes/pendulum-wave.json) | 15 pendulums make waves | `pendulum` with `wave` |
+| [`pendulum-wave`](scenes/pendulum-wave.json) | Fifteen bobs drift apart and line up again | `pendulum` with `wave`, one cycle |
 | [`butterfly-effect`](scenes/butterfly-effect.json) | 12 balls a hair apart drift into chaos | `butterfly` |
-| [`string-art`](scenes/string-art.json) | Every bounce draws a line | `string-art` |
+| [`string-art`](scenes/string-art.json) | Forty-two contacts thread a rosette | `string-art` + contact limit |
 | [`picture-reveal`](scenes/picture-reveal.json) | 1,600 balls settle and spell a word | `emitter` + `style.reveal` |
-| [`sand-pour`](scenes/sand-pour.json) | Rainbow sand through pegs | `funnel` + `pegboard` + `emitter` |
+| [`sand-pour`](scenes/sand-pour.json) | Six batches of colored grains settle into layers | `funnel` + `pegboard` + six timed pours |
 | [`marble-race`](scenes/marble-race.json) | Eight marbles race a course to the line | `course` + `finish` zone + slow motion |
 | [`hundred-rings`](scenes/hundred-rings.json) | Can it escape 100 rings? | `nested` × 100 + `camera.mode: zoomOut` |
 

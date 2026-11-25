@@ -6,7 +6,7 @@
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
-    "tail": 3
+    "tail": 1.4
   },
   "world": {
     "gravity": 900
@@ -39,10 +39,11 @@
         1300
       ],
       "b": [
-        540,
-        360
+        740,
+        485
       ],
-      "radius": 40
+      "radius": 40,
+      "color": "#7ce7cb"
     },
     {
       "type": "ball",
@@ -52,7 +53,9 @@
     }
   ],
   "style": {
-    "trail": 0.85
+    "trail": 0.85,
+    "background": "#17142a",
+    "trailStyle": "comet"
   },
   "camera": {
     "slowmo": 1.5
@@ -61,6 +64,9 @@
     "instrument": "synth"
   },
   "overlay": {
-    "title": "Find the way out"
+    "title": "Which portal leads outside?",
+    "timer": false,
+    "titleSize": 62,
+    "counter": "none"
   }
 }

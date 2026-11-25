@@ -8,7 +8,7 @@
   ],
   "duration": {
     "max": 60,
-    "tail": 3
+    "tail": 1.5
   },
   "world": {
     "gravity": 0
@@ -30,18 +30,25 @@
     }
   ],
   "style": {
-    "trail": 0.3,
-    "glow": false
+    "trail": 0.16,
+    "glow": false,
+    "background": "#18202a"
   },
   "camera": {
     "slowmo": 1.5
   },
   "audio": {
     "instrument": "pop",
-    "hitSound": false
+    "hitSound": false,
+    "volume": 0.43
   },
   "overlay": {
-    "title": "Who takes over?",
-    "winner": true
+    "title": "Rock, paper or scissors?",
+    "winner": true,
+    "timer": false,
+    "titleSize": 66,
+    "counter": "teams",
+    "counterY": 1515,
+    "resultPosition": "title"
   }
 }

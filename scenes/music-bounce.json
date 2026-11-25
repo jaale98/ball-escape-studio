@@ -1,11 +1,11 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Music bounce",
-  "seed": 23,
+  "seed": 18,
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
-    "tail": 2.5
+    "tail": 2.0
   },
   "world": {
     "gravity": 900
@@ -31,19 +31,28 @@
     }
   ],
   "style": {
-    "trail": 0.85
+    "trail": 0.85,
+    "ringColor": "#eadcb5",
+    "background": "#151b29",
+    "trailStyle": "ribbon"
   },
   "audio": {
     "melody": "midi:minuet-in-g",
-    "instrument": "bell",
+    "instrument": "piano",
     "parts": [
       0
     ],
-    "rhythmLock": true
+    "rhythmLock": true,
+    "backing": true,
+    "backingParts": [
+      1
+    ],
+    "backingVolume": 0.22
   },
   "overlay": {
-    "title": "Every bounce is a note",
-    "counter": "bounces",
-    "subtitle": "Minuet in G, in time"
+    "title": "Name that tune",
+    "counter": "none",
+    "timer": false,
+    "endCard": "Minuet in G"
   }
 }

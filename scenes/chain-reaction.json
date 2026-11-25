@@ -5,7 +5,7 @@
   "duration": {
     "max": 60,
     "endOn": "never",
-    "tail": 2.5
+    "tail": 1.4
   },
   "world": {
     "gravity": 0
@@ -41,20 +41,24 @@
   "rules": [
     {
       "on": "wake",
-      "script": "// Pass it on: the ball that hit stops dead and lights up; the woken ball carries on at a steady speed.\nconst [m, w] = [ctx.other, ctx.ball];\nm.frozen = true;\nctx.state.lit = (ctx.state.lit ?? 0) + (ctx.state[w.id] ? 0 : 1);\nctx.state[w.id] = true;\nw.color = m.color;\nconst s = Math.hypot(w.vx, w.vy) || 1;\nw.vx = (w.vx / s) * 650;\nw.vy = (w.vy / s) * 650;\nif (ctx.state.lit % 7 === 0) w.color = ['#ff4d6d', '#ff9f1c', '#ffd23f', '#7cff6b', '#4dd4ff', '#c77dff'][ctx.rng.int(6)];\nif (ctx.state.lit >= 49) ctx.world.end();"
+      "script": "// Pass it on: the ball that hit stops dead and lights up; the woken ball carries on at a steady speed.\nconst [m, w] = [ctx.other, ctx.ball];\nm.frozen = true;\nctx.state.lit = (ctx.state.lit ?? 0) + (w.id > 0 && !ctx.state[w.id] ? 1 : 0);\nctx.state[w.id] = true;\nw.color = m.color;\nconst s = Math.hypot(w.vx, w.vy) || 1;\nw.vx = (w.vx / s) * 650;\nw.vy = (w.vy / s) * 650;\nif (ctx.state.lit % 7 === 0) w.color = ['#ff4d6d', '#ff9f1c', '#ffd23f', '#7cff6b', '#4dd4ff', '#c77dff'][ctx.rng.int(6)];\nif (ctx.state.lit >= 49) ctx.world.end();"
     }
   ],
   "style": {
-    "trail": 0.7
+    "trail": 0.7,
+    "background": "#101b25",
+    "ringColor": "#87a4aa",
+    "trailStyle": "comet"
   },
   "audio": {
     "melody": "pentatonic",
-    "instrument": "bell",
+    "instrument": "kalimba",
     "volume": 0.6
   },
   "overlay": {
-    "title": "Pass it on",
-    "subtitle": "Every hit hands over the motion",
-    "counter": "none"
+    "title": "Pass the spark",
+    "counter": "none",
+    "timer": false,
+    "subtitle": "Only one ball moves at a time"
   }
 }

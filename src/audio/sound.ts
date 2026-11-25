@@ -49,6 +49,7 @@ export function melodyFor(audio: Scene['audio']): number[][] | null {
 export class SoundMapper {
   private noteIndex = 0;
   private walk = 0;
+  private lastBounceNote = -Infinity;
   /** Recent sound times per limiter key (event time, so it's deterministic). */
   private recent = new Map<string, number[]>();
   private readonly rng: Rng;
@@ -78,8 +79,11 @@ export class SoundMapper {
     const pan = Math.max(-1, Math.min(1, (e.x - WIDTH / 2) / (WIDTH / 2))) * 0.5;
     const { audio } = this.scene;
     const one = (v: Omit<Voice, 'time' | 'delay'>): Voice[] => [{ time, delay: 0, ...v }];
+    const spacedOut = e.type === 'bounce' && time - this.lastBounceNote < audio.bounceSpacing;
     if (e.type === 'bounce' && audio.pitchBy !== 'melody') {
+      if (spacedOut) return [];
       if (!this.allow('note', time, 0.06, 4)) return [];
+      this.lastBounceNote = time;
       return one({ kind: 'note', midi: [this.pitchFor(e)], gain: Math.max(0.35, Math.min(1, 0.35 + e.speed / 2500)), pan });
     }
     if (e.type === 'bounce') {
@@ -88,11 +92,12 @@ export class SoundMapper {
       const locked = this.rhythmK > 0;
       const index = this.noteIndex;
       // At most 4 notes in any 60 ms window keeps big crowds from turning to noise.
-      const crowded = !this.allow('note', time, 0.06, 4);
+      const crowded = spacedOut || !this.allow('note', time, 0.06, 4);
       if (crowded && !locked) return [];
       const note = this.nextNote();
       const out: Voice[] = [];
       if (!crowded) {
+        this.lastBounceNote = time;
         out.push({ time, delay: 0, kind: 'note', midi: note, gain: Math.max(0.35, Math.min(1, 0.35 + e.speed / 2500)), pan });
       }
       if (locked && this.backing.length) out.push(...this.backingAfter(index, time));

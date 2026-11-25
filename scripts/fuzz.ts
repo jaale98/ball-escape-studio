@@ -47,7 +47,6 @@ function runChecked(scene: Scene, where: string, sampleEvery = 240): World | nul
     fail(where, `world construction threw: ${(err as Error).message}`);
     return null;
   }
-  const cells = w.territory ? w.territory.counts.reduce((a, b) => a + b, 0) : 0;
   const limit = Math.ceil((scene.duration.max + scene.duration.tail + 1) * 240);
   try {
     while (!w.done) {
@@ -83,9 +82,21 @@ function runChecked(scene: Scene, where: string, sampleEvery = 240): World | nul
         fail(where, `${live} balls alive, cap is ${scene.world.maxBalls}`);
         return null;
       }
-      if (w.territory && w.territory.counts.reduce((a, b) => a + b, 0) !== cells) {
-        fail(where, 'territory cells not conserved');
-        return null;
+      if (w.territory) {
+        const { owner, counts, paint } = w.territory;
+        const observed = counts.map(() => 0);
+        for (const team of owner) {
+          if (team === -1 && paint) continue;
+          if (team < 0 || team >= counts.length) {
+            fail(where, 'invalid territory owner');
+            return null;
+          }
+          observed[team]++;
+        }
+        if (observed.some((n, i) => n !== counts[i])) {
+          fail(where, 'territory standings disagree with the board');
+          return null;
+        }
       }
       for (const p of w.pendulums) {
         if (!Number.isFinite(p.t1) || !Number.isFinite(p.t2)) {

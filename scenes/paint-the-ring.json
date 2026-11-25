@@ -1,16 +1,25 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Paint the ring",
-  "seed": 1,
+  "seed": 4,
   "modifiers": [
-    "paint",
     "zero-g"
   ],
   "duration": {
-    "max": 30,
-    "endOn": "never"
+    "max": 26,
+    "endOn": "mostTerritory",
+    "tail": 2
   },
   "entities": [
+    {
+      "type": "territory",
+      "layout": "paint",
+      "cols": 112,
+      "rows": 112,
+      "cell": 8,
+      "x": 92,
+      "y": 512
+    },
     {
       "type": "ring",
       "radius": 440,
@@ -25,22 +34,50 @@
       "speed": 900,
       "spread": 100,
       "colors": [
-        "#ff4d6d",
-        "#4dd4ff",
-        "#ffd23f"
+        "#ff6d77",
+        "#53cbe0",
+        "#ffcf60"
+      ],
+      "teams": [
+        "Coral",
+        "Aqua",
+        "Gold"
       ]
     }
   ],
   "style": {
-    "background": "#101018"
+    "background": "#1a202c",
+    "glow": false,
+    "trail": 0
   },
   "audio": {
     "melody": "ode-to-joy",
-    "instrument": "bell",
-    "volume": 0.6
+    "instrument": "marimba",
+    "volume": 0.52,
+    "climax": "gong"
   },
   "overlay": {
-    "title": "Which color covers more?",
-    "counter": "none"
-  }
+    "title": "Most paint in 24 seconds?",
+    "counter": "teams",
+    "timer": false,
+    "counterSize": 40,
+    "counterY": 1540,
+    "resultPosition": "title",
+    "progress": "bar",
+    "titleY": 302
+  },
+  "teams": [
+    {
+      "name": "Coral",
+      "color": "#ff6d77"
+    },
+    {
+      "name": "Aqua",
+      "color": "#53cbe0"
+    },
+    {
+      "name": "Gold",
+      "color": "#ffcf60"
+    }
+  ]
 }
