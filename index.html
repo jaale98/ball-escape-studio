@@ -4,6 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ball Escape Studio</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2" />
+    <link rel="alternate icon" href="/favicon.ico?v=2" sizes="any" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
+    <meta name="theme-color" content="#0b0b10" />
+    <script>
+      // Browsers cache favicons per origin (localhost:5173 is shared with other projects).
+      // Re-pointing the icon at a fresh URL on every load makes the tab drop any stale one.
+      (() => {
+        const v = Date.now();
+        for (const l of document.querySelectorAll('link[rel~="icon"]')) {
+          const n = l.cloneNode();
+          n.href = l.getAttribute('href').replace(/\?.*$/, '') + '?v=' + v;
+          l.replaceWith(n);
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
