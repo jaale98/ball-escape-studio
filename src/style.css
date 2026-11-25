@@ -61,6 +61,9 @@ button.danger { background: #8a2a2a; border-color: #a33; color: #fff; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field > span { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
 .row { display: flex; gap: 8px; }
+.export-opts { align-items: center; flex-wrap: wrap; }
+.export-opts .field { flex: 1; }
+.export-opts #export-ab { margin-left: auto; }
 .row > * { flex: 1; }
 .buttons > button { flex: 1; }
 

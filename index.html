@@ -62,6 +62,15 @@
           <button id="open-director" title="Search hundreds of runs for the best story (D)">Director</button>
           <button id="export" class="primary" title="Render a 1080×1920 MP4 (E)">Export MP4</button>
         </div>
+        <div class="row export-opts">
+          <label class="field"><span>Preset</span><select id="x-preset" title="TikTok: re-encoded with ffmpeg/libx264 (High, yuv420p, CRF 17, preset slow, faststart, AAC 256k) when the dev server has ffmpeg"><option value="studio">Studio (14 Mbps)</option><option value="tiktok">TikTok (libx264)</option></select></label>
+          <label class="field"><span>Frame rate</span><select id="x-fps" title="Physics always runs at 240 Hz; this only sets how many steps each frame shows"><option value="60">60 fps</option><option value="30">30 fps</option></select></label>
+        </div>
+        <div class="row export-opts">
+          <label class="check small" title="Thicker lines, bigger small balls, short solid trails, fewer bigger sparks, no glow/grain/gradients, text and playfield kept clear of TikTok's buttons. Drawing only: the run is identical."><input id="x-safe" type="checkbox" /> TikTok-safe style</label>
+          <label class="check small" title="Preview only: shade where TikTok draws its top bar, caption and buttons"><input id="x-zones" type="checkbox" /> Show safe zones</label>
+          <button id="export-ab" title="Export this exact run 4 ways with the TikTok preset: normal and TikTok-safe style, each at 60 and 30 fps">A/B × 4</button>
+        </div>
         <div class="row buttons">
           <button id="b-weird" title="Stack 2–3 surreal twists (black hole, portals, splitting, meowing…) onto this scene as an unsaved change. Discard undoes it.">✨ Make it weird</button>
         </div>
@@ -69,7 +78,7 @@
 
         <details id="queue-box" open hidden>
           <summary>Export queue (<span id="q-count">0</span>)</summary>
-          <p class="muted">1080×1920 · 60 fps · saved to <code>exports/</code> (History tab lists them)</p>
+          <p class="muted">1080×1920 native · saved to <code>exports/</code> (History tab lists them)</p>
           <ol id="queue-list" class="queue"></ol>
           <button id="q-clear">Clear finished</button>
         </details>

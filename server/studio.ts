@@ -9,7 +9,9 @@
  *   POST /__studio/rate              { name, rating, title, summary, note? } append to .studio/taste.md
  *   POST /__studio/song?name=        add a MIDI file to songs/
  *   POST /__studio/image?name=       add a picture to images/ (never overwrites)
- *   POST /__studio/export?name=      save an MP4 to exports/
+ *   POST /__studio/export?name=      save an MP4 to exports/ (&transcode=tiktok&fps=60&audio=aac:
+ *                                    re-encode it with ffmpeg/libx264 first, see server/transcode.ts)
+ *   GET  /__studio/ffmpeg            { available } whether the tiktok preset can use libx264
  *   POST /__studio/export-meta       caption, scene and log row for an export
  *   GET  /__studio/exports           past exports (from exports/log.csv)
  *   POST /__studio/reveal            { file } show an export (or the folder) in Finder / Explorer
@@ -20,10 +22,11 @@
  */
 import { type ChildProcess, spawn } from 'node:child_process';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import type { Plugin } from 'vite';
 import { type AiEvent, isAuthError, runClaude } from './claude';
+import { hasFfmpeg, transcodeTikTok } from './transcode';
 
 interface Version {
   id: number;
@@ -278,16 +281,42 @@ export function studioPlugin(): Plugin {
         send(res, 200, { ok: true });
       });
 
+      server.middlewares.use('/__studio/ffmpeg', (req, res) => {
+        if (req.method !== 'GET') return send(res, 405, { error: 'GET only' });
+        send(res, 200, { available: hasFfmpeg() });
+      });
+
       server.middlewares.use('/__studio/export', async (req, res) => {
         if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
-        const raw = new URL(req.url ?? '', 'http://x').searchParams.get('name') ?? 'video';
+        const params = new URL(req.url ?? '', 'http://x').searchParams;
+        const raw = params.get('name') ?? 'video';
         const base = raw.replace(/[^a-zA-Z0-9_.-]+/g, '-').slice(0, 100) || 'video';
         const body = await readBody(req);
-        mkdirSync(resolve(root, 'exports'), { recursive: true });
+        const dir = resolve(root, 'exports');
+        mkdirSync(dir, { recursive: true });
         let name = base;
-        for (let i = 2; existsSync(resolve(root, 'exports', `${name}.mp4`)); i++) name = `${base}-${i}`;
-        writeFileSync(resolve(root, 'exports', `${name}.mp4`), body);
-        send(res, 200, { file: `exports/${name}.mp4` });
+        for (let i = 2; existsSync(resolve(dir, `${name}.mp4`)); i++) name = `${base}-${i}`;
+        const out = resolve(dir, `${name}.mp4`);
+        if (params.get('transcode') === 'tiktok' && hasFfmpeg()) {
+          // The browser sent a near-lossless intermediate: libx264 makes the final file.
+          const tmpDir = resolve(dir, '.intermediate');
+          mkdirSync(tmpDir, { recursive: true });
+          const tmp = join(tmpDir, `${name}.mp4`);
+          writeFileSync(tmp, body);
+          const fps = params.get('fps') === '30' ? 30 : 60;
+          const audio = params.get('audio') === 'aac' ? 'aac' : 'opus';
+          try {
+            await transcodeTikTok(tmp, out, { fps, audio });
+            unlinkSync(tmp);
+            return send(res, 200, { file: `exports/${name}.mp4`, encoder: 'libx264' });
+          } catch (err) {
+            // Keep the intermediate as the export (it plays fine, just bigger) and say why.
+            renameSync(tmp, out);
+            return send(res, 200, { file: `exports/${name}.mp4`, encoder: 'browser', warning: `ffmpeg failed: ${(err as Error).message.slice(0, 300)}` });
+          }
+        }
+        writeFileSync(out, body);
+        send(res, 200, { file: `exports/${name}.mp4`, encoder: 'browser' });
       });
 
       server.middlewares.use('/__studio/history/restore', async (req, res) => {

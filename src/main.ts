@@ -12,7 +12,9 @@ import { rateAt, type Timing, timingFor } from './engine/timing';
 import { mergeSource, resolveScene } from './engine/source';
 import { DT, rhythmLockStatus, World } from './engine/world';
 import { canExport, exportMp4 } from './export/mp4';
+import { AB_VARIANTS, type ExportOptions } from './export/presets';
 import { renderStill } from './export/still';
+import { TIKTOK_SAFE } from './render/look';
 import { Renderer } from './render/renderer';
 import { ensureImages } from './images';
 import { categoryOf, entriesFrom, FAMILIES, type SceneEntry, sceneFiles } from './scenes';
@@ -25,7 +27,7 @@ import { initRating, refreshHistory } from './ui/history';
 import { ask } from './ui/modal';
 import { initLook, refreshLook } from './ui/look';
 import { initMusic, refreshMusic } from './ui/music';
-import { enqueue, initQueue } from './ui/queue';
+import { enqueue, enqueueVariants, initQueue } from './ui/queue';
 import { fmt, setPath, tunables } from './ui/sliders';
 import { initTimeline, jumpToClimax, setLength, setRun, setTime } from './ui/timeline';
 
@@ -47,6 +49,10 @@ const seedInput = $<HTMLInputElement>('seed');
 const playBtn = $<HTMLButtonElement>('play');
 const soundBtn = $<HTMLButtonElement>('sound');
 const loopBox = $<HTMLInputElement>('loop');
+const presetSel = $<HTMLSelectElement>('x-preset');
+const fpsSel = $<HTMLSelectElement>('x-fps');
+const safeBox = $<HTMLInputElement>('x-safe');
+const zonesBox = $<HTMLInputElement>('x-zones');
 const exportBtn = $<HTMLButtonElement>('export');
 const canvas = $<HTMLCanvasElement>('view');
 const errorBox = $<HTMLPreElement>('error');
@@ -377,10 +383,17 @@ function buildSliders(): void {
 
 // ---- Playback ----------------------------------------------------------------------
 
+/** The preview draws with the export's style toggle (and the safe-zone overlay when it's on). */
+function makePreviewRenderer(s: Scene): Renderer {
+  const r = new Renderer(canvas, s, { safe: safeBox.checked ? TIKTOK_SAFE : null });
+  r.showSafeZones = zonesBox.checked;
+  return r;
+}
+
 function restart(): void {
   if (!scene) return;
   world = new World(scene);
-  renderer = new Renderer(canvas, scene);
+  renderer = makePreviewRenderer(scene);
   mapper = new SoundMapper(scene, world.rhythmK);
   audioCursor = 0;
   endedAt = 0;
@@ -628,15 +641,48 @@ if (!canExport()) {
   $('export-msg').textContent = 'MP4 export needs WebCodecs (recent Chrome or Edge).';
 }
 
+// Export settings: preset, frame rate, style. Remembered per browser.
+function exportOpts(): ExportOptions {
+  return { preset: presetSel.value === 'tiktok' ? 'tiktok' : 'studio', fps: fpsSel.value === '30' ? 30 : 60, safe: safeBox.checked };
+}
+presetSel.value = store.get('x-preset') ?? 'studio';
+fpsSel.value = store.get('x-fps') ?? '60';
+safeBox.checked = store.get('x-safe') === '1';
+zonesBox.checked = store.get('x-zones') === '1';
+presetSel.addEventListener('change', () => store.set('x-preset', presetSel.value));
+fpsSel.addEventListener('change', () => store.set('x-fps', fpsSel.value));
+/** Redraw the preview with the new look at the same moment (the run itself doesn't change). */
+function refreshLookToggles(): void {
+  store.set('x-safe', safeBox.checked ? '1' : '0');
+  store.set('x-zones', zonesBox.checked ? '1' : '0');
+  // A fresh renderer has no trails yet and would replay every past spark, so re-run to this moment instead.
+  if (world && renderer) void seek(world.time);
+}
+safeBox.addEventListener('change', refreshLookToggles);
+zonesBox.addEventListener('change', () => {
+  if (renderer) renderer.showSafeZones = zonesBox.checked;
+  store.set('x-zones', zonesBox.checked ? '1' : '0');
+});
+
+function exportMeta(s: Scene, name: string) {
+  return { caption: captionText(caption(s)), info: { scene: name, seed: s.seed, speedScale: s.world.speedScale, spinScale: s.world.spinScale } };
+}
+
 exportBtn.addEventListener('click', () => {
   if (!scene) return;
   const name = currentEntry()?.name ?? 'scene';
-  enqueue(`${name} · seed ${scene.seed}`, `${name}-seed${scene.seed}`, scene, {
-    caption: captionText(caption(scene)),
-    info: { scene: name, seed: scene.seed, speedScale: scene.world.speedScale, spinScale: scene.world.spinScale },
-  });
+  enqueue(`${name} · seed ${scene.seed}`, `${name}-seed${scene.seed}`, scene, exportMeta(scene, name), exportOpts());
   $('export-msg').textContent = 'Added to the export queue below.';
 });
+
+/** The same run (same scene, same seed) four ways: normal / TikTok-safe style × 60 / 30 fps, all with the TikTok preset. */
+function exportAB(): void {
+  if (!scene) return;
+  const name = currentEntry()?.name ?? 'scene';
+  enqueueVariants(`${name} · seed ${scene.seed}`, `${name}-seed${scene.seed}`, scene, exportMeta(scene, name), AB_VARIANTS);
+  $('export-msg').textContent = 'Queued 4 A/B variants (TikTok preset: normal / safe × 60 / 30 fps).';
+}
+$('export-ab').addEventListener('click', exportAB);
 
 // ---- Welcome and shortcuts --------------------------------------------------------------
 
@@ -670,7 +716,15 @@ if (!store.get('welcomed')) $('welcome').hidden = false;
   get scene() {
     return scene;
   },
-  exportMp4: () => (scene ? exportMp4(scene) : Promise.reject(new Error('no scene'))),
+  exportMp4: (opts?: Partial<ExportOptions>) => (scene ? exportMp4(scene, undefined, opts) : Promise.reject(new Error('no scene'))),
+  /** Queue an export with explicit options, e.g. studio.exportTikTok({ fps: 30, safe: true }). Defaults: tiktok, 60 fps, current style toggle. */
+  exportTikTok: (opts: Partial<ExportOptions> = {}) => {
+    if (!scene) throw new Error('no scene');
+    const name = currentEntry()?.name ?? 'scene';
+    enqueue(`${name} · seed ${scene.seed}`, `${name}-seed${scene.seed}`, scene, exportMeta(scene, name), { preset: 'tiktok', fps: 60, safe: safeBox.checked, ...opts });
+  },
+  /** Queue the 4 A/B variants of the current run. */
+  exportAB: () => exportAB(),
   seek: (t: number) => seek(t),
   audioInfo: () => ({ soundOn, playing, state: audio?.ctx.state ?? 'none', sampleRate: audio?.ctx.sampleRate, voicesPlayed, events: world?.events.length ?? 0, cursor: audioCursor, done: world?.done, exporting, directorOpen, seeking }),
   open: (name: string) => openScene(name),
@@ -678,8 +732,8 @@ if (!store.get('welcomed')) $('welcome').hidden = false;
    * Dev server only: save a frame to captures/<name>.png. With `seconds`, renders the
    * exact export frame at that time (deterministic); without it, saves the live preview.
    */
-  capture: async (name = 'frame', seconds?: number, type: 'image/png' | 'image/jpeg' = 'image/png') => {
-    const source = seconds !== undefined && scene ? await renderStill(scene, seconds) : canvas;
+  capture: async (name = 'frame', seconds?: number, type: 'image/png' | 'image/jpeg' = 'image/png', look: { fps?: number; safe?: boolean } = {}) => {
+    const source = seconds !== undefined && scene ? await renderStill(scene, seconds, 1, look) : canvas;
     const blob = await new Promise<Blob | null>((r) => source.toBlob(r, type, 0.92));
     if (!blob) throw new Error('could not read the canvas');
     const res = await fetch(`/__studio/capture?name=${encodeURIComponent(name)}`, { method: 'POST', headers: { 'content-type': type }, body: blob });
@@ -882,7 +936,7 @@ async function createScene(name: string, raw: unknown): Promise<string> {
 
 initExports({
   reexport: (label, fileName, s) => {
-    enqueue(label, fileName, s, { caption: captionText(caption(s)), info: { scene: fileName, seed: s.seed, speedScale: s.world.speedScale, spinScale: s.world.spinScale } });
+    enqueue(label, fileName, s, exportMeta(s, fileName), exportOpts());
     showTab('create');
   },
   openAsScene: async (name, s) => {
@@ -939,7 +993,7 @@ initDirector({
     enqueue(`${item.source ? item.title : `${name} · seed ${r.seed}`}${r.score ? ` · score ${r.score.toFixed(0)}` : ''}`, item.source ? name : variantName(r), item.scene, {
       caption: captionText(c),
       info: { scene: name, seed: r.seed, speedScale: item.scene.world.speedScale, spinScale: item.scene.world.spinScale, score: r.score, winner: r.winner },
-    });
+    }, exportOpts());
   },
   sources: () => sources,
   resolve: async (name, extra) => {

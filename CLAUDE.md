@@ -19,6 +19,8 @@ If `.studio/taste.md` exists, read it: it lists videos the user liked or dislike
 
 When a format needs behaviour the built-in actions can't express, write a rule `script` (API in `src/engine/script.ts`) before touching engine code. Keep scripts short, deterministic (use `ctx.rng`, never `Math.random`), and set velocities directly: the engine re-bases energy after a script runs.
 
+TikTok exports: the studio's Preset (Studio / TikTok), Frame rate (60 / 30) and "TikTok-safe style" controls, or `studio.exportTikTok({ fps, safe })` / `studio.exportAB()` in the page. The tiktok preset renders a near-lossless intermediate in the browser and the dev server re-encodes it with ffmpeg/libx264 (`server/transcode.ts`); `npm run tiktok -- <file.mp4>` does the same to any MP4. The safe style (`src/render/look.ts`) changes drawing only, never the World.
+
 Other tools: `npm run tournament -- <battle-scene> "A,B,C,D"` writes a knockout bracket as scene files. The Director's `perfect-loop` story prints a ready-to-paste loop window. The studio's Critic panel lists problems with the current run; fix those first when asked to "improve" a scene.
 
 Reaching for code is the last resort. If a format truly needs a new engine capability, add it as a general primitive (entity, action, rule event, or modifier), then express the format as a scene file.

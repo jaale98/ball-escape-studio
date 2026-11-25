@@ -3,6 +3,7 @@ import { HEIGHT, PHYSICS_HZ, type Scene, WIDTH } from '../engine/scene';
 import type { Ball, Container, Pendulum, Solid, World } from '../engine/world';
 import { getImage } from '../images';
 import { GlBallLayer } from './gl';
+import { type RenderOptions, SAFE_RECT, type SafeLook, TIKTOK_ZONES } from './look';
 
 interface Particle {
   x: number;
@@ -53,6 +54,39 @@ function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: num
 const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif';
 const TAU = Math.PI * 2;
 
+/**
+ * Cap every glow (shadowBlur) on this one context. Glows are drawn from many places; capping the
+ * setter keeps the safe style in one spot instead of a check at each call.
+ */
+function capShadowBlur(ctx: CanvasRenderingContext2D, max: number): void {
+  const desc = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'shadowBlur');
+  if (!desc?.get || !desc.set) return;
+  const { get, set } = desc;
+  Object.defineProperty(ctx, 'shadowBlur', {
+    configurable: true,
+    get() {
+      return get.call(this);
+    },
+    set(v: number) {
+      set.call(this, Math.min(v, max));
+    },
+  });
+}
+
+/** A 256x256 tile of faint gray noise (overlaid at a few percent, it hides 8-bit gradient steps). */
+function makeDither(rng: Rng): HTMLCanvasElement {
+  const c = makeCanvas(256, 256);
+  const g = c.getContext('2d')!;
+  const img = g.createImageData(256, 256);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = Math.floor(rng.next() * 255);
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+    img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  return c;
+}
+
 function makeCanvas(w: number, h: number): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = w;
@@ -85,6 +119,19 @@ export class Renderer {
   private banner = 0;
   private readonly scale: number;
   private readonly glowAllowed: boolean;
+  /** Video frame rate these frames are for; per-frame effects (trails) are scaled so they last the same in seconds. */
+  private readonly fps: number;
+  /** The tiktok-safe style, or null for the scene's own look. */
+  private readonly safe: SafeLook | null;
+  /** Static noise tile that breaks up gradient banding (safe style, gradients: 'dither'). */
+  private dither: HTMLCanvasElement | null = null;
+  /** Drawing-only fit of the playfield into the TikTok safe area (scale and offset in canvas px). */
+  private fitS = 1;
+  private fitX = 0;
+  private fitY = 0;
+  private fitDone = false;
+  /** Preview only: shade the areas TikTok covers with its UI. Never set for exports. */
+  showSafeZones = false;
   /** WebGL layer for plain balls and trails in crowd scenes (null = Canvas 2D only). */
   private gl: GlBallLayer | null = null;
   /** Seconds of frames rendered (drives backdrops and pulsing). */
@@ -112,19 +159,24 @@ export class Renderer {
   intro = 0;
 
   /**
-   * @param opts.scale  draw at this fraction of 1080x1920 (mini previews use ~0.25)
-   * @param opts.glow   allow glow effects (off for mini previews: they're costly)
+   * @param opts  scale, glow, fps and the tiktok-safe style (see render/look.ts)
    */
   constructor(
     canvas: HTMLCanvasElement,
     private readonly scene: Scene,
-    opts: { scale?: number; glow?: boolean } = {},
+    opts: RenderOptions = {},
   ) {
     this.scale = opts.scale ?? 1;
-    this.glowAllowed = opts.glow ?? true;
+    this.fps = opts.fps ?? 60;
+    this.safe = opts.safe ?? null;
+    this.glowAllowed = (opts.glow ?? true) && (!this.safe || this.safe.maxGlow > 0);
     canvas.width = Math.round(WIDTH * this.scale);
     canvas.height = Math.round(HEIGHT * this.scale);
+    // Canvas 2D anti-aliases every shape; keep image smoothing on as well (crisp edges, no stair-steps).
     this.ctx = canvas.getContext('2d', { alpha: false })!;
+    this.ctx.imageSmoothingEnabled = true;
+    this.ctx.imageSmoothingQuality = 'high';
+    if (this.safe) capShadowBlur(this.ctx, this.safe.maxGlow);
     this.rng = new Rng(scene.seed, 'fx');
     this.rngFx2 = new Rng(scene.seed, 'fx2');
     const startBalls = scene.entities.reduce((n, e) => n + (e.type === 'ball' ? e.count * (e.copies ?? 1) : e.type === 'emitter' ? Math.min(e.count, 400) : 0), 0);
@@ -148,7 +200,9 @@ export class Renderer {
       const r = new Rng(scene.seed, 'stars');
       for (let i = 0; i < 170; i++) this.stars.push({ x: r.range(0, WIDTH), y: r.range(0, HEIGHT), r: r.range(0.6, 2.4), tw: r.range(0, TAU) });
     }
-    if (style.grain) {
+    const noise = !this.safe?.dropNoise;
+    if (this.safe?.gradients === 'dither') this.dither = makeDither(new Rng(scene.seed, 'dither'));
+    if (style.grain && noise) {
       this.grain = makeCanvas(256, 256);
       const g = this.grain.getContext('2d')!;
       const img = g.createImageData(256, 256);
@@ -160,14 +214,14 @@ export class Renderer {
       }
       g.putImageData(img, 0, 0);
     }
-    if (style.scanlines) {
+    if (style.scanlines && noise) {
       const p = makeCanvas(4, 4);
       const g = p.getContext('2d')!;
       g.fillStyle = 'rgba(0,0,0,0.28)';
       g.fillRect(0, 0, 4, 2);
       this.scan = this.ctx.createPattern(p, 'repeat');
     }
-    if (style.bloom || style.chromatic) this.fxBuf = makeCanvas(canvas.width, canvas.height);
+    if (!this.safe && (style.bloom || style.chromatic)) this.fxBuf = makeCanvas(canvas.width, canvas.height);
   }
 
   /** Draw the current state. dt = seconds since the previous frame (1/60 for export, 0 when paused). */
@@ -175,6 +229,7 @@ export class Renderer {
     const { ctx, scene } = this;
     const { style } = scene;
     this.clock += dt;
+    if (!this.fitDone) this.computeFit(world);
     this.consumeEvents(world);
     this.updateCamera(world, dt);
     ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
@@ -193,6 +248,7 @@ export class Renderer {
       }
     }
     this.drawBackdrop();
+    if (this.dither && (style.backdrop === 'gradient' || style.vignette || bg)) this.drawDither();
 
     this.worldTransform();
     if (this.paint) {
@@ -239,6 +295,142 @@ export class Renderer {
 
     this.drawPost(dt);
     this.drawOverlay(world, dt);
+    if (this.showSafeZones) this.drawSafeZones();
+  }
+
+  // ---- tiktok-safe helpers -------------------------------------------------
+
+  /** A decorative stroke width: thicker in the safe style. */
+  private lw(w: number): number {
+    return this.safe ? Math.max(this.safe.minStroke, w * this.safe.strokeScale) : w;
+  }
+
+  /** A stroke whose width means something physically (ring or wall thickness): only thin ones are widened. */
+  private minLw(w: number): number {
+    return this.safe ? Math.max(this.safe.minStroke, w) : w;
+  }
+
+  /** Per-frame trail fade, adjusted so a trail lasts the same in seconds at any frame rate. */
+  private trailDecay(): number {
+    return this.scene.style.trail ** (60 / this.fps);
+  }
+
+  /** Frames of trail history to keep (same length in seconds at any frame rate; shorter in the safe style). */
+  private trailKeep(maxAt60: number, minTrail = 0): number {
+    const decay = Math.max(minTrail ** (60 / this.fps), this.trailDecay());
+    let keep = Math.min(Math.round((maxAt60 * this.fps) / 60), Math.ceil(Math.log(0.03) / Math.log(decay)));
+    if (this.safe) keep = Math.min(keep, Math.max(2, Math.round(this.safe.maxTrailSeconds * this.fps)));
+    return Math.max(2, keep);
+  }
+
+  /** The ball as drawn: in the safe style, tiny balls are drawn at the minimum radius (collisions are unchanged). */
+  private visible(b: Ball): Ball {
+    return this.safe && b.r < this.safe.minBallRadius ? { ...b, r: this.safe.minBallRadius } : b;
+  }
+
+  /**
+   * Safe style: if the playfield (rings, walls, zones, pendulums, starting balls) pokes into TikTok's
+   * UI areas, shrink it a little and shift it into the safe rectangle. Drawing only, decided once from
+   * the first frame so every frame uses the same fit.
+   */
+  private computeFit(world: World): void {
+    this.fitDone = true;
+    if (!this.safe?.fitSafeZone) return;
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    const add = (x: number, y: number, r = 0) => {
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      x0 = Math.min(x0, x - r);
+      y0 = Math.min(y0, y - r);
+      x1 = Math.max(x1, x + r);
+      y1 = Math.max(y1, y + r);
+    };
+    for (const c of world.containers) add(c.x, c.y, c.radius + c.thickness / 2);
+    for (const s of world.solids) {
+      add(s.x1, s.y1, s.half);
+      add(s.x2, s.y2, s.half);
+    }
+    for (const z of world.zones) {
+      add(z.x, z.y);
+      add(z.x + z.width, z.y + z.height);
+    }
+    for (const p of world.pendulums) add(p.x, p.y, p.l1 + p.l2 + p.bob);
+    for (const b of world.balls) if (b.alive && !b.projectile) add(b.x, b.y, b.r);
+    if (!Number.isFinite(x0)) return;
+    // Clamp to the canvas: things already off-screen don't count.
+    x0 = Math.max(0, x0);
+    y0 = Math.max(0, y0);
+    x1 = Math.min(WIDTH, x1);
+    y1 = Math.min(HEIGHT, y1);
+    const m = 16;
+    const R = { x0: SAFE_RECT.x0 + m, y0: SAFE_RECT.y0 + m, x1: SAFE_RECT.x1 - m, y1: SAFE_RECT.y1 - m };
+    if (x0 >= R.x0 && y0 >= R.y0 && x1 <= R.x1 && y1 <= R.y1) return;
+    const w = x1 - x0;
+    const h = y1 - y0;
+    // Never shrink below 85%: smaller shapes compress worse, which defeats the point.
+    const s = Math.max(0.85, Math.min(1, (R.x1 - R.x0) / Math.max(1, w), (R.y1 - R.y0) / Math.max(1, h)));
+    // Move the box the least distance that puts it inside the safe area (centered if it can't fit).
+    const place = (lo: number, hi: number, rlo: number, rhi: number) => {
+      const size = (hi - lo) * s;
+      const start = lo * s;
+      if (size >= rhi - rlo) return (rlo + rhi) / 2 - (start + size / 2);
+      if (start < rlo) return rlo - start;
+      if (start + size > rhi) return rhi - (start + size);
+      return 0;
+    };
+    // Shrink about the box's own center first, so a box that already fits on one axis stays put.
+    const cx = (x0 + x1) / 2;
+    const cy = (y0 + y1) / 2;
+    const ox = cx - cx * s;
+    const oy = cy - cy * s;
+    this.fitS = s;
+    this.fitX = ox + place(x0 + ox / s, x1 + ox / s, R.x0, R.x1);
+    this.fitY = oy + place(y0 + oy / s, y1 + oy / s, R.y0, R.y1);
+  }
+
+  private drawDither(): void {
+    const { ctx } = this;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 0.035;
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillStyle = ctx.createPattern(this.dither!, 'repeat')!;
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.restore();
+  }
+
+  /** Preview overlay: the parts of the frame TikTok covers with its own UI. */
+  private drawSafeZones(): void {
+    const { ctx } = this;
+    const { top, bottom, right } = TIKTOK_ZONES;
+    ctx.save();
+    ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255, 46, 85, 0.22)';
+    ctx.fillRect(0, 0, WIDTH, top);
+    ctx.fillRect(0, HEIGHT - bottom, WIDTH, bottom);
+    ctx.fillRect(WIDTH - right, top, right, HEIGHT - top - bottom);
+    ctx.strokeStyle = 'rgba(255, 46, 85, 0.9)';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([18, 12]);
+    ctx.strokeRect(SAFE_RECT.x0 + 1.5, SAFE_RECT.y0, SAFE_RECT.x1 - SAFE_RECT.x0 - 1.5, SAFE_RECT.y1 - SAFE_RECT.y0);
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.font = `700 26px ${FONT}`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('TikTok top bar', 24, top / 2);
+    ctx.fillText('Caption · sound · nav bar', 24, HEIGHT - bottom / 2);
+    ctx.save();
+    ctx.translate(WIDTH - right / 2, HEIGHT / 2);
+    ctx.rotate(Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.fillText('Like · comment · share', 0, 0);
+    ctx.restore();
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
   }
 
   // ---- camera -------------------------------------------------------------
@@ -309,12 +501,21 @@ export class Renderer {
 
   /** The world-space transform (camera, zoom, shake). */
   private worldTransform(): void {
-    const s = this.scale * this.camZoom;
-    this.ctx.setTransform(s, 0, 0, s, this.scale * (WIDTH / 2 - this.camX * this.camZoom + this.shakeX), this.scale * (HEIGHT / 2 - this.camY * this.camZoom + this.shakeY));
+    const f = this.fitS;
+    const s = this.scale * this.camZoom * f;
+    this.ctx.setTransform(
+      s,
+      0,
+      0,
+      s,
+      this.scale * (this.fitX + f * (WIDTH / 2 - this.camX * this.camZoom + this.shakeX)),
+      this.scale * (this.fitY + f * (HEIGHT / 2 - this.camY * this.camZoom + this.shakeY)),
+    );
   }
 
   private toScreen(x: number, y: number): [number, number] {
-    return [WIDTH / 2 + (x - this.camX) * this.camZoom + this.shakeX, HEIGHT / 2 + (y - this.camY) * this.camZoom + this.shakeY];
+    const f = this.fitS;
+    return [this.fitX + f * (WIDTH / 2 + (x - this.camX) * this.camZoom + this.shakeX), this.fitY + f * (HEIGHT / 2 + (y - this.camY) * this.camZoom + this.shakeY)];
   }
 
   // ---- colors -------------------------------------------------------------
@@ -345,17 +546,18 @@ export class Renderer {
       case 'stars':
         for (const s of this.stars) {
           const y = (s.y + t * 6 * s.r) % HEIGHT;
-          ctx.globalAlpha = 0.35 + 0.45 * (0.5 + 0.5 * Math.sin(t * 1.7 + s.tw));
+          // Safe style: no twinkle (170 dots changing brightness every frame cost bitrate) and no sub-2px dots.
+          ctx.globalAlpha = this.safe ? 0.55 : 0.35 + 0.45 * (0.5 + 0.5 * Math.sin(t * 1.7 + s.tw));
           ctx.fillStyle = '#ffffff';
           ctx.beginPath();
-          ctx.arc(s.x, y, s.r, 0, TAU);
+          ctx.arc(s.x, y, this.safe ? Math.max(2, s.r) : s.r, 0, TAU);
           ctx.fill();
         }
         ctx.globalAlpha = 1;
         break;
       case 'grid': {
         ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = this.lw(2);
         const off = (t * 20) % 60;
         ctx.beginPath();
         for (let x = -60 + off; x < WIDTH + 60; x += 60) {
@@ -371,6 +573,12 @@ export class Renderer {
       }
       case 'gradient': {
         const h = (t * 12) % 360;
+        if (this.safe?.gradients === 'solid') {
+          // One flat color (the gradient's midpoint): flat areas never band.
+          ctx.fillStyle = `hsla(${(h + 60) % 360}, 70%, 25%, 0.55)`;
+          ctx.fillRect(0, 0, WIDTH, HEIGHT);
+          break;
+        }
         const g = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
         g.addColorStop(0, `hsla(${h}, 70%, 30%, 0.55)`);
         g.addColorStop(1, `hsla(${(h + 120) % 360}, 70%, 20%, 0.55)`);
@@ -386,7 +594,7 @@ export class Renderer {
   private drawRipples(dt: number): void {
     if (this.scene.style.backdrop !== 'ripples') return;
     const { ctx } = this;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = this.lw(3);
     for (const r of this.ripples) {
       r.t += dt;
       const a = Math.max(0, 1 - r.t / 1.6);
@@ -421,7 +629,8 @@ export class Renderer {
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(canvas, T.x, T.y, T.cols * T.cell, T.rows * T.cell);
     ctx.imageSmoothingEnabled = true;
-    // Faint grid lines.
+    // Faint grid lines (skipped in the safe style: 1 px lines at 12% shimmer once re-encoded).
+    if (this.safe) return;
     ctx.strokeStyle = 'rgba(0,0,0,0.12)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -448,22 +657,23 @@ export class Renderer {
     const trail = this.scene.style.trail;
     if (trail <= 0 || dt <= 0) return;
     this.history.push(world.balls.filter((b) => b.alive && !b.frozen && !b.projectile).map((b) => ({ id: b.id, x: b.x, y: b.y, r: b.r, color: this.colorOf(b, world) })));
-    const keep = Math.min(60, Math.ceil(Math.log(0.03) / Math.log(trail)));
+    const keep = this.trailKeep(60);
     if (this.history.length > keep) this.history.splice(0, this.history.length - keep);
   }
 
   /** Crowd mode: trails and plain balls in one WebGL draw, composited into the 2D canvas. */
   private drawGl(world: World): void {
     const gl = this.gl!;
-    const trail = this.scene.style.trail;
-    const z = this.camZoom;
+    const decay = this.trailDecay();
+    const z = this.camZoom * this.fitS;
+    const minR = this.safe?.minBallRadius ?? 0;
     gl.begin();
     const n = this.history.length;
     for (let i = 0; i < n - 1; i++) {
-      const a = 0.5 * trail ** (n - 1 - i);
+      const a = 0.5 * decay ** (n - 1 - i);
       for (const p of this.history[i]) {
         const [sx, sy] = this.toScreen(p.x, p.y);
-        gl.add(sx, sy, p.r * 0.85 * z, p.color, a, false);
+        gl.add(sx, sy, Math.max(minR, p.r) * 0.85 * z, p.color, a, false);
       }
     }
     const glow = this.scene.style.glow && world.aliveCount <= 600;
@@ -471,7 +681,7 @@ export class Renderer {
     for (const b of world.balls) {
       if (!b.alive || !isPlain(b, flat)) continue;
       const [sx, sy] = this.toScreen(b.x, b.y);
-      gl.add(sx, sy, b.r * z, this.colorOf(b, world), b.frozen && !b.locked ? 0.55 : 1, glow && !b.anchored);
+      gl.add(sx, sy, Math.max(minR, b.r) * z, this.colorOf(b, world), b.frozen && !b.locked ? 0.55 : 1, glow && !b.anchored);
     }
     const { ctx } = this;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -484,13 +694,18 @@ export class Renderer {
     const { trail, trailStyle } = this.scene.style;
     if (trail <= 0) return;
     const n = this.history.length;
+    const decay = this.trailDecay();
+    const solid = !!this.safe?.solidTrails;
+    const minR = this.safe?.minBallRadius ?? 0;
     if (trailStyle === 'dots') {
       for (let i = 0; i < n - 1; i++) {
-        ctx.globalAlpha = 0.5 * trail ** (n - 1 - i);
+        // Solid: every dot at one opacity, every other frame (fewer, crisper shapes).
+        if (solid && (n - 1 - i) % 2) continue;
+        ctx.globalAlpha = solid ? 0.45 : 0.5 * decay ** (n - 1 - i);
         for (const p of this.history[i]) {
           ctx.fillStyle = p.color;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, p.r * 0.85, 0, TAU);
+          ctx.arc(p.x, p.y, Math.max(minR, p.r) * 0.85, 0, TAU);
           ctx.fill();
         }
       }
@@ -507,15 +722,37 @@ export class Renderer {
       }
     }
     ctx.lineCap = 'round';
+    if (solid && trailStyle !== 'rainbow') {
+      // One stroke per ball at one opacity: no per-segment alpha steps, no overlapping joints.
+      ctx.lineJoin = 'round';
+      ctx.globalAlpha = 0.75;
+      for (const pts of paths.values()) {
+        if (pts.length < 2) continue;
+        const last = pts[pts.length - 1];
+        ctx.strokeStyle = last.color;
+        ctx.lineWidth = this.minLw(Math.max(minR, last.r) * (trailStyle === 'comet' ? 1.1 : 0.6));
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let k = 1; k < pts.length; k++) {
+          const a = pts[k - 1];
+          const b = pts[k];
+          if (Math.hypot(b.x - a.x, b.y - a.y) > 200) ctx.moveTo(b.x, b.y);
+          else ctx.lineTo(b.x, b.y);
+        }
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
     for (const pts of paths.values()) {
       for (let k = 1; k < pts.length; k++) {
         const a = pts[k - 1];
         const b = pts[k];
         if (Math.hypot(b.x - a.x, b.y - a.y) > 200) continue; // teleports
         const age = (n - 1 - b.i) / Math.max(1, n - 1);
-        ctx.globalAlpha = Math.max(0, (1 - age) * 0.8);
+        ctx.globalAlpha = solid ? 1 : Math.max(0, (1 - age) * 0.8);
         ctx.strokeStyle = trailStyle === 'rainbow' ? `hsl(${Math.round((b.i * 9 + this.clock * 90) % 360)}, 95%, 62%)` : b.color;
-        ctx.lineWidth = trailStyle === 'comet' ? Math.max(1, b.r * 1.6 * (1 - age)) : Math.max(2, b.r * 0.6);
+        ctx.lineWidth = this.minLw(trailStyle === 'comet' ? Math.max(1, b.r * 1.6 * (1 - age)) : Math.max(2, b.r * 0.6));
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
         ctx.lineTo(b.x, b.y);
@@ -558,7 +795,7 @@ export class Renderer {
         ctx.arc(cx, cy, r * 1.8, 0, TAU);
         ctx.fill();
         ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = this.lw(2);
         for (let k = 0; k < 3; k++) {
           ctx.beginPath();
           ctx.arc(cx, cy, r * (0.6 + k * 0.35), this.clock * 3 + k, this.clock * 3 + k + Math.PI * 0.8);
@@ -604,7 +841,7 @@ export class Renderer {
         ctx.beginPath();
         ctx.arc(f.x, f.y, R * 4.2, 0, TAU);
         ctx.fill();
-        ctx.lineWidth = 3;
+        ctx.lineWidth = this.lw(3);
         for (let k = 0; k < 6; k++) {
           ctx.strokeStyle = `rgba(255,${180 + k * 10},${120 + k * 20},${0.5 - k * 0.06})`;
           ctx.beginPath();
@@ -617,7 +854,7 @@ export class Renderer {
         ctx.arc(f.x, f.y, R, 0, TAU);
         ctx.fill();
         ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = this.lw(2);
         ctx.beginPath();
         ctx.arc(f.x, f.y, R + 1, 0, TAU);
         ctx.stroke();
@@ -641,7 +878,7 @@ export class Renderer {
         ctx.fill();
       } else if (f.kind === 'repel') {
         ctx.strokeStyle = f.color;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = this.lw(3);
         for (let k = 0; k < 3; k++) {
           const ph = (t * 0.8 + k / 3) % 1;
           ctx.globalAlpha = 1 - ph;
@@ -653,7 +890,7 @@ export class Renderer {
       } else if (f.kind === 'vortex') {
         // Spiral arms turning.
         ctx.strokeStyle = f.color;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = this.lw(3);
         const R = f.radius > 0 ? f.radius : 420;
         for (let arm = 0; arm < 5; arm++) {
           ctx.globalAlpha = 0.28;
@@ -689,7 +926,7 @@ export class Renderer {
         ctx.arc(x, y, p.r, 0, TAU);
         ctx.fill();
         ctx.strokeStyle = color;
-        ctx.lineWidth = 5;
+        ctx.lineWidth = this.lw(5);
         ctx.setLineDash([14, 10]);
         ctx.lineDashOffset = this.clock * 40 * dir;
         ctx.beginPath();
@@ -723,14 +960,14 @@ export class Renderer {
         if (s.boost > 1) {
           // Bumper: a ring around the peg.
           ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 3;
+          ctx.lineWidth = this.lw(3);
           ctx.beginPath();
           ctx.arc(s.x1, s.y1, s.half * (1.35 + 0.5 * amt), 0, TAU);
           ctx.stroke();
         }
       } else {
         ctx.strokeStyle = color;
-        ctx.lineWidth = s.half * 2;
+        ctx.lineWidth = this.minLw(s.half * 2);
         if (s.deadly && s.kind === 'spinner') ctx.setLineDash([s.half * 1.2, s.half * 0.8]);
         ctx.beginPath();
         ctx.moveTo(s.x1, s.y1);
@@ -791,7 +1028,7 @@ export class Renderer {
       if (c.broken) continue;
       const f = this.flash.get(`c${c.id}`);
       const amt = f?.amount ?? 0;
-      ctx.lineWidth = c.thickness;
+      ctx.lineWidth = this.minLw(c.thickness);
       const base = c.deadly ? '#ff2e55' : c.color;
       if (glow) {
         ctx.shadowBlur = 18 + 30 * amt;
@@ -902,7 +1139,8 @@ export class Renderer {
     if (!world.pendulums.length) return;
     const { ctx } = this;
     const trail = this.scene.style.trail;
-    const keep = Math.max(2, Math.min(240, Math.ceil(Math.log(0.03) / Math.log(Math.max(0.5, trail)))));
+    // Pendulum trails are the picture, so the safe style keeps their length (only makes them solid).
+    const keep = this.safe ? Math.max(2, Math.min(Math.round((240 * this.fps) / 60), Math.ceil(Math.log(0.03) / Math.log(Math.max(0.5, trail) ** (60 / this.fps))))) : this.trailKeep(240, 0.5);
     world.pendulums.forEach((p: Pendulum, i) => {
       const [bx, by] = world.pendulumBob(p);
       if (dt > 0) {
@@ -914,8 +1152,16 @@ export class Renderer {
       if (tr && trail > 0) {
         ctx.strokeStyle = p.color;
         ctx.lineCap = 'round';
-        ctx.lineWidth = Math.max(2, p.bob * 0.5);
-        for (let k = 1; k < tr.length; k++) {
+        ctx.lineWidth = this.lw(Math.max(2, p.bob * 0.5));
+        if (this.safe?.solidTrails) {
+          ctx.lineJoin = 'round';
+          ctx.globalAlpha = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(tr[0][0], tr[0][1]);
+          for (let k = 1; k < tr.length; k++) ctx.lineTo(tr[k][0], tr[k][1]);
+          ctx.stroke();
+        }
+        for (let k = 1; k < tr.length && !this.safe?.solidTrails; k++) {
           ctx.globalAlpha = (k / tr.length) * 0.8;
           ctx.beginPath();
           ctx.moveTo(tr[k - 1][0], tr[k - 1][1]);
@@ -930,7 +1176,7 @@ export class Renderer {
       const y1 = p.y + p.l1 * Math.cos(p.t1);
       const [bx, by] = world.pendulumBob(p);
       ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = this.lw(3);
       ctx.beginPath();
       ctx.moveTo(p.x, p.y);
       ctx.lineTo(x1, y1);
@@ -963,7 +1209,7 @@ export class Renderer {
       // The bar the pendulum wave hangs from.
       const xs = world.pendulums.map((p) => p.x);
       ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-      ctx.lineWidth = 6;
+      ctx.lineWidth = this.lw(6);
       ctx.beginPath();
       ctx.moveTo(Math.min(...xs) - 30, world.pendulums[0].y);
       ctx.lineTo(Math.max(...xs) + 30, world.pendulums[0].y);
@@ -976,7 +1222,7 @@ export class Renderer {
     const c = world.containers[0];
     const cx = c?.x ?? WIDTH / 2;
     const cy = c?.y ?? HEIGHT / 2;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = this.lw(2);
     ctx.globalAlpha = this.scene.style.lineAlpha;
     for (const b of world.balls) {
       if (!b.alive || b.projectile) continue;
@@ -993,12 +1239,13 @@ export class Renderer {
     const { ctx } = this;
     const { showHp, ballStyle } = this.scene.style;
     const flat = ballStyle === 'flat';
-    for (const b of world.balls) {
-      if (!b.alive || (skipPlain && isPlain(b, flat))) continue;
-      if (b.projectile) {
-        this.drawArrow(b);
+    for (const raw of world.balls) {
+      if (!raw.alive || (skipPlain && isPlain(raw, flat))) continue;
+      if (raw.projectile) {
+        this.drawArrow(raw);
         continue;
       }
+      const b = this.visible(raw);
       const color = this.colorOf(b, world);
       if (b.weapon && b.weapon.kind !== 'unarmed') this.drawWeapon(b);
       if (ballStyle === '3d') {
@@ -1046,10 +1293,10 @@ export class Renderer {
       this.shapePath(b);
       ctx.globalAlpha = b.locked ? 1 : b.anchored ? 0.7 : b.frozen ? 0.55 : 1;
       if (ballStyle === 'outline' || ballStyle === 'glass') {
-        ctx.lineWidth = Math.max(3, b.r * 0.22);
+        ctx.lineWidth = this.lw(Math.max(3, b.r * 0.22));
         ctx.strokeStyle = color;
       } else {
-        ctx.lineWidth = Math.max(2, b.r * 0.12);
+        ctx.lineWidth = this.lw(Math.max(2, b.r * 0.12));
         ctx.strokeStyle = 'rgba(255,255,255,0.85)';
       }
       if (b.frozen && !b.anchored && !b.locked) ctx.setLineDash([b.r * 0.35, b.r * 0.25]);
@@ -1146,7 +1393,7 @@ export class Renderer {
     const uy = b.vy / sp;
     const len = 34;
     ctx.strokeStyle = b.color;
-    ctx.lineWidth = 4;
+    ctx.lineWidth = this.lw(4);
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(b.x - ux * len, b.y - uy * len);
@@ -1198,12 +1445,12 @@ export class Renderer {
       const cx = b.x + ca * (b.r + 6);
       const cy = b.y + sa * (b.r + 6);
       ctx.strokeStyle = w.color ?? '#c8a27a';
-      ctx.lineWidth = 6;
+      ctx.lineWidth = this.lw(6);
       ctx.beginPath();
       ctx.arc(cx - ca * 18, cy - sa * 18, w.length, w.angle - 1.1, w.angle + 1.1);
       ctx.stroke();
       ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = this.lw(2);
       ctx.beginPath();
       ctx.moveTo(cx - ca * 18 + Math.cos(w.angle - 1.1) * w.length, cy - sa * 18 + Math.sin(w.angle - 1.1) * w.length);
       ctx.lineTo(cx - ca * 18 + Math.cos(w.angle + 1.1) * w.length, cy - sa * 18 + Math.sin(w.angle + 1.1) * w.length);
@@ -1269,10 +1516,12 @@ export class Renderer {
       p.y += p.vy * dt;
       p.life -= dt;
       if (p.life <= 0) continue;
-      ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+      // Safe style: sparks shrink away at full opacity instead of fading (no translucent smear).
+      const k = Math.max(0, p.life / p.maxLife);
+      ctx.globalAlpha = this.safe ? 1 : k;
       ctx.fillStyle = p.color;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, TAU);
+      ctx.arc(p.x, p.y, this.safe ? p.size * (0.35 + 0.65 * k) : p.size, 0, TAU);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -1353,7 +1602,7 @@ export class Renderer {
       ctx.globalAlpha = 1;
       ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
     }
-    if (style.vignette) {
+    if (style.vignette && this.safe?.gradients !== 'solid') {
       const g = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, HEIGHT * 0.3, WIDTH / 2, HEIGHT / 2, HEIGHT * 0.72);
       g.addColorStop(0, 'rgba(0,0,0,0)');
       g.addColorStop(1, 'rgba(0,0,0,0.6)');
@@ -1509,7 +1758,7 @@ export class Renderer {
     const color = b ? this.colorOf(b, world) : '#ffffff';
     g.strokeStyle = color;
     g.globalAlpha = this.scene.style.lineAlpha;
-    g.lineWidth = 2;
+    g.lineWidth = this.lw(2);
     const pts = this.lastBounce.get(id) ?? [];
     let from: [number, number] | null = null;
     if (mode === 'center') {
@@ -1530,11 +1779,15 @@ export class Renderer {
   }
 
   private burst(x: number, y: number, color: string, n: number, speed: number): void {
+    const safe = this.safe;
     for (let i = 0; i < n; i++) {
+      // Always draw the same random numbers, so the safe style shows a subset of the very same sparks.
       const a = this.rng.range(0, TAU);
       const s = this.rng.range(0.25, 1) * speed;
       const life = this.rng.range(0.25, 0.7);
-      this.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life, maxLife: life, size: this.rng.range(2, 5), color });
+      const size = this.rng.range(2, 5);
+      if (safe && (i % safe.particleEvery !== 0 || this.particles.length >= safe.maxParticles)) continue;
+      this.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life, maxLife: life, size: safe ? size * safe.particleScale : size, color });
     }
   }
 
@@ -1543,16 +1796,22 @@ export class Renderer {
   private drawOverlay(world: World, dt: number): void {
     const { ctx } = this;
     const { overlay } = this.scene;
+    const safeText = !!this.safe?.safeText;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.shadowColor = 'rgba(0,0,0,0.6)';
     ctx.shadowBlur = 16;
+    if (this.safe && this.safe.maxGlow < 4) {
+      // Soft text shadows are off in the safe style: a crisp offset shadow keeps text readable.
+      ctx.shadowColor = 'rgba(0,0,0,0.75)';
+      ctx.shadowOffsetY = 4;
+    }
     ctx.fillStyle = overlay.textColor;
     const font = FONTS[overlay.font];
     let y = overlay.titleY;
     if (overlay.title) {
       ctx.font = `800 ${overlay.titleSize}px ${font}`;
-      y = this.fillWrapped(overlay.title, WIDTH / 2, y, 940, overlay.titleSize * 1.16) + overlay.subtitleSize * 1.75;
+      y = this.fillWrapped(overlay.title, WIDTH / 2, Math.max(y, safeText ? TIKTOK_ZONES.top + overlay.titleSize : y), 940, overlay.titleSize * 1.16) + overlay.subtitleSize * 1.75;
     }
     if (overlay.subtitle) {
       ctx.font = `500 ${overlay.subtitleSize}px ${font}`;
@@ -1563,7 +1822,9 @@ export class Renderer {
 
     // The timer stops at the climax (escape, knockout…); the tail after it doesn't count.
     const secs = (world.climaxStep >= 0 ? Math.min(world.stepCount, world.climaxStep) : world.stepCount) / PHYSICS_HZ;
-    const counterY = overlay.counterY ?? (world.zones.some((z) => !z.kill && !z.finish) && overlay.zones ? 1830 : 1700);
+    let counterY = overlay.counterY ?? (world.zones.some((z) => !z.kill && !z.finish) && overlay.zones ? 1830 : 1700);
+    // Safe style: lift the counter out of TikTok's caption area (it sits at 1700 by default).
+    if (safeText) counterY = Math.min(counterY, SAFE_RECT.y1 - 24);
     const parts: string[] = [];
     if (overlay.counter === 'bounces') parts.push(`${world.bounces} bounces`);
     if (overlay.counter === 'balls') parts.push(`${world.aliveCount} ${world.aliveCount === 1 ? 'ball' : 'balls'}`);
@@ -1592,6 +1853,7 @@ export class Renderer {
       ctx.fillText(parts.join('   ·   '), WIDTH / 2, counterY);
     }
     ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
 
     if (overlay.progress !== 'none') this.drawProgress(world, secs);
     if (overlay.reveal) this.drawReveal(world, counterY, font);
@@ -1641,10 +1903,11 @@ export class Renderer {
         const w = Math.min(980, ctx.measureText(overlay.endCard).width + 80);
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.beginPath();
-        ctx.roundRect(WIDTH / 2 - w / 2, 1440, w, 110, 28);
+        const ey = safeText ? Math.min(1440, SAFE_RECT.y1 - 130) : 1440;
+        ctx.roundRect(WIDTH / 2 - w / 2, ey, w, 110, 28);
         ctx.fill();
         ctx.fillStyle = overlay.textColor;
-        ctx.fillText(overlay.endCard, WIDTH / 2, 1513);
+        ctx.fillText(overlay.endCard, WIDTH / 2, ey + 73);
         ctx.globalAlpha = 1;
       }
     }
@@ -1718,29 +1981,34 @@ export class Renderer {
     const max = this.scene.duration.max;
     const f = Math.min(1, secs / max);
     const color = this.scene.overlay.textColor;
+    // Safe style: below TikTok's top bar, and the ring clear of the button column.
+    const safe = !!this.safe?.safeText;
+    const barY = safe ? TIKTOK_ZONES.top + 24 : 130;
+    const ringX = safe ? WIDTH - TIKTOK_ZONES.right - 70 : WIDTH - 110;
+    const ringY = safe ? TIKTOK_ZONES.top + 70 : 120;
     if (this.scene.overlay.progress === 'bar') {
       ctx.fillStyle = 'rgba(255,255,255,0.18)';
       ctx.beginPath();
-      ctx.roundRect(90, 130, WIDTH - 180, 14, 7);
+      ctx.roundRect(90, barY, WIDTH - 180, 14, 7);
       ctx.fill();
       ctx.fillStyle = f > 0.85 ? '#ff4d6d' : color;
       ctx.beginPath();
-      ctx.roundRect(90, 130, Math.max(14, (WIDTH - 180) * (1 - f)), 14, 7);
+      ctx.roundRect(90, barY, Math.max(14, (WIDTH - 180) * (1 - f)), 14, 7);
       ctx.fill();
     } else {
-      ctx.lineWidth = 10;
+      ctx.lineWidth = this.lw(10);
       ctx.strokeStyle = 'rgba(255,255,255,0.18)';
       ctx.beginPath();
-      ctx.arc(WIDTH - 110, 120, 44, 0, TAU);
+      ctx.arc(ringX, ringY, 44, 0, TAU);
       ctx.stroke();
       ctx.strokeStyle = f > 0.85 ? '#ff4d6d' : color;
       ctx.beginPath();
-      ctx.arc(WIDTH - 110, 120, 44, -Math.PI / 2, -Math.PI / 2 + TAU * (1 - f));
+      ctx.arc(ringX, ringY, 44, -Math.PI / 2, -Math.PI / 2 + TAU * (1 - f));
       ctx.stroke();
       ctx.fillStyle = color;
       ctx.font = `800 30px ${FONT}`;
       ctx.textBaseline = 'middle';
-      ctx.fillText(String(Math.max(0, Math.ceil(max - secs))), WIDTH - 110, 121);
+      ctx.fillText(String(Math.max(0, Math.ceil(max - secs))), ringX, ringY + 1);
       ctx.textBaseline = 'alphabetic';
     }
     void world;
@@ -1765,6 +2033,8 @@ export class Renderer {
 
   /** Draw word-wrapped text; returns the baseline y of the last line. */
   private fillWrapped(text: string, x: number, y: number, maxWidth: number, lineHeight: number): number {
+    // Safe style: keep wrapped text out of the right-hand button column (centered at 540, so ≤ 840 wide).
+    if (this.safe?.safeText) maxWidth = Math.min(maxWidth, 2 * (WIDTH - TIKTOK_ZONES.right - x));
     const words = text.split(/\s+/);
     let line = '';
     let yy = y;

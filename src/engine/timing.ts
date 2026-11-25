@@ -2,12 +2,17 @@
  * Video timing: how simulation steps map onto video frames.
  *
  * The physics always runs at a fixed 240 Hz. Slow motion and the countdown
- * intro only change how many physics steps go into each 60 fps frame (0 during
- * the countdown, fewer during slow motion), never the physics itself. The
+ * intro only change how many physics steps go into each video frame (4 at
+ * 60 fps, 8 at 30 fps; 0 during the countdown, fewer during slow motion),
+ * never the physics itself. The
  * preview, the MP4 export and the soundtrack all use this one plan, so they
  * stay in sync.
  */
-import { FPS, PHYSICS_HZ, type Scene, STEPS_PER_FRAME } from './scene';
+import { FPS, PHYSICS_HZ, type Scene } from './scene';
+
+/** Video frame rates the exporter supports. Physics stays at 240 Hz; only the steps per frame change. */
+export const VIDEO_FPS = [30, 60] as const;
+export type VideoFps = (typeof VIDEO_FPS)[number];
 
 export interface Timing {
   /** Video seconds of frozen countdown before the run starts. */
@@ -41,14 +46,15 @@ export function rateAt(t: Timing, step: number): number {
  * Steps to run before each video frame, for a run of `totalSteps` steps.
  * Frame 0 shows the start; frame i (i ≥ 1) first runs plan[i] steps.
  */
-export function framePlan(t: Timing, totalSteps: number): number[] {
+export function framePlan(t: Timing, totalSteps: number, fps: number = FPS): number[] {
+  const stepsPerFrame = PHYSICS_HZ / fps;
   const plan: number[] = [0];
-  const introFrames = Math.round(t.intro * FPS);
+  const introFrames = Math.round(t.intro * fps);
   for (let i = 0; i < introFrames; i++) plan.push(0);
   let step = 0;
   let acc = 0;
   while (step < totalSteps) {
-    acc += STEPS_PER_FRAME * rateAt(t, step);
+    acc += stepsPerFrame * rateAt(t, step);
     let n = Math.floor(acc + 1e-9);
     acc -= n;
     n = Math.min(n, totalSteps - step);
@@ -60,14 +66,14 @@ export function framePlan(t: Timing, totalSteps: number): number[] {
 }
 
 /** For each step, the video time (seconds) of the frame where it first shows. */
-export function stepTimes(plan: number[]): Float64Array {
+export function stepTimes(plan: number[], fps: number = FPS): Float64Array {
   const total = plan.reduce((a, b) => a + b, 0);
   const out = new Float64Array(total + 1);
   let step = 0;
   for (let i = 0; i < plan.length; i++) {
-    for (let k = 0; k < plan[i]; k++) out[step++] = i / FPS;
+    for (let k = 0; k < plan[i]; k++) out[step++] = i / fps;
   }
-  out[total] = (plan.length - 1) / FPS;
+  out[total] = (plan.length - 1) / fps;
   return out;
 }
 

@@ -1,14 +1,15 @@
 import { ArrayBufferTarget, Muxer } from 'mp4-muxer';
 import { createMaster, playVoice, SoundMapper } from '../audio/sound';
-import { FPS, HEIGHT, type Scene, WIDTH } from '../engine/scene';
+import { HEIGHT, PHYSICS_HZ, type Scene, WIDTH } from '../engine/scene';
 import { framePlan, stepTimes, timingFor } from '../engine/timing';
 import { World } from '../engine/world';
 import { withReveal } from '../director/reveal';
 import { ensureImages } from '../images';
+import { TIKTOK_SAFE } from '../render/look';
 import { Renderer } from '../render/renderer';
+import { DEFAULT_EXPORT, type ExportOptions, intermediateBitrate, PRESETS } from './presets';
 
 const SAMPLE_RATE = 48000;
-const VIDEO_BITRATE = 14_000_000;
 // H.264 High profile; 1080x1920 at 60 fps needs level 4.2 or higher.
 const VIDEO_CODECS = ['avc1.640034', 'avc1.640033', 'avc1.64002A', 'avc1.4D402A', 'avc1.42E034'];
 
@@ -20,6 +21,13 @@ export interface ExportResult {
   deterministic: boolean;
   codec: string;
   ms: number;
+  fps: number;
+  /** Video bitrate the browser encoded at. */
+  bitrate: number;
+  /** True when this file is an intermediate meant for a libx264 re-encode (see presets.ts). */
+  intermediate: boolean;
+  /** 'aac' or 'opus': what the browser could encode. */
+  audioCodec: 'aac' | 'opus';
 }
 
 export type ExportProgress = (stage: 'simulate' | 'audio' | 'video' | 'finish', fraction: number) => void;
@@ -28,9 +36,9 @@ export function canExport(): boolean {
   return typeof VideoEncoder !== 'undefined' && typeof AudioEncoder !== 'undefined';
 }
 
-async function pickVideoCodec(): Promise<string> {
+async function pickVideoCodec(bitrate: number, fps: number): Promise<string> {
   for (const codec of VIDEO_CODECS) {
-    const { supported } = await VideoEncoder.isConfigSupported({ codec, width: WIDTH, height: HEIGHT, bitrate: VIDEO_BITRATE, framerate: FPS });
+    const { supported } = await VideoEncoder.isConfigSupported({ codec, width: WIDTH, height: HEIGHT, bitrate, framerate: fps });
     if (supported) return codec;
   }
   throw new Error('This browser cannot encode 1080x1920 H.264. Try a recent Chrome or Edge.');
@@ -46,9 +54,11 @@ channel.port1.onmessage = () => waiting.shift()?.();
  * Audio: AAC-LC when the browser can encode it, otherwise Opus (both play in
  * MP4 on every major platform; AAC is what TikTok/Reels expect).
  */
-async function pickAudio(): Promise<{ muxCodec: 'aac' | 'opus'; config: AudioEncoderConfig }> {
-  const aac = { codec: 'mp4a.40.2', sampleRate: SAMPLE_RATE, numberOfChannels: 2, bitrate: 192_000, aac: { format: 'aac' } } as AudioEncoderConfig;
-  if ((await AudioEncoder.isConfigSupported(aac).catch(() => ({ supported: false }))).supported) return { muxCodec: 'aac', config: aac };
+async function pickAudio(bitrate: number): Promise<{ muxCodec: 'aac' | 'opus'; config: AudioEncoderConfig }> {
+  for (const b of [bitrate, 192_000]) {
+    const aac = { codec: 'mp4a.40.2', sampleRate: SAMPLE_RATE, numberOfChannels: 2, bitrate: b, aac: { format: 'aac' } } as AudioEncoderConfig;
+    if ((await AudioEncoder.isConfigSupported(aac).catch(() => ({ supported: false }))).supported) return { muxCodec: 'aac', config: aac };
+  }
   const opus: AudioEncoderConfig = { codec: 'opus', sampleRate: SAMPLE_RATE, numberOfChannels: 2, bitrate: 160_000 };
   if ((await AudioEncoder.isConfigSupported(opus).catch(() => ({ supported: false }))).supported) return { muxCodec: 'opus', config: opus };
   throw new Error('This browser cannot encode audio for MP4. Try a recent Chrome or Edge.');
@@ -78,9 +88,27 @@ export const tick = () =>
  * Frame-by-frame export: simulate headless to learn the length and the event
  * log, render the soundtrack offline, then re-simulate while drawing and
  * encoding every frame. Nothing depends on real time, so no frames drop.
+ *
+ * The physics always runs every 240 Hz step, whatever the frame rate: at
+ * 60 fps each frame shows 4 steps, at 30 fps 8. The style and the frame rate
+ * only change the drawing, so every option plays the very same run (the
+ * `deterministic` check compares the end state with the pre-pass).
+ *
+ * `opts.intermediate`: encode at a near-lossless bitrate because the server
+ * will re-encode with libx264 (the tiktok preset when ffmpeg is available).
  */
-export async function exportMp4(scene: Scene, onProgress: ExportProgress = () => {}): Promise<ExportResult> {
+export async function exportMp4(
+  scene: Scene,
+  onProgress: ExportProgress = () => {},
+  options: Partial<ExportOptions> & { intermediate?: boolean } = {},
+): Promise<ExportResult> {
   const t0 = performance.now();
+  const opts = { ...DEFAULT_EXPORT, ...options };
+  const FPS = opts.fps;
+  if (FPS > 60 || PHYSICS_HZ % FPS !== 0) throw new Error(`Unsupported frame rate ${FPS}: use 30 or 60.`);
+  const preset = PRESETS[opts.preset];
+  const intermediate = !!options.intermediate && preset.transcode;
+  const bitrate = intermediate ? intermediateBitrate(FPS) : preset.bitrate;
 
   // 1. Headless pre-pass (and make sure every picture the scene uses is loaded).
   onProgress('simulate', 0);
@@ -90,8 +118,8 @@ export async function exportMp4(scene: Scene, onProgress: ExportProgress = () =>
   scene = withReveal(scene, pre);
   // Slow motion and the countdown decide how many physics steps each frame gets.
   const timing = timingFor(scene, pre.climaxStep);
-  const plan = framePlan(timing, pre.stepCount);
-  const times = stepTimes(plan);
+  const plan = framePlan(timing, pre.stepCount, FPS);
+  const times = stepTimes(plan, FPS);
   const frames = plan.length;
   // trimStart: simulate and draw from 0 (trails warm up), encode from here on.
   const startFrame = Math.min(frames - 1, Math.round(scene.duration.trimStart * FPS));
@@ -111,8 +139,9 @@ export async function exportMp4(scene: Scene, onProgress: ExportProgress = () =>
   const audio = await actx.startRendering();
 
   // 3. Muxer + encoders.
-  const codec = await pickVideoCodec();
-  const audioPick = await pickAudio();
+  const codec = await pickVideoCodec(bitrate, FPS);
+  // With a libx264 re-encode the AAC track is copied as is, so encode it at the final bitrate.
+  const audioPick = await pickAudio(preset.audioBitrate);
   const muxer = new Muxer({
     target: new ArrayBufferTarget(),
     video: { codec: 'avc', width: WIDTH, height: HEIGHT, frameRate: FPS },
@@ -125,12 +154,13 @@ export async function exportMp4(scene: Scene, onProgress: ExportProgress = () =>
     output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
     error: (e) => (encodeError = e),
   });
-  venc.configure({ codec, width: WIDTH, height: HEIGHT, bitrate: VIDEO_BITRATE, framerate: FPS, latencyMode: 'quality' });
+  venc.configure({ codec, width: WIDTH, height: HEIGHT, bitrate, bitrateMode: 'variable', framerate: FPS, latencyMode: 'quality' });
 
   // 4. Video: re-simulate deterministically and encode every frame.
   const canvas = document.createElement('canvas');
   const world = new World(scene);
-  const renderer = new Renderer(canvas, scene);
+  // Native 1080x1920 (scale 1): the canvas is exactly the video size, nothing is resampled.
+  const renderer = new Renderer(canvas, scene, { fps: FPS, safe: opts.safe ? TIKTOK_SAFE : null });
   const frameUs = 1e6 / FPS;
   for (let i = 0; i < frames; i++) {
     if (encodeError) throw encodeError;
@@ -197,5 +227,16 @@ export async function exportMp4(scene: Scene, onProgress: ExportProgress = () =>
   muxer.finalize();
   const blob = new Blob([muxer.target.buffer], { type: 'video/mp4' });
   onProgress('finish', 1);
-  return { blob, frames, seconds, deterministic: world.hash() === pre.hash(), codec, ms: performance.now() - t0 };
+  return {
+    blob,
+    frames,
+    seconds,
+    deterministic: world.hash() === pre.hash(),
+    codec,
+    ms: performance.now() - t0,
+    fps: FPS,
+    bitrate,
+    intermediate,
+    audioCodec: audioPick.muxCodec,
+  };
 }
