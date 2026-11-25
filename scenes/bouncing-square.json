@@ -5,7 +5,7 @@
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
-    "tail": 2.5
+    "tail": 1.3
   },
   "world": {
     "gravity": 900
@@ -33,14 +33,19 @@
   ],
   "style": {
     "trail": 0.75,
-    "ringColor": "#fff0b3"
+    "ringColor": "#fff0b3",
+    "background": "#201828",
+    "trailStyle": "ribbon",
+    "glow": false
   },
   "audio": {
     "melody": "pentatonic",
-    "instrument": "marimba"
+    "instrument": "chip",
+    "volume": 0.5
   },
   "overlay": {
-    "title": "Can a square escape?",
-    "counter": "bounces"
+    "title": "Square peg. Round exit.",
+    "counter": "none",
+    "timer": false
   }
 }

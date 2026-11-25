@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "title": "Black hole",
   "category": "forces",
-  "seed": 42,
+  "seed": 40,
   "modifiers": [
     {
       "use": "black-hole",
@@ -14,7 +14,7 @@
   "duration": {
     "max": 60,
     "endOn": "lastStanding",
-    "tail": 3
+    "tail": 1.45
   },
   "world": {
     "gravity": 0
@@ -29,27 +29,54 @@
     },
     {
       "type": "ball",
-      "count": 14,
-      "radius": 16,
+      "count": 7,
+      "radius": 22,
       "speed": 650,
-      "spread": 350,
-      "y": 960
+      "spread": 210,
+      "y": 960,
+      "arrange": "grid",
+      "labels": [
+        "Io",
+        "Europa",
+        "Titan",
+        "Triton",
+        "Luna",
+        "Phobos",
+        "Callisto"
+      ],
+      "colors": [
+        "#ffb855",
+        "#9be7ef",
+        "#f2df87",
+        "#89bac8",
+        "#e0dfeb",
+        "#c99383",
+        "#87bd9d"
+      ]
     }
   ],
   "style": {
     "trail": 0.85,
     "backdrop": "stars",
-    "theme": "noir"
+    "theme": "noir",
+    "trailStyle": "comet",
+    "glow": false
   },
   "camera": {
     "slowmo": 1.5
   },
   "audio": {
     "instrument": "bell",
-    "climax": "gong"
+    "climax": "gong",
+    "pitchBy": "speed",
+    "volume": 0.48
   },
   "overlay": {
-    "title": "Don't get eaten",
-    "winner": true
+    "title": "Pick the last moon",
+    "winner": true,
+    "timer": false,
+    "counter": "balls",
+    "counterY": 1515,
+    "resultPosition": "title"
   }
 }

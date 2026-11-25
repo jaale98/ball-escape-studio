@@ -6,7 +6,7 @@
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
-    "tail": 3
+    "tail": 1.5
   },
   "world": {
     "gravity": 0
@@ -35,7 +35,8 @@
       "radius": 16,
       "speed": 700,
       "x": 540,
-      "y": 700
+      "y": 700,
+      "color": "#f4edca"
     }
   ],
   "style": {
@@ -47,9 +48,13 @@
     "slowmo": 1.5
   },
   "audio": {
-    "instrument": "glass"
+    "instrument": "glass",
+    "pitchBy": "speed",
+    "volume": 0.55
   },
   "overlay": {
-    "title": "Slingshot out"
+    "title": "Steal speed from the sun",
+    "timer": false,
+    "counter": "none"
   }
 }

@@ -117,6 +117,7 @@ export class Renderer {
   private escapeFlash = 0;
   private lastFlashStep = -Infinity;
   private banner = 0;
+  private finishers: { ball: number; step: number }[] = [];
   private readonly scale: number;
   private readonly glowAllowed: boolean;
   /** Video frame rate these frames are for; per-frame effects (trails) are scaled so they last the same in seconds. */
@@ -250,6 +251,13 @@ export class Renderer {
     this.drawBackdrop();
     if (this.dither && (style.backdrop === 'gradient' || style.vignette || bg)) this.drawDither();
 
+    const aperture = scene.camera.aperture;
+    if (aperture) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(this.fitX + this.fitS * WIDTH / 2, this.fitY + this.fitS * HEIGHT / 2, aperture * this.fitS, 0, TAU);
+      ctx.clip();
+    }
     this.worldTransform();
     if (this.paint) {
       const p = this.paint.getContext('2d')!;
@@ -282,6 +290,7 @@ export class Renderer {
     this.drawBalls(world, glow, !!this.gl);
     this.drawParticles(dt);
     this.drawConfetti(dt);
+    if (aperture) ctx.restore();
 
     ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
     // Decay flashes.
@@ -457,9 +466,10 @@ export class Renderer {
     } else if (cam.mode === 'zoomOut' && world.containers.length) {
       // Frame the innermost ring the lead ball is still inside.
       const lead = world.balls.find((b) => b.alive && !b.projectile);
-      let r = 0;
-      let cx = WIDTH / 2;
-      let cy = HEIGHT / 2;
+      const outer = world.containers.reduce((a, b) => a.radius > b.radius ? a : b);
+      let r = outer.radius;
+      let cx = outer.x;
+      let cy = outer.y;
       if (lead) {
         let best = Infinity;
         world.containers.forEach((c, i) => {
@@ -469,7 +479,7 @@ export class Renderer {
             cy = c.y;
           }
         });
-        r = Number.isFinite(best) ? best : Math.max(...world.containers.map((c) => c.radius));
+        r = Number.isFinite(best) ? best : outer.radius;
       }
       tz = Math.min(cam.zoom * 2.5, (cam.zoom * 470) / Math.max(60, r + 30));
       tx = cx;
@@ -622,7 +632,7 @@ export class Renderer {
       data.data[i * 4] = c[0];
       data.data[i * 4 + 1] = c[1];
       data.data[i * 4 + 2] = c[2];
-      data.data[i * 4 + 3] = 255;
+      data.data[i * 4 + 3] = T.owner[i] < 0 ? 0 : 255;
     }
     canvas.getContext('2d')!.putImageData(data, 0, 0);
     const { ctx } = this;
@@ -630,7 +640,7 @@ export class Renderer {
     ctx.drawImage(canvas, T.x, T.y, T.cols * T.cell, T.rows * T.cell);
     ctx.imageSmoothingEnabled = true;
     // Faint grid lines (skipped in the safe style: 1 px lines at 12% shimmer once re-encoded).
-    if (this.safe) return;
+    if (this.safe || T.paint) return;
     ctx.strokeStyle = 'rgba(0,0,0,0.12)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -1239,6 +1249,7 @@ export class Renderer {
     const { ctx } = this;
     const { showHp, ballStyle } = this.scene.style;
     const flat = ballStyle === 'flat';
+    const mosaic = flat && !!this.scene.style.revealColors;
     for (const raw of world.balls) {
       if (!raw.alive || (skipPlain && isPlain(raw, flat))) continue;
       if (raw.projectile) {
@@ -1300,7 +1311,7 @@ export class Renderer {
         ctx.strokeStyle = 'rgba(255,255,255,0.85)';
       }
       if (b.frozen && !b.anchored && !b.locked) ctx.setLineDash([b.r * 0.35, b.r * 0.25]);
-      ctx.stroke();
+      if (!mosaic || !isPlain(b, flat)) ctx.stroke();
       ctx.setLineDash([]);
       ctx.globalAlpha = 1;
 
@@ -1641,6 +1652,9 @@ export class Renderer {
     };
     for (; this.cursor < world.events.length; this.cursor++) {
       const e = world.events[this.cursor];
+      if (e.type === 'finish' && this.finishers.length < 2 && !this.finishers.some((f) => f.ball === e.ball)) {
+        this.finishers.push({ ball: e.ball, step: e.step });
+      }
       if (e.type === 'bounce' && e.ball >= 0) {
         if (style.colorMode === 'bounce') this.bounceColor.set(e.ball, (this.bounceColor.get(e.ball) ?? 0) + 1);
         if (this.lines) this.addLine(world, e.ball, e.x, e.y, e.ring);
@@ -1808,12 +1822,16 @@ export class Renderer {
     }
     ctx.fillStyle = overlay.textColor;
     const font = FONTS[overlay.font];
+    const team = world.winnerTeam ? world.teams.find((t) => t.name === world.winnerTeam) : undefined;
+    const tied = world.endReason === 'mostTerritory' && !world.winnerTeam;
+    const hasResult = overlay.winner && !!world.endReason && (world.winner >= 0 || !!team || tied);
+    const titleResult = hasResult && overlay.resultPosition === 'title';
     let y = overlay.titleY;
-    if (overlay.title) {
+    if (overlay.title && !titleResult) {
       ctx.font = `800 ${overlay.titleSize}px ${font}`;
       y = this.fillWrapped(overlay.title, WIDTH / 2, Math.max(y, safeText ? TIKTOK_ZONES.top + overlay.titleSize : y), 940, overlay.titleSize * 1.16) + overlay.subtitleSize * 1.75;
     }
-    if (overlay.subtitle) {
+    if (overlay.subtitle && !titleResult) {
       ctx.font = `500 ${overlay.subtitleSize}px ${font}`;
       ctx.globalAlpha = 0.8;
       this.fillWrapped(overlay.subtitle, WIDTH / 2, y, 900, overlay.subtitleSize * 1.25);
@@ -1844,6 +1862,17 @@ export class Renderer {
       const c = world.containers.find((k) => k.hp !== undefined);
       parts.push(c ? (c.broken ? 'BROKEN' : `${c.hp} HP`) : `${world.bounces} bounces`);
     }
+    const container = world.containers[0];
+    if (overlay.counter === 'sides' && container?.kind === 'poly') parts.push(`${container.sides} sides`);
+    if (overlay.counter === 'gap' && container?.kind === 'ring' && container.gaps.length)
+      parts.push(`${Math.round(container.gaps[0].width * 180 / Math.PI)}° opening`);
+    if (overlay.counter === 'gravity') {
+      const arrow = Math.abs(world.gx) > Math.abs(world.gy) ? (world.gx > 0 ? '→' : '←') : (world.gy > 0 ? '↓' : '↑');
+      parts.push(world.gx || world.gy ? `Gravity ${arrow}` : 'Zero gravity');
+    }
+    if (overlay.counter === 'diameter' && world.balls[0]) parts.push(`${Math.round(world.balls[0].r * 2)} px across`);
+    if (overlay.counter === 'level') parts.push(`Top level ${world.balls.reduce((best, b) => Math.max(best, b.level), 0)}`);
+    if (overlay.counter === 'swallowed') parts.push(`${world.swallowed} drained`);
     if (overlay.timer) parts.push(`${Math.floor(secs / 60)}:${(secs % 60).toFixed(1).padStart(4, '0')}`);
     if (overlay.counter === 'teams') this.drawTeams(world, counterY, font);
     else if (overlay.teamBar && (world.territory || world.teams.length > 1)) this.drawTeams(world, counterY, font, true);
@@ -1859,14 +1888,19 @@ export class Renderer {
     if (overlay.reveal) this.drawReveal(world, counterY, font);
 
     // Winner banner once a race or battle is decided.
-    const team = world.winnerTeam ? world.teams.find((t) => t.name === world.winnerTeam) : undefined;
-    if (overlay.winner && world.endReason && (world.winner >= 0 || team)) {
+    if (hasResult) {
       this.banner = Math.min(1, this.banner + dt * 4);
       const w = world.winner >= 0 ? world.balls[world.winner] : undefined;
       const a = this.banner;
+      ctx.save();
+      if (titleResult) {
+        ctx.translate(WIDTH / 2, Math.max(safeText ? 260 : 140, overlay.titleY));
+        ctx.scale(0.82, 0.82);
+        ctx.translate(-WIDTH / 2, -HEIGHT / 2);
+      }
       ctx.globalAlpha = a;
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(0, HEIGHT / 2 - 140, WIDTH, 280);
+      if (!titleResult) ctx.fillRect(0, HEIGHT / 2 - 140, WIDTH, 280);
       const br = 48 * (0.6 + 0.4 * a);
       ctx.fillStyle = team?.color ?? w?.color ?? '#ffffff';
       ctx.beginPath();
@@ -1889,8 +1923,15 @@ export class Renderer {
       ctx.fillStyle = '#ffffff';
       ctx.font = `900 72px ${FONTS[this.scene.overlay.font]}`;
       const name = team ? team.name[0].toUpperCase() + team.name.slice(1) : w?.label;
-      ctx.fillText(name ? `${name} wins!` : 'Winner!', WIDTH / 2, HEIGHT / 2 + 85);
-      ctx.globalAlpha = 1;
+      ctx.fillText(tied ? 'Tie game' : name ? `${name} wins!` : 'Winner!', WIDTH / 2, HEIGHT / 2 + 85, 1000);
+      if (titleResult && world.endReason === 'finish' && this.finishers.length === 2) {
+        const [first, second] = this.finishers;
+        const margin = (second.step - first.step) / PHYSICS_HZ;
+        const runnerUp = world.balls[second.ball]?.label ?? 'Second place';
+        ctx.font = `600 42px ${font}`;
+        ctx.fillText(margin ? `${runnerUp} followed ${margin.toFixed(2)}s later` : 'Same-tick finish', WIDTH / 2, HEIGHT / 2 + 145, 980);
+      }
+      ctx.restore();
     }
 
     // End card over the tail.
@@ -1906,8 +1947,8 @@ export class Renderer {
         const ey = safeText ? Math.min(1440, SAFE_RECT.y1 - 130) : 1440;
         ctx.roundRect(WIDTH / 2 - w / 2, ey, w, 110, 28);
         ctx.fill();
-        ctx.fillStyle = overlay.textColor;
-        ctx.fillText(overlay.endCard, WIDTH / 2, ey + 73);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(overlay.endCard, WIDTH / 2, ey + 73, w - 50);
         ctx.globalAlpha = 1;
       }
     }
@@ -1946,7 +1987,7 @@ export class Renderer {
     // Share bar.
     const bw = 900;
     const bx = (WIDTH - bw) / 2;
-    const by = y - (barOnly ? 150 : 110);
+    const by = y - (barOnly ? 150 : this.scene.overlay.timer ? 110 : this.scene.overlay.counterSize + 30);
     let x = bx;
     ctx.save();
     ctx.beginPath();
@@ -1965,12 +2006,12 @@ export class Renderer {
       return `${t.emoji ?? t.name} ${v}`;
     });
     let size = this.scene.overlay.counterSize;
-    ctx.font = `700 ${size}px ${font}, ${EMOJI_FONT}`;
+    ctx.font = `700 ${size}px ${font}`;
     const text = labels.join('    ');
     const wide = ctx.measureText(text).width;
     if (wide > 980) {
       size = Math.floor((size * 980) / wide);
-      ctx.font = `700 ${size}px ${font}, ${EMOJI_FONT}`;
+      ctx.font = `700 ${size}px ${font}`;
     }
     ctx.fillStyle = this.scene.overlay.textColor;
     ctx.fillText(text, WIDTH / 2, y - 6 - (this.scene.overlay.timer ? this.scene.overlay.counterSize * 1.1 : 0));
@@ -1978,7 +2019,8 @@ export class Renderer {
 
   private drawProgress(world: World, secs: number): void {
     const { ctx } = this;
-    const max = this.scene.duration.max;
+    const { duration } = this.scene;
+    const max = duration.endOn === 'mostTerritory' ? Math.max(1 / PHYSICS_HZ, duration.max - duration.tail) : duration.max;
     const f = Math.min(1, secs / max);
     const color = this.scene.overlay.textColor;
     // Safe style: below TikTok's top bar, and the ring clear of the button column.
@@ -1993,7 +2035,7 @@ export class Renderer {
       ctx.fill();
       ctx.fillStyle = f > 0.85 ? '#ff4d6d' : color;
       ctx.beginPath();
-      ctx.roundRect(90, barY, Math.max(14, (WIDTH - 180) * (1 - f)), 14, 7);
+      ctx.roundRect(90, barY, (WIDTH - 180) * (1 - f), 14, 7);
       ctx.fill();
     } else {
       ctx.lineWidth = this.lw(10);

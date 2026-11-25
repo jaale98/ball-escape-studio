@@ -9,7 +9,7 @@
   "duration": {
     "max": 40,
     "endOn": "never",
-    "tail": 0
+    "tail": 1.5
   },
   "world": {
     "gravity": 0
@@ -25,22 +25,34 @@
     {
       "type": "ball",
       "radius": 10,
-      "speed": 1100,
-      "x": 640,
-      "y": 880,
-      "direction": 20,
+      "speed": 1120,
+      "x": 995,
+      "y": 960,
+      "direction": 146.8,
       "color": "#ffffff"
     }
   ],
   "style": {
     "colorMode": "rainbow",
-    "lineAlpha": 0.45
+    "lineAlpha": 0.82,
+    "background": "#16132b",
+    "ringColor": "#e5cdae"
   },
   "audio": {
     "melody": "midi:canon-in-d",
-    "instrument": "piano"
+    "instrument": "piano",
+    "volume": 0.48
   },
   "overlay": {
-    "title": "Every bounce draws a line"
-  }
+    "title": "One ball threads a rosette",
+    "timer": false,
+    "titleSize": 64,
+    "counter": "none"
+  },
+  "rules": [
+    {
+      "on": "bounce",
+      "script": "if (ctx.world.bounces >= 42) { ctx.world.do({do:'freezeAll'}); ctx.world.end(); }"
+    }
+  ]
 }

@@ -189,7 +189,7 @@ export const TerritorySchema = z
     cols: z.number().int().min(2).max(120).default(20),
     rows: z.number().int().min(2).max(120).default(24),
     cell: z.number().positive().default(45).describe('Cell size in px.'),
-    layout: z.enum(['halves', 'quadrants', 'stripes', 'columns', 'random']).default('halves').describe('How cells are split between the teams at the start.'),
+    layout: z.enum(['halves', 'quadrants', 'stripes', 'columns', 'random', 'paint']).default('halves').describe('Initial ownership. Paint starts blank and awards cells under a moving ball to its team without reflecting it.'),
   })
   .strict()
   .describe('A tiled board for territory battles: a team ball passes through its own color, bounces off other colors and repaints them.');
@@ -401,6 +401,7 @@ export const SceneSchema = z
     camera: z
       .object({
         mode: z.enum(['fixed', 'follow', 'zoomOut']).default('fixed').describe('follow: gently keep the action centered. zoomOut: frame the innermost ring the ball is still inside (for dozens of nested rings).'),
+        aperture: z.number().positive().optional().describe('Clip the playfield to a circular window of this radius in screen pixels, keeping text clear during zooms.'),
         zoom: z.number().min(0.2).max(4).default(1),
         shake: z.number().min(0).max(3).default(0).describe('Screen shake on breaks, knockouts and escapes (0 = off).'),
         slowmo: z.number().min(0).max(10).default(0).describe('Seconds of slow motion starting just before the climax (0 = off).'),
@@ -415,9 +416,9 @@ export const SceneSchema = z
       .object({
         max: z.number().positive().default(60).describe('Hard cap in seconds.'),
         endOn: z
-          .enum(['firstEscape', 'allEscaped', 'lastStanding', 'never', 'oneTeam', 'finish', 'cleared'])
+          .enum(['firstEscape', 'allEscaped', 'lastStanding', 'never', 'oneTeam', 'finish', 'cleared', 'mostTerritory'])
           .default('firstEscape')
-          .describe('oneTeam = every ball left is on one team; finish = a ball reaches a finish zone; cleared = every brick and breakable ring is gone.'),
+          .describe('oneTeam = every ball left is on one team; finish = a ball reaches a finish zone; cleared = every brick and breakable ring is gone; mostTerritory = lock the board at max minus tail and show who owns the most cells.'),
         tail: z.number().nonnegative().default(2).describe('Seconds to keep rolling after the ending event.'),
         trimStart: z.number().nonnegative().default(0).describe('Export skips this many seconds (the simulation still runs from 0). Perfect loops use it.'),
       })
@@ -502,6 +503,7 @@ export const SceneSchema = z
         pitchBy: z.enum(['melody', 'size', 'height', 'speed']).default('melody').describe('size: bigger balls play lower; height: higher on screen plays higher; speed: faster plays higher.'),
         eventSounds: z.boolean().default(true).describe('Sounds for breaks, portals, merges, captures and swallows.'),
         volume: z.number().min(0).max(1).default(0.7),
+        bounceSpacing: z.number().min(0).default(0).describe('Minimum seconds between audible bounce notes. Useful for dense pours.'),
         escapeSound: z.boolean().default(true),
         hitSound: z.boolean().default(true).describe('Click when balls hit each other.'),
       })
@@ -520,12 +522,13 @@ export const SceneSchema = z
         counterY: z.number().min(100).max(1900).optional().describe('Where the counter and timer sit. Default: near the bottom.'),
         labelSize: z.number().min(10).max(80).default(26).describe('Size of the names under balls.'),
         timer: z.boolean().default(true),
-        counter: z.enum(['none', 'bounces', 'balls', 'escaped', 'teams', 'rings', 'bricks', 'hp']).default('bounces'),
+        counter: z.enum(['none', 'bounces', 'balls', 'escaped', 'teams', 'rings', 'bricks', 'hp', 'sides', 'gap', 'gravity', 'diameter', 'level', 'swallowed']).default('bounces'),
         endCard: z.string().optional().describe('Text shown over the tail after the climax ("Follow for part 2").'),
         reveal: z.string().optional().describe('A message revealed one word (or letter) per bounce.'),
         revealBy: z.enum(['words', 'letters']).default('words'),
         progress: z.enum(['none', 'bar', 'ring']).default('none').describe('Time left, as a bar under the title or a ring around the counter.'),
         teamBar: z.boolean().default(true).describe('Show each team’s share as a bar (team formats).'),
+        resultPosition: z.enum(['center', 'title']).default('center').describe('Place the result in the title area to keep the final play visible.'),
         winner: z.boolean().default(true).describe('Show a winner banner when a race or battle ends.'),
         zones: z.boolean().default(true).describe('Show zone counts.'),
       })

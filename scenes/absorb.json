@@ -8,7 +8,7 @@
   ],
   "duration": {
     "max": 60,
-    "tail": 3
+    "tail": 1.6
   },
   "world": {
     "gravity": 0
@@ -44,17 +44,26 @@
     }
   ],
   "style": {
-    "trail": 0.6,
-    "ballStyle": "glass"
+    "trail": 0.4,
+    "ballStyle": "glass",
+    "background": "#122127",
+    "ringColor": "#c4dbcf"
   },
   "camera": {
     "slowmo": 1.5
   },
   "audio": {
     "instrument": "bell",
-    "climax": "swell"
+    "climax": "swell",
+    "pitchBy": "size",
+    "volume": 0.55
   },
   "overlay": {
-    "title": "Bigger eats smaller"
+    "title": "One marble eats the rest",
+    "timer": false,
+    "titleSize": 64,
+    "counter": "balls",
+    "counterY": 1515,
+    "winner": false
   }
 }

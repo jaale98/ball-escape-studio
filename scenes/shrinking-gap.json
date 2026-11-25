@@ -5,7 +5,7 @@
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
-    "tail": 2.5
+    "tail": 1.2
   },
   "world": {
     "gravity": 900
@@ -33,22 +33,27 @@
   "style": {
     "trail": 0.9,
     "background": "#030812",
-    "ringColor": "#9fe8ff"
+    "ringColor": "#9fe8ff",
+    "trailStyle": "ribbon",
+    "glow": false
   },
   "audio": {
     "melody": "ode-to-joy",
     "instrument": "marimba"
   },
   "overlay": {
-    "title": "The exit closes every bounce",
-    "counter": "bounces"
+    "title": "The gap loses 1.5° per hit",
+    "counter": "gap",
+    "timer": false,
+    "titleSize": 64,
+    "counterY": 1515
   },
   "modifiers": [
     "zero-g",
     {
       "use": "shrinking-gap",
       "amount": 1.5,
-      "min": 3
+      "min": 9
     }
   ]
 }

@@ -1,11 +1,11 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Weapon battle",
-  "seed": 16,
+  "seed": 48,
   "duration": {
-    "max": 75,
+    "max": 60,
     "endOn": "lastStanding",
-    "tail": 3
+    "tail": 1.7
   },
   "world": {
     "gravity": 500
@@ -20,33 +20,81 @@
     },
     {
       "type": "ball",
-      "count": 4,
-      "radius": 34,
-      "speed": 800,
-      "spread": 250,
-      "hp": 10,
+      "x": 355,
+      "y": 780,
+      "radius": 30,
+      "speed": 760,
+      "hp": 12,
       "labels": [
-        "Sword",
-        "Spear",
-        "Dagger",
-        "Axe"
+        "Sword"
       ],
-      "colors": [
-        "#ff4d6d",
-        "#4dd4ff",
-        "#ffd23f",
-        "#7cff6b"
-      ],
+      "color": "#ff7878",
       "weapon": {
+        "kind": "sword",
         "length": 80,
         "width": 9,
-        "spin": 4,
-        "damage": 1
+        "spin": 3.5
+      }
+    },
+    {
+      "type": "ball",
+      "x": 725,
+      "y": 780,
+      "radius": 30,
+      "speed": 760,
+      "hp": 12,
+      "labels": [
+        "Spear"
+      ],
+      "color": "#57d5ff",
+      "weapon": {
+        "kind": "spear",
+        "length": 100,
+        "width": 7,
+        "spin": 2.5
+      }
+    },
+    {
+      "type": "ball",
+      "x": 355,
+      "y": 1130,
+      "radius": 30,
+      "speed": 760,
+      "hp": 12,
+      "labels": [
+        "Dagger"
+      ],
+      "color": "#ffdc67",
+      "weapon": {
+        "kind": "dagger",
+        "length": 48,
+        "width": 8,
+        "spin": 5.2
+      }
+    },
+    {
+      "type": "ball",
+      "x": 725,
+      "y": 1130,
+      "radius": 30,
+      "speed": 760,
+      "hp": 12,
+      "labels": [
+        "Scythe"
+      ],
+      "color": "#86ec82",
+      "weapon": {
+        "kind": "scythe",
+        "length": 74,
+        "width": 12,
+        "spin": 3.2
       }
     }
   ],
   "style": {
-    "trail": 0.6
+    "trail": 0.3,
+    "glow": false,
+    "background": "#171c29"
   },
   "audio": {
     "melody": "pentatonic",
@@ -54,7 +102,10 @@
     "volume": 0.6
   },
   "overlay": {
-    "title": "Which weapon wins?",
-    "counter": "balls"
+    "title": "Pick your blade",
+    "counter": "balls",
+    "timer": false,
+    "counterY": 1515,
+    "resultPosition": "title"
   }
 }

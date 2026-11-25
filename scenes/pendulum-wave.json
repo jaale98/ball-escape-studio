@@ -4,7 +4,7 @@
   "category": "chaos",
   "seed": 1,
   "duration": {
-    "max": 60,
+    "max": 30.15,
     "endOn": "never",
     "tail": 0
   },
@@ -13,23 +13,29 @@
       "type": "pendulum",
       "arms": 1,
       "count": 15,
-      "wave": 60,
-      "waveBase": 18,
+      "wave": 30,
+      "waveBase": 9,
       "angles": [
-        17
+        16
       ],
-      "y": 640,
-      "bob": 22
+      "y": 720,
+      "bob": 17,
+      "spread": 0,
+      "gravity": 2250
     }
   ],
   "style": {
-    "trail": 0.85
+    "trail": 0.73,
+    "background": "#111c2a"
   },
   "audio": {
-    "instrument": "kalimba"
+    "instrument": "kalimba",
+    "volume": 0.47
   },
   "overlay": {
-    "title": "Watch the wave",
-    "counter": "none"
+    "title": "Watch them line up again",
+    "counter": "none",
+    "timer": false,
+    "titleSize": 64
   }
 }

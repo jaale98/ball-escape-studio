@@ -11,7 +11,7 @@
   ],
   "duration": {
     "max": 60,
-    "tail": 3
+    "tail": 1.5
   },
   "world": {
     "gravity": 0
@@ -33,7 +33,9 @@
     }
   ],
   "style": {
-    "trail": 0.4
+    "trail": 0.22,
+    "background": "#0f2025",
+    "glow": false
   },
   "camera": {
     "slowmo": 1.5
@@ -41,10 +43,15 @@
   "audio": {
     "instrument": "synth",
     "hitSound": false,
-    "climax": "gong"
+    "climax": "gong",
+    "volume": 0.46
   },
   "overlay": {
-    "title": "1 zombie vs 30 humans",
-    "winner": true
+    "title": "Can one turn thirty?",
+    "winner": true,
+    "timer": false,
+    "counter": "teams",
+    "counterY": 1515,
+    "resultPosition": "title"
   }
 }

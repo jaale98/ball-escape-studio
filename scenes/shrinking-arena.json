@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "title": "Shrinking arena",
   "category": "battle",
-  "seed": 85,
+  "seed": 13,
   "modifiers": [
     {
       "use": "battle",
@@ -16,7 +16,7 @@
   ],
   "duration": {
     "max": 60,
-    "tail": 3
+    "tail": 1.6
   },
   "world": {
     "gravity": 0
@@ -32,14 +32,34 @@
     },
     {
       "type": "ball",
-      "count": 12,
+      "count": 8,
       "radius": 22,
       "speed": 650,
-      "spread": 320
+      "spread": 320,
+      "labels": [
+        "Rose",
+        "Ice",
+        "Gold",
+        "Lime",
+        "Plum",
+        "Tang",
+        "Pearl",
+        "Pink"
+      ],
+      "colors": [
+        "#ff7878",
+        "#57d5ff",
+        "#ffdc67",
+        "#86ec82",
+        "#bf95fc",
+        "#ffab6b",
+        "#f9ecd5",
+        "#ff91c6"
+      ]
     }
   ],
   "style": {
-    "trail": 0.5
+    "trail": 0.38
   },
   "camera": {
     "shake": 0.6,
@@ -50,7 +70,11 @@
     "climax": "drop"
   },
   "overlay": {
-    "title": "The storm is closing",
-    "winner": true
+    "title": "The walls keep closing",
+    "winner": true,
+    "timer": false,
+    "counter": "balls",
+    "counterY": 1515,
+    "resultPosition": "title"
   }
 }

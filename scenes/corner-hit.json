@@ -6,7 +6,7 @@
   "duration": {
     "max": 60,
     "endOn": "never",
-    "tail": 3
+    "tail": 1.7
   },
   "world": {
     "gravity": 0
@@ -40,10 +40,11 @@
     }
   ],
   "style": {
-    "trail": 0.5,
+    "trail": 0.3,
     "colorMode": "bounce",
     "theme": "retro",
-    "scanlines": true
+    "scanlines": true,
+    "glow": false
   },
   "camera": {
     "shake": 1,
@@ -54,6 +55,10 @@
     "climax": "swell"
   },
   "overlay": {
-    "title": "Will it hit the corner?"
+    "title": "Will it hit the corner?",
+    "timer": false,
+    "endCard": "Corner hit",
+    "counter": "bounces",
+    "counterY": 1515
   }
 }

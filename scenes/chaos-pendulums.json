@@ -4,7 +4,7 @@
   "category": "chaos",
   "seed": 1,
   "duration": {
-    "max": 40,
+    "max": 32,
     "endOn": "never",
     "tail": 0
   },
@@ -26,14 +26,20 @@
     }
   ],
   "style": {
-    "trail": 0.94,
-    "trailStyle": "ribbon"
+    "trail": 0.92,
+    "trailStyle": "ribbon",
+    "background": "#111827",
+    "glow": false
   },
   "audio": {
-    "instrument": "glass"
+    "instrument": "glass",
+    "volume": 0.43
   },
   "overlay": {
-    "title": "8 pendulums, 0.001° apart",
-    "counter": "none"
+    "title": "When do you see eight?",
+    "counter": "none",
+    "timer": false,
+    "subtitle": "Each starts just 0.001° apart",
+    "titleSize": 68
   }
 }

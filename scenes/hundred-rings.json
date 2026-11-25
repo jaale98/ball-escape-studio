@@ -2,11 +2,11 @@
   "$schema": "../scene.schema.json",
   "title": "Hundred rings",
   "category": "escape",
-  "seed": 32,
+  "seed": 50,
   "duration": {
-    "max": 150,
+    "max": 55,
     "endOn": "allEscaped",
-    "tail": 3
+    "tail": 1.4
   },
   "world": {
     "gravity": 160
@@ -16,36 +16,44 @@
       "type": "nested",
       "count": 100,
       "inner": 70,
-      "spacing": 16,
+      "spacing": 13,
       "thickness": 4,
       "spin": 0.9,
       "spinFalloff": 1,
       "alternate": false,
-      "gapWidth": 40,
-      "gapCount": 2,
+      "gapWidth": 68,
+      "gapCount": 3,
       "gapShrink": 0,
-      "gapOffset": 11,
+      "gapOffset": 8,
       "rainbow": true
     },
     {
       "type": "ball",
-      "radius": 5,
-      "speed": 1700,
+      "radius": 5.5,
+      "speed": 2300,
       "color": "#ffffff"
     }
   ],
   "style": {
-    "trail": 0.8
+    "trail": 0.8,
+    "trailStyle": "comet",
+    "background": "#101322"
   },
   "camera": {
     "mode": "zoomOut",
-    "slowmo": 1.5
+    "slowmo": 1.5,
+    "aperture": 480
   },
   "audio": {
-    "instrument": "glass"
+    "instrument": "glass",
+    "volume": 0.46,
+    "bounceSpacing": 0.055
   },
   "overlay": {
-    "title": "Can it escape 100 rings?",
-    "counter": "rings"
+    "title": "Outrun the spiral",
+    "counter": "rings",
+    "timer": false,
+    "subtitle": "100 rings rotate together",
+    "counterY": 1515
   }
 }

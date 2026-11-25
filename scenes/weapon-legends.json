@@ -2,11 +2,11 @@
   "$schema": "../scene.schema.json",
   "title": "Weapon legends",
   "category": "battle",
-  "seed": 113,
+  "seed": 14,
   "duration": {
     "max": 60,
     "endOn": "lastStanding",
-    "tail": 3
+    "tail": 1.7
   },
   "world": {
     "gravity": 900
@@ -32,7 +32,9 @@
         "kind": "sword",
         "length": 80,
         "spin": 3.5
-      }
+      },
+      "x": 340,
+      "y": 755
     },
     {
       "type": "ball",
@@ -47,7 +49,9 @@
         "kind": "dagger",
         "length": 45,
         "spin": 5
-      }
+      },
+      "x": 540,
+      "y": 700
     },
     {
       "type": "ball",
@@ -62,7 +66,9 @@
         "kind": "spear",
         "length": 70,
         "spin": 2.5
-      }
+      },
+      "x": 740,
+      "y": 755
     },
     {
       "type": "ball",
@@ -77,7 +83,9 @@
         "kind": "bow",
         "length": 36,
         "spin": 0
-      }
+      },
+      "x": 740,
+      "y": 1140
     },
     {
       "type": "ball",
@@ -92,7 +100,9 @@
         "kind": "unarmed",
         "length": 1,
         "spin": 0
-      }
+      },
+      "x": 540,
+      "y": 1220
     },
     {
       "type": "ball",
@@ -108,7 +118,9 @@
         "length": 60,
         "spin": 2.2,
         "width": 16
-      }
+      },
+      "x": 340,
+      "y": 1140
     }
   ],
   "rules": [
@@ -124,19 +136,24 @@
     }
   ],
   "style": {
-    "trail": 0.5
+    "trail": 0.28,
+    "background": "#1d1728"
   },
   "camera": {
-    "shake": 0.8,
+    "shake": 0.35,
     "slowmo": 2
   },
   "audio": {
     "instrument": "synth",
-    "climax": "gong"
+    "climax": "gong",
+    "volume": 0.46
   },
   "overlay": {
-    "title": "Sword vs dagger vs spear vs bow vs fists vs hammer",
-    "titleSize": 58,
-    "counter": "balls"
+    "title": "Who beats the bow?",
+    "titleSize": 69,
+    "counter": "balls",
+    "timer": false,
+    "counterY": 1515,
+    "resultPosition": "title"
   }
 }

@@ -4,7 +4,7 @@
   "category": "satisfying",
   "seed": 1,
   "duration": {
-    "max": 27,
+    "max": 22.5,
     "endOn": "never",
     "tail": 0
   },
@@ -65,16 +65,26 @@
     "trail": 0,
     "glow": false,
     "reveal": {
-      "text": "WOW"
-    }
+      "text": "POP"
+    },
+    "palette": [
+      "#ffaf80",
+      "#ffde76",
+      "#8cf1bb"
+    ],
+    "background": "#101922"
   },
   "audio": {
     "instrument": "pop",
-    "hitSound": false
+    "hitSound": false,
+    "volume": 0.32,
+    "bounceSpacing": 0.14
   },
   "overlay": {
-    "title": "Wait for it…",
-    "counter": "none"
+    "title": "Can you read the marbles?",
+    "counter": "none",
+    "timer": false,
+    "titleSize": 64
   },
   "timeline": [
     {

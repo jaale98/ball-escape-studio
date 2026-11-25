@@ -12,7 +12,7 @@
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
-    "tail": 3
+    "tail": 1.4
   },
   "world": {
     "gravity": 900
@@ -32,16 +32,24 @@
     {
       "type": "ball",
       "radius": 22,
-      "speed": 950
+      "speed": 950,
+      "color": "#ffcb77"
     }
   ],
   "style": {
-    "trail": 0.8
+    "trail": 0.8,
+    "background": "#12162a",
+    "ringColor": "#88dadb",
+    "trailStyle": "ribbon"
   },
   "audio": {
     "instrument": "bell"
   },
   "overlay": {
-    "title": "Triangle to circle"
+    "title": "One bounce, one more side",
+    "timer": false,
+    "titleSize": 64,
+    "counter": "sides",
+    "counterY": 1515
   }
 }

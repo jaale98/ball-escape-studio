@@ -6,7 +6,7 @@
   "duration": {
     "max": 60,
     "endOn": "allEscaped",
-    "tail": 3
+    "tail": 1.4
   },
   "world": {
     "gravity": 0
@@ -38,19 +38,26 @@
   "style": {
     "trail": 0.7,
     "ringStyle": "segments",
-    "theme": "neon"
+    "theme": "neon",
+    "trailStyle": "comet",
+    "glow": false
   },
   "camera": {
-    "shake": 0.6,
+    "shake": 0.35,
     "slowmo": 1.5
   },
   "audio": {
     "melody": "midi:hall-of-the-mountain-king",
     "instrument": "glass",
-    "climax": "drop"
+    "climax": "drop",
+    "volume": 0.53,
+    "bounceSpacing": 0.065
   },
   "overlay": {
-    "title": "Can it break all 12 layers?",
-    "counter": "rings"
+    "title": "Punch through 12 shells",
+    "counter": "rings",
+    "timer": false,
+    "titleSize": 64,
+    "counterY": 1515
   }
 }

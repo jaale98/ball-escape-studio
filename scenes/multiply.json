@@ -1,15 +1,15 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Multiply on escape",
-  "seed": 56591,
+  "seed": 5,
   "duration": {
-    "max": 49.8,
+    "max": 44,
     "endOn": "firstEscape",
-    "tail": 2.5
+    "tail": 1
   },
   "world": {
     "gravity": 900,
-    "maxBalls": 1000
+    "maxBalls": 165
   },
   "entities": [
     {
@@ -20,7 +20,7 @@
       "gaps": [
         {
           "at": 0,
-          "width": 51.5
+          "width": 52
         }
       ]
     },
@@ -31,20 +31,30 @@
     }
   ],
   "style": {
-    "trail": 0.75
+    "trail": 0.35,
+    "glow": false
   },
   "audio": {
     "melody": "pentatonic",
     "instrument": "pluck",
-    "volume": 0.55
+    "volume": 0.45,
+    "hitSound": false,
+    "bounceSpacing": 0.08
   },
   "overlay": {
-    "title": "Every escape makes 2 more",
-    "counter": "bounces",
-    "titleY": 390,
-    "counterY": 1530
+    "title": "Can one become 128?",
+    "counter": "balls",
+    "titleY": 275,
+    "counterY": 1530,
+    "timer": false
   },
   "modifiers": [
     "multiply"
+  ],
+  "timeline": [
+    {
+      "every": 0.05,
+      "script": "if (ctx.world.balls().length >= 128) {\n  ctx.world.do({do: 'freezeAll'});\n  ctx.world.end();\n}"
+    }
   ]
 }

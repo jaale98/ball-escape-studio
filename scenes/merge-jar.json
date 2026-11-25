@@ -10,9 +10,9 @@
     }
   ],
   "duration": {
-    "max": 45,
+    "max": 42,
     "endOn": "never",
-    "tail": 0
+    "tail": 1.75
   },
   "world": {
     "gravity": 1400,
@@ -50,12 +50,12 @@
       "type": "emitter",
       "x": 540,
       "y": 520,
-      "rate": 2.2,
+      "rate": 3.2,
       "count": 90,
       "speed": 220,
       "direction": 90,
       "cone": 70,
-      "jitter": 0,
+      "jitter": 65,
       "radius": 20,
       "level": 3,
       "levels": true
@@ -73,10 +73,21 @@
   },
   "audio": {
     "instrument": "pop",
-    "hitSound": false
+    "hitSound": false,
+    "pitchBy": "size",
+    "volume": 0.53
   },
   "overlay": {
-    "title": "Two of a kind merge",
-    "counter": "balls"
-  }
+    "title": "Can they make level 7?",
+    "counter": "level",
+    "timer": false,
+    "titleSize": 66,
+    "counterY": 395
+  },
+  "rules": [
+    {
+      "on": "merge",
+      "script": "if (ctx.ball.level >= 7) ctx.world.end();"
+    }
+  ]
 }

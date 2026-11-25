@@ -5,7 +5,7 @@
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
-    "tail": 2.5
+    "tail": 1.3
   },
   "world": {
     "gravity": 900
@@ -31,14 +31,18 @@
   ],
   "style": {
     "trail": 0.85,
-    "ringColor": "#e6d3ff"
+    "ringColor": "#e6d3ff",
+    "background": "#191429",
+    "ringStyle": "double",
+    "trailStyle": "comet"
   },
   "audio": {
     "melody": "pentatonic",
-    "instrument": "bell"
+    "instrument": "glass"
   },
   "overlay": {
-    "title": "Find the way out",
-    "counter": "bounces"
+    "title": "Find the missing edge",
+    "counter": "none",
+    "timer": false
   }
 }

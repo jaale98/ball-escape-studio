@@ -1,7 +1,9 @@
 /** Every scene must resolve, and replay identically: same seed, same final state hash and event log. */
 import { World } from '../src/engine/world';
+import { checkPaintFinish } from './territory-test';
 import { loadSources, resolveWithSongs } from './scenes';
 
+checkPaintFinish();
 const sources = loadSources();
 let failed = 0;
 for (const name of Object.keys(sources)) {

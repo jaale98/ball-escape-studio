@@ -2,10 +2,10 @@
   "$schema": "../scene.schema.json",
   "title": "Color war",
   "category": "teams",
-  "seed": 45,
+  "seed": 27,
   "duration": {
-    "max": 45,
-    "endOn": "oneTeam",
+    "max": 30,
+    "endOn": "mostTerritory",
     "tail": 2
   },
   "world": {
@@ -32,11 +32,11 @@
   "entities": [
     {
       "type": "territory",
-      "x": 90,
-      "y": 440,
+      "x": 140,
+      "y": 485,
       "cols": 20,
       "rows": 24,
-      "cell": 45,
+      "cell": 40,
       "layout": "quadrants"
     },
     {
@@ -81,11 +81,20 @@
     "glow": false
   },
   "audio": {
-    "instrument": "marimba"
+    "instrument": "marimba",
+    "hitSound": false,
+    "volume": 0.47
   },
   "overlay": {
-    "title": "4 colors. 1 board.",
+    "title": "Which color takes the board?",
     "counter": "teams",
-    "winner": true
+    "winner": true,
+    "timer": false,
+    "counterSize": 38,
+    "counterY": 1560,
+    "titleSize": 64,
+    "resultPosition": "title",
+    "progress": "bar",
+    "titleY": 302
   }
 }

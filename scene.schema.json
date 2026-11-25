@@ -72,6 +72,11 @@
               "default": "fixed",
               "description": "follow: gently keep the action centered. zoomOut: frame the innermost ring the ball is still inside (for dozens of nested rings)."
             },
+            "aperture": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Clip the playfield to a circular window of this radius in screen pixels, keeping text clear during zooms."
+            },
             "zoom": {
               "type": "number",
               "minimum": 0.2,
@@ -138,10 +143,11 @@
                 "never",
                 "oneTeam",
                 "finish",
-                "cleared"
+                "cleared",
+                "mostTerritory"
               ],
               "default": "firstEscape",
-              "description": "oneTeam = every ball left is on one team; finish = a ball reaches a finish zone; cleared = every brick and breakable ring is gone."
+              "description": "oneTeam = every ball left is on one team; finish = a ball reaches a finish zone; cleared = every brick and breakable ring is gone; mostTerritory = lock the board at max minus tail and show who owns the most cells."
             },
             "tail": {
               "type": "number",
@@ -1693,6 +1699,12 @@
               "maximum": 1,
               "default": 0.7
             },
+            "bounceSpacing": {
+              "type": "number",
+              "minimum": 0,
+              "default": 0,
+              "description": "Minimum seconds between audible bounce notes. Useful for dense pours."
+            },
             "escapeSound": {
               "type": "boolean",
               "default": true
@@ -1782,7 +1794,13 @@
                 "teams",
                 "rings",
                 "bricks",
-                "hp"
+                "hp",
+                "sides",
+                "gap",
+                "gravity",
+                "diameter",
+                "level",
+                "swallowed"
               ],
               "default": "bounces"
             },
@@ -1816,6 +1834,15 @@
               "type": "boolean",
               "default": true,
               "description": "Show each team’s share as a bar (team formats)."
+            },
+            "resultPosition": {
+              "type": "string",
+              "enum": [
+                "center",
+                "title"
+              ],
+              "default": "center",
+              "description": "Place the result in the title area to keep the final play visible."
             },
             "winner": {
               "type": "boolean",
@@ -2865,10 +2892,11 @@
                           "quadrants",
                           "stripes",
                           "columns",
-                          "random"
+                          "random",
+                          "paint"
                         ],
                         "default": "halves",
-                        "description": "How cells are split between the teams at the start."
+                        "description": "Initial ownership. Paint starts blank and awards cells under a moving ball to its team without reflecting it."
                       }
                     },
                     "required": [

@@ -216,7 +216,8 @@ export interface Territory {
   cols: number;
   rows: number;
   cell: number;
-  /** Owner team index per cell (row-major). */
+  paint: boolean;
+  /** Owner team index per cell (row-major), -1 for untouched canvas. */
   owner: Int16Array;
   /** Cells per team. */
   counts: number[];
@@ -532,13 +533,14 @@ export class World {
             else if (e.layout === 'columns') t = Math.min(k - 1, Math.floor((c / e.cols) * k));
             else if (e.layout === 'stripes') t = Math.min(k - 1, Math.floor((r / e.rows) * k));
             else if (e.layout === 'quadrants') t = ((r < e.rows / 2 ? 0 : 2) + (c < e.cols / 2 ? 0 : 1)) % k;
+            else if (e.layout === 'paint') t = -1;
             else t = rng.int(k);
             owner[r * e.cols + c] = t;
           }
         }
         const counts = Array.from({ length: k }, () => 0);
-        for (const t of owner) counts[t]++;
-        this.territory = { x: e.x, y: e.y, cols: e.cols, rows: e.rows, cell: e.cell, owner, counts };
+        for (const t of owner) if (t >= 0) counts[t]++;
+        this.territory = { x: e.x, y: e.y, cols: e.cols, rows: e.rows, cell: e.cell, owner, counts, paint: e.layout === 'paint' };
       } else if (e.type === 'pendulum') {
         const rainbow = (i: number) => `hsl(${Math.round((i / Math.max(1, e.count)) * 300)}, 95%, 62%)`;
         for (let i = 0; i < e.count; i++) {
@@ -667,6 +669,12 @@ export class World {
   /** Advance the world by one fixed physics step (1/240 s). */
   step(): void {
     if (this.done) return;
+    // The timed contest holds its deciding frame throughout the result tail.
+    if (this.endReason === 'mostTerritory') {
+      this.stepCount++;
+      this.checkEnd();
+      return;
+    }
     this.runTimeline();
     for (const c of this.containers) c.angle = wrap(c.angle + c.spin * DT);
     for (const s of this.solids) {
@@ -714,7 +722,10 @@ export class World {
       if (c.broken) values.push(-7);
       if (c.kind === 'ring' && c.segments) values.push(...c.segments);
     }
-    if (this.territory) values.push(...this.territory.counts);
+    if (this.territory) {
+      values.push(...this.territory.counts);
+      if (this.territory.paint) for (const owner of this.territory.owner) values.push(owner);
+    }
     for (const p of this.pendulums) values.push(p.t1, p.t2, p.w1, p.w2);
     for (const f of this.forces) values.push(f.eaten);
     const bytes = new Uint8Array(new Float64Array(values).buffer);
@@ -1933,6 +1944,26 @@ export class World {
     const T = this.territory!;
     const team = this.teamOf(b.team);
     if (team < 0) return;
+    if (T.paint) {
+      // Sample cell centers. Last brush over a cell owns it, independent of render fps.
+      const cx = (b.x - T.x) / T.cell;
+      const cy = (b.y - T.y) / T.cell;
+      const radius = b.r / T.cell;
+      const right = Math.min(T.cols - 1, Math.floor(cx + radius - 0.5));
+      const bottom = Math.min(T.rows - 1, Math.floor(cy + radius - 0.5));
+      for (let row = Math.max(0, Math.ceil(cy - radius - 0.5)); row <= bottom; row++) {
+        for (let col = Math.max(0, Math.ceil(cx - radius - 0.5)); col <= right; col++) {
+          if ((col + 0.5 - cx) ** 2 + (row + 0.5 - cy) ** 2 > radius ** 2) continue;
+          const i = row * T.cols + col;
+          const previous = T.owner[i];
+          if (previous === team) continue;
+          if (previous >= 0) T.counts[previous]--;
+          T.counts[team]++;
+          T.owner[i] = team;
+        }
+      }
+      return;
+    }
     const x0 = T.x;
     const y0 = T.y;
     const x1 = T.x + T.cols * T.cell;
@@ -2353,6 +2384,12 @@ export class World {
           reason = 'oneTeam';
           this.winnerTeam = this.teams[c.indexOf(Math.max(...c))]?.name ?? '';
         }
+      } else if (duration.endOn === 'mostTerritory' && this.territory && this.time >= duration.max - duration.tail) {
+        reason = 'mostTerritory';
+        const counts = this.territory.counts;
+        const best = Math.max(...counts);
+        const lead = counts.indexOf(best);
+        if (best > 0 && lead === counts.lastIndexOf(best)) this.winnerTeam = this.teams[lead]?.name ?? '';
       } else if (duration.endOn === 'finish' && this.finishWinner >= 0) {
         reason = 'finish';
         this.winner = this.finishWinner;
@@ -2369,7 +2406,7 @@ export class World {
       if (!this.endReason) this.endReason = 'timeLimit';
     }
     // Territory battles that run out the clock: the biggest share wins.
-    if (this.done && this.territory && !this.winnerTeam && this.teams.length) {
+    if (this.done && this.territory && this.endReason !== 'mostTerritory' && !this.winnerTeam && this.teams.length) {
       const c = this.territory.counts;
       this.winnerTeam = this.teams[c.indexOf(Math.max(...c))]?.name ?? '';
     }

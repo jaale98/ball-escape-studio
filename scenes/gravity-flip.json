@@ -5,7 +5,7 @@
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
-    "tail": 2.5
+    "tail": 1.3
   },
   "world": {
     "gravity": 900
@@ -31,15 +31,22 @@
     }
   ],
   "style": {
-    "trail": 0.85
+    "trail": 0.85,
+    "background": "#071d20",
+    "ringColor": "#a9edd4",
+    "trailStyle": "comet"
   },
   "audio": {
     "melody": "pentatonic",
-    "instrument": "marimba"
+    "instrument": "glass",
+    "pitchBy": "height",
+    "volume": 0.56
   },
   "overlay": {
-    "title": "Gravity flips every 4 seconds",
-    "counter": "bounces"
+    "title": "Which way is down?",
+    "counter": "gravity",
+    "timer": false,
+    "counterY": 1515
   },
   "modifiers": [
     {

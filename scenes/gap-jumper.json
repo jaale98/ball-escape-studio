@@ -9,7 +9,7 @@
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
-    "tail": 3
+    "tail": 1.25
   },
   "world": {
     "gravity": 900
@@ -35,12 +35,19 @@
   ],
   "style": {
     "trail": 0.85,
-    "colorMode": "bounce"
+    "colorMode": "bounce",
+    "background": "#0a1523",
+    "glow": false,
+    "trailStyle": "comet"
   },
   "audio": {
     "instrument": "chip"
   },
   "overlay": {
-    "title": "The exit keeps moving"
+    "title": "Catch the gap",
+    "timer": false,
+    "subtitle": "It moves on every miss",
+    "counter": "bounces",
+    "counterY": 1515
   }
 }

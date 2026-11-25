@@ -6,7 +6,7 @@
   "duration": {
     "max": 60,
     "endOn": "cleared",
-    "tail": 3
+    "tail": 1.35
   },
   "world": {
     "gravity": 0
@@ -30,7 +30,14 @@
       "cols": 7,
       "height": 44,
       "hp": 1,
-      "hpGrow": 1
+      "hpGrow": 1,
+      "colors": [
+        "#fff0ad",
+        "#ffd37c",
+        "#ffa566",
+        "#f37572",
+        "#cb6093"
+      ]
     },
     {
       "type": "ball",
@@ -46,7 +53,9 @@
   ],
   "style": {
     "trail": 0.6,
-    "ballStyle": "glossy"
+    "ballStyle": "glossy",
+    "background": "#17172b",
+    "glow": false
   },
   "camera": {
     "shake": 0.5,
@@ -58,7 +67,9 @@
     "climax": "swell"
   },
   "overlay": {
-    "title": "Clear the wall",
-    "counter": "bricks"
+    "title": "Which brick falls last?",
+    "counter": "bricks",
+    "timer": false,
+    "counterY": 1515
   }
 }
