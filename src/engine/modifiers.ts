@@ -249,6 +249,27 @@ export const MODIFIERS: Record<string, ModifierDef> = {
       list(s, 'entities').push({ type: 'portal', a: [x - R * 0.45, y - R * 0.25], b: [x + R * 0.4, y + R * 0.35], radius: p.radius });
     },
   },
+  clock: {
+    description: 'A countdown: beat it or "Time’s up". The final stretch turns red, ticks, and escalates (the exit widens, or balls speed up) so the climax tends to land just before zero.',
+    params: {
+      seconds: { default: 30, description: 'countdown length' },
+      final: { default: 5, description: 'seconds of red, ticking final stretch' },
+      rush: { default: true, description: 'escalate through the final stretch' },
+    },
+    apply: (s, p) => {
+      const clock: Raw = { seconds: p.seconds, final: p.final };
+      if (p.rush) {
+        // Escape formats with ring gaps: the exit widens a little each second. Everything else: more speed, more hits.
+        const endOn = s.duration?.endOn ?? 'firstEscape';
+        const gapped = (s.entities ?? []).some((e: Raw) => (e.type === 'ring' && e.gaps?.length) || e.type === 'nested');
+        clock.rush =
+          gapped && (endOn === 'firstEscape' || endOn === 'allEscaped')
+            ? [{ do: 'shrinkGap', amount: -3 }]
+            : [{ do: 'speedUp', factor: 1.06, max: 3200 }];
+      }
+      s.clock = clock;
+    },
+  },
   countdown: {
     description: 'A 3-2-1-GO intro with the run frozen.',
     params: { count: { default: 3, description: 'counts' } },

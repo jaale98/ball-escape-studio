@@ -6,7 +6,7 @@
  */
 import { direct, type Search } from '../director/pool';
 import { remix } from '../director/remix';
-import { applyVariation, defaultTemplate, type RunScore, type Template, TEMPLATES } from '../director/score';
+import { applyVariation, defaultTarget, defaultTemplate, type RunScore, type Template, TEMPLATES } from '../director/score';
 import { entrantsFrom, tournament } from '../director/tournament';
 import type { Scene } from '../engine/scene';
 import { Player } from './player';
@@ -94,13 +94,7 @@ function open(): void {
     items = [];
     buildGrid();
     $<HTMLSelectElement>('d-template').value = scene.duration.trimStart > 0 ? 'perfect-loop' : defaultTemplate(scene);
-    const target =
-      scene.duration.trimStart > 0
-        ? Math.round(scene.duration.max - scene.duration.trimStart)
-        : scene.duration.endOn === 'never'
-          ? Math.round(scene.duration.max * 0.75)
-          : Math.round(Math.min(45, scene.duration.max * 0.6));
-    $<HTMLInputElement>('d-target').value = String(target);
+    $<HTMLInputElement>('d-target').value = String(defaultTarget(scene));
   }
   $('d-scene').textContent = hooks.sceneName();
   $<HTMLButtonElement>('b-tournament').disabled = scene.duration.endOn !== 'lastStanding';

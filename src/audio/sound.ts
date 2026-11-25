@@ -23,7 +23,7 @@ export interface Voice {
   time: number;
   /** Seconds after the event that caused it (backing notes fall between bounces). */
   delay: number;
-  kind: 'note' | 'escape' | 'hit' | 'pop' | 'break' | 'zap' | 'gulp' | 'merge' | 'tick' | 'chime' | 'bell' | 'shoot' | 'drop' | 'swell' | 'gong';
+  kind: 'note' | 'escape' | 'hit' | 'pop' | 'break' | 'zap' | 'gulp' | 'merge' | 'tick' | 'chime' | 'bell' | 'shoot' | 'drop' | 'swell' | 'gong' | 'buzzer';
   /** Notes to play together (one for a melody, several for a chord). */
   midi: number[];
   gain: number;
@@ -117,6 +117,9 @@ export class SoundMapper {
       const k = e.n ?? 0;
       return one({ kind: 'note', midi: [48 + 12 * Math.floor(k / 5) + PENTATONIC[k % 5] + audio.transpose], gain: 0.5, pan });
     }
+    // The clock: a tick per second of the final stretch, rising as zero nears; a buzzer at zero.
+    if (e.type === 'clock') return this.scene.clock?.ticks ? one({ kind: 'tick', midi: [e.n! <= 3 ? 93 : 88], gain: e.n! <= 3 ? 1.6 : 1.1, pan: 0 }) : [];
+    if (e.type === 'timeUp') return this.scene.clock?.ticks ? one({ kind: 'buzzer', midi: [], gain: 1, pan: 0 }) : [];
     if (e.type === 'finish') return this.allow('finish', time, 0.4, 1) ? one({ kind: 'bell', midi: [72, 76, 79], gain: 1, pan }) : [];
     if (e.type === 'corner') return this.allow('corner', time, 0.5, 1) ? one({ kind: 'bell', midi: [84, 88, 91, 96], gain: 1, pan }) : [];
     if (!audio.eventSounds) return [];
@@ -375,6 +378,27 @@ export function playVoice(ctx: BaseAudioContext, dest: AudioNode, v: Voice, when
     // Cymbal swell: bright noise that rings out.
     noiseHit(ctx, panner, when, 'highpass', 5000, 0.5, 0.35 * v.gain, 2.4);
     noiseHit(ctx, panner, when, 'bandpass', 9000, 1.5, 0.2 * v.gain, 1.6);
+    return;
+  }
+  if (v.kind === 'buzzer') {
+    // Game-show buzzer: two detuned low saws through a lowpass.
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1400;
+    lp.connect(panner);
+    for (const f of [110, 116.5]) {
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.value = f;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, when);
+      g.gain.linearRampToValueAtTime(0.16 * v.gain, when + 0.01);
+      g.gain.setValueAtTime(0.16 * v.gain, when + 0.75);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + 0.95);
+      osc.connect(g).connect(lp);
+      osc.start(when);
+      osc.stop(when + 1);
+    }
     return;
   }
   if (v.kind === 'gong') {

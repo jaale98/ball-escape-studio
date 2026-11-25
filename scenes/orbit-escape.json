@@ -2,14 +2,26 @@
   "$schema": "../scene.schema.json",
   "title": "Orbit escape",
   "category": "forces",
-  "seed": 1,
+  "seed": 135,
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
     "tail": 1.5
   },
+  "clock": {
+    "seconds": 30,
+    "final": 5,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
   "world": {
-    "gravity": 0
+    "gravity": 0,
+    "speedScale": 1.098,
+    "spinScale": 1.028
   },
   "entities": [
     {
@@ -54,7 +66,7 @@
   },
   "overlay": {
     "title": "Steal speed from the sun",
-    "timer": false,
+    "timer": true,
     "counter": "none"
   }
 }

@@ -8,11 +8,12 @@
 import { PHYSICS_HZ, type Scene } from '../engine/scene';
 import { type RingContainer, World } from '../engine/world';
 
-export type Template = 'slow-burn' | 'last-second' | 'chaos' | 'comeback' | 'music-sync' | 'perfect-loop' | 'underdog' | 'photo-finish' | 'destruction';
+export type Template = 'slow-burn' | 'last-second' | 'beat-the-clock' | 'chaos' | 'comeback' | 'music-sync' | 'perfect-loop' | 'underdog' | 'photo-finish' | 'destruction';
 
 export const TEMPLATES: Record<Template, { label: string; description: string }> = {
   'slow-burn': { label: 'Slow burn', description: 'Climax near the target, with near-misses building toward it and no dead stretches.' },
   'last-second': { label: 'Last-second escape', description: 'Lands on the target almost exactly, after plenty of near-misses.' },
+  'beat-the-clock': { label: 'Beat the clock', description: 'Scenes with a clock: the climax lands in the last second or two before zero, after a rising run of near-misses. Running out of time scores low.' },
   chaos: { label: 'Chaos', description: 'As busy as possible: lots of hits, lots of balls.' },
   comeback: { label: 'Comeback', description: 'Races and battles: the lead changes hands and the winner was behind at halftime.' },
   'music-sync': { label: 'In time with the song', description: 'Bounces land on the MIDI song’s note timing.' },
@@ -28,12 +29,41 @@ export const TEMPLATES: Record<Template, { label: string; description: string }>
 /** Pick a sensible story for a scene. */
 export function defaultTemplate(scene: Scene): Template {
   if (scene.audio.rhythmLock || (scene.audio.noteTimes && scene.audio.melody.startsWith('midi:'))) return 'music-sync';
+  if (racesClock(scene)) return 'beat-the-clock';
   if (scene.duration.endOn === 'lastStanding') return 'comeback';
   if (scene.duration.endOn === 'oneTeam' || scene.teams.length > 1) return 'underdog';
   if (scene.duration.endOn === 'finish') return 'photo-finish';
   if (scene.duration.endOn === 'cleared') return 'destruction';
   if (scene.duration.endOn === 'never') return 'chaos';
   return 'slow-burn';
+}
+
+/** The scene has a clock and an ending that can beat it (not a run that always goes the distance). */
+export function racesClock(scene: Scene): boolean {
+  return !!scene.clock && scene.duration.endOn !== 'never' && scene.duration.endOn !== 'mostTerritory';
+}
+
+/** Where a story's climax should land by default (seconds). With a clock: just before zero. */
+export function defaultTarget(scene: Scene): number {
+  if (scene.duration.trimStart > 0) return Math.round(scene.duration.max - scene.duration.trimStart);
+  if (scene.clock) return racesClock(scene) ? Math.max(1, scene.clock.seconds - CLUTCH_LEFT) : scene.clock.seconds;
+  if (scene.duration.endOn === 'never') return Math.round(scene.duration.max * 0.75);
+  return Math.round(Math.min(45, scene.duration.max * 0.6));
+}
+
+/** Beat the clock: the ideal time left at the climax (seconds). */
+const CLUTCH_LEFT = 0.8;
+
+/**
+ * How good a finish against the clock is, by the seconds left at the climax:
+ * best between 0.3 and 1.5 s to spare, still good at the buzzer, fading when
+ * there's lots of time left.
+ */
+export function clutchScore(left: number): number {
+  if (left < 0) return 0;
+  if (left < 0.3) return 0.8 + (0.2 * left) / 0.3;
+  if (left <= 1.5) return 1;
+  return Math.exp(-0.5 * ((left - 1.5) / 1.6) ** 2);
 }
 
 export interface Variation {
@@ -240,7 +270,10 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
   else if (w.endReason === 'lastStanding') climax = lastEliminationAt >= 0 ? lastEliminationAt : w.climaxStep / PHYSICS_HZ;
   else if (w.endReason === 'allEscaped' || w.endReason === 'filled' || w.endReason === 'script') climax = w.time - scene.duration.tail;
   else if (w.climaxStep >= 0) climax = w.climaxStep / PHYSICS_HZ;
-  const failed = endsOnClimax && climax < 0;
+  // Running out the clock is a miss, unless the format always goes the distance.
+  const timedOut = w.endReason === 'timeUp' && racesClock(scene);
+  const failed = (endsOnClimax && climax < 0) || timedOut;
+  const clockLeft = scene.clock && climax >= 0 && !timedOut ? scene.clock.seconds - climax : -1;
 
   const timing = climax < 0 ? (endsOnClimax ? 0 : 0.5) : gauss(climax - T, 0.15 * T);
   const tightTiming = climax < 0 ? 0 : gauss(climax - T, 0.05 * T);
@@ -281,6 +314,14 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
       Object.assign(signals, { rising, misses });
       weights = { timing: 3, rising: 2, misses: 1, pacing: 1 };
       break;
+    case 'beat-the-clock': {
+      // Without a clock, "zero" is the target.
+      const left = scene.clock ? clockLeft : climax >= 0 ? T + CLUTCH_LEFT - climax : -1;
+      Object.assign(signals, { clutch: clutchScore(left), rising, misses });
+      delete signals.timing;
+      weights = { clutch: 5, rising: 2, misses: 1, pacing: 1 };
+      break;
+    }
     case 'last-second':
       Object.assign(signals, { timing: tightTiming, misses });
       weights = { timing: 4, misses: 2, pacing: 1 };
@@ -321,13 +362,16 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
   const total = Object.values(weights).reduce((a, b) => a + b, 0);
   let score = Object.entries(weights).reduce((s, [k, wt]) => s + wt * (signals[k] ?? 0), 0) / total;
   if (opts.template !== 'perfect-loop') {
-    if (failed) score *= 0.2;
+    if (timedOut) score *= 0.35;
+    else if (failed) score *= 0.2;
     else if (climax > 0 && climax < 0.35 * T) score *= 0.5;
   }
 
   const facts: string[] = [];
   if (climax >= 0) facts.push(`climax ${climax.toFixed(1)}s`);
   else facts.push(endsOnClimax ? 'no climax' : `${w.time.toFixed(0)}s run`);
+  if (timedOut) facts.push('time ran out');
+  else if (clockLeft >= 0) facts.push(`${clockLeft.toFixed(2)}s to spare`);
   if (nearMisses.length) facts.push(`${nearMisses.length} near-misses`);
   if (deadTime > 3) facts.push(`${deadTime.toFixed(1)}s lull`);
   if (leadChanges) facts.push(`${leadChanges} lead changes`);

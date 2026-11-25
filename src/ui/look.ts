@@ -134,6 +134,8 @@ const STYLE_FIELDS: Field[] = [
   { path: 'camera.slowmo', label: 'Slow motion (s)', kind: 'range', min: 0, max: 6, step: 0.25 },
   { path: 'camera.slowmoFactor', label: 'Slow-mo speed', kind: 'range', min: 0.1, max: 0.8, step: 0.05 },
   { path: 'camera.countdown', label: 'Countdown', kind: 'range', min: 0, max: 5, step: 1 },
+  { path: 'clock.seconds', label: 'Clock (s, 0 = off)', kind: 'range', min: 0, max: 90, step: 1 },
+  { path: 'clock.final', label: 'Clock final stretch (s)', kind: 'range', min: 0, max: 15, step: 1 },
   { group: 'Text' },
   { path: 'overlay.progress', label: 'Time left', kind: 'select', options: [['none', 'Hidden'], ['bar', 'Bar'], ['ring', 'Ring']] },
   { path: 'overlay.endCard', label: 'End card', kind: 'text', placeholder: 'Follow for part 2' },
@@ -212,10 +214,26 @@ function buildStyle(scene: Scene): void {
         const out = document.createElement('output');
         const show = () => (out.textContent = String(Math.round(Number(input.value) * 100) / 100));
         show();
-        input.addEventListener('input', () => {
-          show();
-          hooks.set(f.path, Number(input.value), false);
-        });
+        if (f.path.startsWith('clock.')) {
+          // The clock is one object: 0 seconds removes it; the final stretch needs a clock first.
+          if (f.path === 'clock.final' && !scene.clock) input.disabled = true;
+          input.addEventListener('input', () => {
+            show();
+            const key = f.path.slice('clock.'.length);
+            const v = Number(input.value);
+            const base = { ...((getPath(merged, 'clock') as Raw | undefined) ?? {}) };
+            if (key === 'seconds' && v <= 0) hooks.set('clock', undefined, false);
+            else {
+              base[key] = key === 'seconds' ? Math.max(3, v) : v;
+              if (base.final !== undefined && base.seconds !== undefined) base.final = Math.min(base.final, base.seconds);
+              hooks.set('clock', base, false);
+            }
+          });
+        } else
+          input.addEventListener('input', () => {
+            show();
+            hooks.set(f.path, Number(input.value), false);
+          });
         label.append(input, out);
       } else {
         const input = document.createElement('input');

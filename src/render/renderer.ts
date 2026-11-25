@@ -1873,10 +1873,13 @@ export class Renderer {
     if (overlay.counter === 'diameter' && world.balls[0]) parts.push(`${Math.round(world.balls[0].r * 2)} px across`);
     if (overlay.counter === 'level') parts.push(`Top level ${world.balls.reduce((best, b) => Math.max(best, b.level), 0)}`);
     if (overlay.counter === 'swallowed') parts.push(`${world.swallowed} drained`);
-    if (overlay.timer) parts.push(`${Math.floor(secs / 60)}:${(secs % 60).toFixed(1).padStart(4, '0')}`);
+    const clock = this.scene.clock;
+    const left = world.clockLeft();
+    if (overlay.timer && !clock) parts.push(clockText(secs));
     if (overlay.counter === 'teams') this.drawTeams(world, counterY, font);
     else if (overlay.teamBar && (world.territory || world.teams.length > 1)) this.drawTeams(world, counterY, font, true);
-    if (parts.length) {
+    if (overlay.timer && clock && left !== null) this.drawClock(world, clock, left, parts, counterY, font);
+    else if (parts.length) {
       ctx.font = `700 ${overlay.counterSize}px ${font}`;
       ctx.fillStyle = overlay.textColor;
       ctx.fillText(parts.join('   ·   '), WIDTH / 2, counterY);
@@ -1885,6 +1888,7 @@ export class Renderer {
     ctx.shadowOffsetY = 0;
 
     if (overlay.progress !== 'none') this.drawProgress(world, secs);
+    if (clock && world.endReason === 'timeUp' && world.climaxStep >= 0) this.drawTimeUp(world, clock.timeUpText, font);
     if (overlay.reveal) this.drawReveal(world, counterY, font);
 
     // Winner banner once a race or battle is decided.
@@ -2017,10 +2021,86 @@ export class Renderer {
     ctx.fillText(text, WIDTH / 2, y - 6 - (this.scene.overlay.timer ? this.scene.overlay.counterSize * 1.1 : 0));
   }
 
+  /**
+   * The countdown, after the counter on its line. Calm while there's time;
+   * red, pulsing once a second and growing through the final stretch; green
+   * and frozen when the climax beat it, showing the time to spare.
+   */
+  private drawClock(world: World, clock: NonNullable<Scene['clock']>, left: number, parts: string[], y: number, font: string): void {
+    const { ctx } = this;
+    const { overlay } = this.scene;
+    const sep = '   ·   ';
+    const beat = world.climaxStep >= 0 && world.endReason !== 'timeUp';
+    const final = !beat && left <= clock.final && clock.final > 0;
+    const text = beat ? `${left.toFixed(2)}s left` : clockText(left, left < 10);
+    ctx.font = `700 ${overlay.counterSize}px ${font}`;
+    const rest = parts.join(sep);
+    const restW = rest ? ctx.measureText(rest + sep).width : 0;
+    const clockW = ctx.measureText(text).width;
+    let x = WIDTH / 2 - (restW + clockW) / 2;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = overlay.textColor;
+    if (rest) ctx.fillText(rest + sep, x, y);
+    x += restW;
+    // Pulse on each whole second: a jump that relaxes over ~0.35 s, bigger as zero nears.
+    const frac = left - Math.floor(left);
+    const urgency = final ? 1 - left / Math.max(clock.final, 1e-6) : 0;
+    const pulse = final ? 1 + (0.18 + 0.22 * urgency) * Math.max(0, (frac - 0.65) / 0.35) + 0.15 * urgency : 1;
+    ctx.save();
+    ctx.translate(x + clockW / 2, y - overlay.counterSize * 0.35);
+    ctx.scale(pulse, pulse);
+    ctx.fillStyle = beat ? '#7cff6b' : final ? '#ff3b4f' : overlay.textColor;
+    if (final) {
+      ctx.shadowColor = 'rgba(255,40,60,0.8)';
+      ctx.shadowBlur = 24 * pulse;
+    }
+    ctx.fillText(text, -clockW / 2, overlay.counterSize * 0.35);
+    ctx.restore();
+    ctx.textAlign = 'center';
+    // The final stretch tints the frame edges red, pulsing with the clock.
+    if (final) {
+      const a = (0.1 + 0.25 * urgency) * (0.55 + 0.45 * Math.max(0, (frac - 0.5) / 0.5));
+      const g = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, HEIGHT * 0.38, WIDTH / 2, HEIGHT / 2, HEIGHT * 0.62);
+      g.addColorStop(0, 'rgba(255,30,50,0)');
+      g.addColorStop(1, `rgba(255,30,50,${a.toFixed(3)})`);
+      ctx.save();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      ctx.restore();
+    }
+  }
+
+  /** The clock hit zero first: a banner that slams in. */
+  private drawTimeUp(world: World, text: string, font: string): void {
+    const { ctx } = this;
+    const t = (world.stepCount - world.climaxStep) / PHYSICS_HZ;
+    const a = Math.min(1, t * 5);
+    const scale = 1 + 0.6 * Math.max(0, 1 - t * 4);
+    const y = this.safe?.safeText ? Math.min(HEIGHT / 2, SAFE_RECT.y1 - 300) : HEIGHT / 2;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, y - 110, WIDTH, 220);
+    ctx.translate(WIDTH / 2, y);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#ff3b4f';
+    ctx.shadowColor = 'rgba(255,40,60,0.9)';
+    ctx.shadowBlur = 30;
+    ctx.font = `900 120px ${font}`;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 0, 6, 1000);
+    ctx.restore();
+  }
+
   private drawProgress(world: World, secs: number): void {
     const { ctx } = this;
     const { duration } = this.scene;
-    const max = duration.endOn === 'mostTerritory' ? Math.max(1 / PHYSICS_HZ, duration.max - duration.tail) : duration.max;
+    const max = this.scene.clock
+      ? this.scene.clock.seconds
+      : duration.endOn === 'mostTerritory'
+        ? Math.max(1 / PHYSICS_HZ, duration.max - duration.tail)
+        : duration.max;
     const f = Math.min(1, secs / max);
     const color = this.scene.overlay.textColor;
     // Safe style: below TikTok's top bar, and the ring clear of the button column.
@@ -2091,4 +2171,10 @@ export class Renderer {
     if (line) this.ctx.fillText(line, x, yy);
     return yy;
   }
+}
+
+/** m:ss.s (or s.ss under ten seconds when `fine`). */
+function clockText(secs: number, fine = false): string {
+  if (fine) return secs.toFixed(2);
+  return `${Math.floor(secs / 60)}:${(secs % 60).toFixed(1).padStart(4, '0')}`;
 }

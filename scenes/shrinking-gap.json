@@ -1,14 +1,27 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Shrinking gap",
-  "seed": 59,
+  "seed": 191,
   "duration": {
     "max": 60,
     "endOn": "firstEscape",
     "tail": 1.2
   },
+  "clock": {
+    "seconds": 25,
+    "final": 5,
+    "rush": [
+      {
+        "do": "speedUp",
+        "factor": 1.06,
+        "max": 3200
+      }
+    ]
+  },
   "world": {
-    "gravity": 900
+    "gravity": 900,
+    "speedScale": 0.957,
+    "spinScale": 1.071
   },
   "entities": [
     {
@@ -44,7 +57,7 @@
   "overlay": {
     "title": "The gap loses 1.5° per hit",
     "counter": "gap",
-    "timer": false,
+    "timer": true,
     "titleSize": 64,
     "counterY": 1515
   },

@@ -165,6 +165,564 @@
           "additionalProperties": false,
           "default": {}
         },
+        "clock": {
+          "type": "object",
+          "properties": {
+            "seconds": {
+              "type": "number",
+              "minimum": 3,
+              "maximum": 300,
+              "description": "Countdown length. The run must reach its ending before zero, or it ends there with \"Time’s up\". Sets duration.max to seconds + tail."
+            },
+            "final": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 30,
+              "default": 5,
+              "description": "The final stretch (seconds before zero): the clock turns red, pulses and ticks, and rush actions fire."
+            },
+            "rush": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "grow"
+                      },
+                      "amount": {
+                        "type": "number",
+                        "default": 1.5,
+                        "description": "px of radius (negative shrinks)."
+                      },
+                      "max": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 380
+                      },
+                      "min": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 3
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "shrinkGap"
+                      },
+                      "amount": {
+                        "type": "number",
+                        "default": 1
+                      },
+                      "min": {
+                        "type": "number",
+                        "minimum": 0,
+                        "default": 0
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "speedUp"
+                      },
+                      "factor": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 1.02
+                      },
+                      "max": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 3000
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "spawn"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": 1
+                      },
+                      "x": {
+                        "type": "number",
+                        "description": "Spawn point. In a rule, defaults to the container the event happened at."
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "spread": {
+                        "type": "number",
+                        "minimum": 0,
+                        "default": 30
+                      },
+                      "speed": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "direction": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "damage"
+                      },
+                      "amount": {
+                        "type": "number",
+                        "default": 1
+                      },
+                      "perSpeed": {
+                        "type": "number",
+                        "default": 0,
+                        "description": "Extra damage per 1000 px/s of impact."
+                      },
+                      "when": {
+                        "type": "string",
+                        "enum": [
+                          "always",
+                          "defending"
+                        ],
+                        "default": "always",
+                        "description": "On a hit: \"defending\" damages only the ball that was struck (the one coming in slower), so two equal balls never trade damage."
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "setGravity"
+                      },
+                      "gravity": {
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "do",
+                      "gravity"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "flipGravity"
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "rotateGravity"
+                      },
+                      "degrees": {
+                        "type": "number",
+                        "default": 90
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "spinUp"
+                      },
+                      "factor": {
+                        "type": "number",
+                        "default": 1.05
+                      },
+                      "max": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 8
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "reverseSpin"
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "split"
+                      },
+                      "min": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 6,
+                        "description": "Balls smaller than this stop splitting."
+                      },
+                      "angle": {
+                        "type": "number",
+                        "default": 25,
+                        "description": "Degrees between the two halves’ directions."
+                      },
+                      "recolor": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "The new half takes the next palette color."
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false,
+                    "description": "The ball splits into two, each with half the area."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "absorb"
+                      },
+                      "max": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 400
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false,
+                    "description": "On a hit: the bigger ball swallows the smaller and gains its area."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "merge"
+                      },
+                      "growth": {
+                        "type": "number",
+                        "minimum": 1,
+                        "default": 1.25,
+                        "description": "Radius multiplier per level."
+                      },
+                      "maxLevel": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": 10
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false,
+                    "description": "On a hit: two balls of the same level fuse into one of the next level."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "convert"
+                      },
+                      "mode": {
+                        "type": "string",
+                        "enum": [
+                          "beats",
+                          "always"
+                        ],
+                        "default": "beats",
+                        "description": "beats: only if this ball’s team beats the other’s (teams[].beats). always: the hit ball always switches."
+                      },
+                      "chance": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "default": 1,
+                        "description": "Probability a hit converts (lower = slower spread)."
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false,
+                    "description": "On a hit: the other ball joins this ball’s team."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "clone"
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Leave a frozen, immovable copy of the ball where it is."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "moveGap"
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Every gap of the ring jumps to a new random angle."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "addGap"
+                      },
+                      "width": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 20
+                      },
+                      "max": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "default": 8
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Open another gap at a random angle."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "addSide"
+                      },
+                      "max": {
+                        "type": "integer",
+                        "minimum": 3,
+                        "maximum": 24,
+                        "default": 24
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A polygon gains a side."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "shrinkContainer"
+                      },
+                      "amount": {
+                        "type": "number",
+                        "default": 2,
+                        "description": "px per firing (negative grows)."
+                      },
+                      "min": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 80
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "recolor"
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false,
+                    "description": "The ball takes the next palette color."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "growForce"
+                      },
+                      "factor": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 1.05,
+                        "description": "Strength multiplier."
+                      },
+                      "swallow": {
+                        "type": "number",
+                        "default": 1,
+                        "description": "px added to the swallow radius."
+                      },
+                      "max": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 200
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Every force field gets stronger (a black hole that grows)."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "end"
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false,
+                    "description": "End the run now (the climax); the tail plays on."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "do": {
+                        "type": "string",
+                        "const": "freezeAll"
+                      }
+                    },
+                    "required": [
+                      "do"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Lock every ball where it is (a settled pile holds its picture)."
+                  }
+                ]
+              },
+              "description": "Actions fired every rushEvery seconds through the final stretch (e.g. shrinkGap with a negative amount widens the exit; speedUp for battles), so the climax tends to land right before zero."
+            },
+            "rushEvery": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "default": 1,
+              "description": "Seconds between rush firings."
+            },
+            "ticks": {
+              "type": "boolean",
+              "default": true,
+              "description": "A tick each second of the final stretch and a buzzer at zero."
+            },
+            "timeUpText": {
+              "type": "string",
+              "default": "TIME’S UP",
+              "description": "Banner when the clock hits zero first."
+            }
+          },
+          "required": [
+            "seconds"
+          ],
+          "additionalProperties": false,
+          "description": "A countdown: urgency on screen, an escalating final stretch, and a hard stop at zero."
+        },
         "world": {
           "type": "object",
           "properties": {
@@ -1902,6 +2460,7 @@
                   "rainbow",
                   "shake",
                   "portals",
+                  "clock",
                   "countdown"
                 ]
               },
@@ -1941,6 +2500,7 @@
                       "rainbow",
                       "shake",
                       "portals",
+                      "clock",
                       "countdown"
                     ]
                   }
@@ -1957,7 +2517,7 @@
               }
             ]
           },
-          "description": "grow-on-bounce: The ball grows a little with every wall bounce. Ends when it fills its ring.\nshrinking-gap: The exit gets narrower with every bounce.\nspeed-up: Every bounce makes the ball a little faster.\nspin-up: Every bounce spins the container faster.\nmultiply: Every escape spawns new balls back inside. Runs to the time limit.\nzero-g: No gravity: balls fly in straight lines.\ngravity-flip: Gravity reverses on a timer.\ngravity-spin: Gravity rotates a quarter turn on a timer.\npaint: Balls leave permanent paint instead of fading trails.\nbattle: Balls lose hp when they collide; the last one standing wins.\nrace: First ball out wins.\nbreak-rings: Rings are cut into segments that break when hit: the ball smashes its way out.\nhp-ring: Each ring has hit points and shatters when they run out.\nsplit: Every bounce splits the ball in two (until they get tiny).\nabsorb: Bigger eats smaller: on contact the bigger ball swallows the smaller one. Last one wins.\nmerge: Two balls of the same level merge into a bigger one.\ninfection: One zombie, everyone else human: a zombie hit turns a human. Ends when everyone has turned.\nrps: Rock, paper, scissors: every hit converts the loser. Ends when one side owns the arena.\nblack-hole: A black hole in the middle pulls everything in and swallows what gets too close.\nstorm: The arena shrinks steadily (battle royale storm).\nadd-side: Every bounce adds a side to the polygon: triangle to circle.\ngap-jump: The exit jumps to a new random spot on every bounce.\nclone-trail: Every bounce leaves a frozen clone behind; the ring slowly jams up.\nbutterfly: Butterfly effect: ghost copies of each ball launched a millionth of a degree apart. They never touch, and slowly drift apart.\nstring-art: Every bounce draws a line to the last bounce point: string art.\nslowmo: Slow motion around the climax.\nmeow: Every bounce meows (in tune).\nrainbow: Colors drift through the rainbow, with rainbow trails.\nshake: Screen shake on breaks, escapes and knockouts.\nportals: A pair of linked portals inside the arena.\ncountdown: A 3-2-1-GO intro with the run frozen."
+          "description": "grow-on-bounce: The ball grows a little with every wall bounce. Ends when it fills its ring.\nshrinking-gap: The exit gets narrower with every bounce.\nspeed-up: Every bounce makes the ball a little faster.\nspin-up: Every bounce spins the container faster.\nmultiply: Every escape spawns new balls back inside. Runs to the time limit.\nzero-g: No gravity: balls fly in straight lines.\ngravity-flip: Gravity reverses on a timer.\ngravity-spin: Gravity rotates a quarter turn on a timer.\npaint: Balls leave permanent paint instead of fading trails.\nbattle: Balls lose hp when they collide; the last one standing wins.\nrace: First ball out wins.\nbreak-rings: Rings are cut into segments that break when hit: the ball smashes its way out.\nhp-ring: Each ring has hit points and shatters when they run out.\nsplit: Every bounce splits the ball in two (until they get tiny).\nabsorb: Bigger eats smaller: on contact the bigger ball swallows the smaller one. Last one wins.\nmerge: Two balls of the same level merge into a bigger one.\ninfection: One zombie, everyone else human: a zombie hit turns a human. Ends when everyone has turned.\nrps: Rock, paper, scissors: every hit converts the loser. Ends when one side owns the arena.\nblack-hole: A black hole in the middle pulls everything in and swallows what gets too close.\nstorm: The arena shrinks steadily (battle royale storm).\nadd-side: Every bounce adds a side to the polygon: triangle to circle.\ngap-jump: The exit jumps to a new random spot on every bounce.\nclone-trail: Every bounce leaves a frozen clone behind; the ring slowly jams up.\nbutterfly: Butterfly effect: ghost copies of each ball launched a millionth of a degree apart. They never touch, and slowly drift apart.\nstring-art: Every bounce draws a line to the last bounce point: string art.\nslowmo: Slow motion around the climax.\nmeow: Every bounce meows (in tune).\nrainbow: Colors drift through the rainbow, with rainbow trails.\nshake: Screen shake on breaks, escapes and knockouts.\nportals: A pair of linked portals inside the arena.\nclock: A countdown: beat it or \"Time’s up\". The final stretch turns red, ticks, and escalates (the exit widens, or balls speed up) so the climax tends to land just before zero.\ncountdown: A 3-2-1-GO intro with the run frozen."
         },
         "entities": {
           "type": "array",

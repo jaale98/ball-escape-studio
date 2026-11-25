@@ -424,6 +424,21 @@ export const SceneSchema = z
       })
       .strict()
       .default({}),
+    clock: z
+      .object({
+        seconds: z.number().min(3).max(300).describe('Countdown length. The run must reach its ending before zero, or it ends there with "Time’s up". Sets duration.max to seconds + tail.'),
+        final: z.number().min(0).max(30).default(5).describe('The final stretch (seconds before zero): the clock turns red, pulses and ticks, and rush actions fire.'),
+        rush: z
+          .array(ActionSchema)
+          .optional()
+          .describe('Actions fired every rushEvery seconds through the final stretch (e.g. shrinkGap with a negative amount widens the exit; speedUp for battles), so the climax tends to land right before zero.'),
+        rushEvery: z.number().positive().default(1).describe('Seconds between rush firings.'),
+        ticks: z.boolean().default(true).describe('A tick each second of the final stretch and a buzzer at zero.'),
+        timeUpText: z.string().default('TIME’S UP').describe('Banner when the clock hits zero first.'),
+      })
+      .strict()
+      .optional()
+      .describe('A countdown: urgency on screen, an escalating final stretch, and a hard stop at zero.'),
     world: z
       .object({
         gravity: z.union([z.number(), Vec]).default(900).describe('px/s². A number pulls down; [x, y] is a vector.'),
@@ -566,6 +581,12 @@ export function parseScene(input: unknown): Scene {
   }
   for (const [i, r] of result.data.rules.entries()) {
     if (!r.do && !r.script) throw new Error(`Invalid scene:\nrules.${i}: needs "do" or "script"`);
+  }
+  const { clock, duration } = result.data;
+  if (clock) {
+    if (clock.final > clock.seconds) throw new Error('Invalid scene:\nclock.final: must not be longer than clock.seconds');
+    // The clock is the run's length: zero is the hard stop, then the tail plays.
+    duration.max = clock.seconds + duration.tail;
   }
   return result.data;
 }

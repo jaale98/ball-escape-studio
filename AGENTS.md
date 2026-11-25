@@ -9,7 +9,7 @@ When the user describes a video idea:
 1. **Start from the closest preset** (see the README's preset table). Prefer `"extends": "<preset>"` plus `"modifiers"` over copying. Only write a scene from scratch when nothing is close.
 2. Write `scenes/<kebab-name>.json` with `"$schema": "../scene.schema.json"`. Field reference: `src/engine/scene.ts` (primitives), `src/engine/source.ts` (extends, prefabs), `src/engine/modifiers.ts` (modifiers and their options).
 3. Check it: `npm run sim -- <name>`. Parse errors list every bad field by path; unknown keys are errors. `npm run sim -- <name> --resolved` shows what the engine actually runs.
-4. Tune the seed with the Director: `npm run sim -- <name> --director <story> --target <seconds> [--vary 0.1]`, where story is slow-burn, last-second, chaos, comeback or music-sync. It prints the best seeds with their facts and a ready-to-paste `seed` (and `world.speedScale` / `spinScale` when `--vary` is on). For a plain timing search, `--seeds 1-300 --target <s>` also works. Aim for 20–45 s unless asked otherwise.
+4. Tune the seed with the Director: `npm run sim -- <name> --director <story> --target <seconds> [--vary 0.1]`, where story is slow-burn, last-second, beat-the-clock (scenes with a `clock`), chaos, comeback or music-sync. It prints the best seeds with their facts and a ready-to-paste `seed` (and `world.speedScale` / `spinScale` when `--vary` is on). For a plain timing search, `--seeds 1-300 --target <s>` also works. Aim for 20–45 s unless asked otherwise.
 5. To look at a frame, run in the browser page: `await studio.capture('name', 12.5)`. It saves the exact export frame at 12.5 s to `captures/name.png`; read the image to check it.
 6. Run `npm test` before finishing.
 

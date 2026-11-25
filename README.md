@@ -33,14 +33,14 @@ Every run is **deterministic**: the same scene and seed always produce exactly t
   - **Styles:** balls (glossy, 3D, glass, outline), rings (dashed, neon tube, rainbow, segments), trails (ribbon, comet, rainbow) and color modes (change per bounce, rainbow, heat).
   - **Decoration:** string art, backdrops (stars, grid, gradient, ripples) and post effects (bloom, vignette, grain, scanlines, color fringe, confetti).
   - **Camera:** follow, or zoom out ring by ring, plus screen shake.
-  - **Time:** slow motion at the climax and a 3-2-1 countdown. Preview, export and sound share one timing plan, so they stay in sync.
+  - **Time:** slow motion at the climax, a 3-2-1 countdown, and a `clock` to beat (red, ticking final stretch, "Time's up" at zero). Preview, export and sound share one timing plan, so they stay in sync.
 - **More sound:**
   - **Instruments:** seven new ones (glass, chip, piano, kalimba, pop, synth, and a synthesized, in-tune meow).
   - **Event sounds:** breaks, portals, swallows, merges, captures and conversions each have their own.
   - **Climax impact:** a bass drop, cymbal swell or gong.
   - **Pitch modes:** notes can follow ball size, height or speed instead of the melody.
 - **Make it weird.** One click stacks two or three surreal modifiers (black hole, portals, gap jumping, splitting, meowing, clones, storm…) onto any scene as an unsaved change.
-- **The Director.** Simulates hundreds of runs in a fraction of a second, scores each for the story you want (slow burn, last-second escape, chaos, comeback, in time with the song), and shows the best nine playing side by side. Use one, swipe through them, or export the best.
+- **The Director.** Simulates hundreds of runs in a fraction of a second, scores each for the story you want (slow burn, last-second escape, beat the clock, chaos, comeback, in time with the song), and shows the best nine playing side by side. Use one, swipe through them, or export the best.
 - **Swipe review and an export queue.** Keep (→) or discard (←) candidates one by one; kept videos render in the background and land in `exports/` with a caption, the exact scene, and a line in `exports/log.csv`.
 - **Batch production.** One click makes 4–12 remixes of a scene (new palette, instrument, melody and feel), each auto-directed. **Tournaments** turn any battle into a knockout bracket: every match becomes a scene with a close fight and a winner that advances.
 - **The Critic.** Plain-language notes on the current run ("the climax comes at 6s, early for a short", "a 5s stretch where nothing happens", "one ball leads the whole battle"), with a **Fix with Claude** button.
@@ -136,6 +136,7 @@ Most formats are a base scene plus a twist. For example, this variation adds mul
 | `butterfly` | Ghost copies a millionth of a degree apart (`copies`) |
 | `string-art` / `rainbow` / `meow` | Lines between bounces / rainbow colors and trails / every bounce meows |
 | `slowmo` / `shake` / `countdown` | Slow motion at the climax / screen shake / a 3-2-1 intro |
+| `clock` | A countdown to beat (`seconds`, `final`); the final stretch escalates (`rush`) so the climax tends to land just before zero |
 
 ### Building blocks
 
@@ -147,6 +148,7 @@ Most formats are a base scene plus a twist. For example, this variation adds mul
 | `timeline` | Do the same actions `at` a time or `every` N seconds (spawners, gravity flips…) |
 | `duration` | Length cap and what ends the run: `firstEscape`, `allEscaped`, `lastStanding`, `oneTeam`, `finish`, `cleared`, `mostTerritory`, `never`; `trimStart` for loops |
 | `camera` | `mode` (fixed, follow, zoomOut), zoom, circular `aperture`, `shake`, `slowmo` (+ factor, lead), `countdown` |
+| `clock` | A countdown: `seconds`, the red ticking `final` stretch, `rush` actions fired every `rushEvery` s through it, `ticks`, `timeUpText`. Ends the run at zero (`endReason: timeUp`) and sets `duration.max` |
 | `world` | Gravity (number or `[x, y]`), energy keeping, restitution, friction, ball cap |
 | `style` | Background color or picture, palette, ring color, `theme`, ball / ring / trail style, `colorMode`, string-art `lines`, `backdrop`, bloom, vignette, grain, scanlines, chromatic, confetti, trail length, glow, paint, hp rings, picture `reveal` |
 | `audio` | Melody (`pentatonic`, `ode-to-joy`, `fur-elise`, `midi:<file>`) or inline `notes`, chords, transpose, instrument (10), `pitchBy`, minimum audible `bounceSpacing` in seconds, `climax` sound, event sounds |
@@ -164,7 +166,7 @@ The [scene-by-scene review](docs/preset-review.md) covers all 50 presets, their 
 | --- | --- | --- |
 | [`ring-escape`](scenes/ring-escape.json) | Five rotating gates and one lime marble | `nested` + Habanera on kalimba |
 | [`grow-on-bounce`](scenes/grow-on-bounce.json) | Escape before the ball outgrows the gap | ring + `grow-on-bounce` + diameter counter |
-| [`shrinking-gap`](scenes/shrinking-gap.json) | The exit loses 1.5° on every hit | ring + `zero-g` + `shrinking-gap` |
+| [`shrinking-gap`](scenes/shrinking-gap.json) | The exit loses 1.5° on every hit, with 25 s on the clock | ring + `zero-g` + `shrinking-gap` + `clock` |
 | [`multiply`](scenes/multiply.json) | Every escape makes copies until 128 are live | ring + `multiply` + threshold rule |
 | [`gravity-flip`](scenes/gravity-flip.json) | Predict which way the next arc will bend | ring + `gravity-flip` + direction counter |
 | [`music-bounce`](scenes/music-bounce.json) | Name the tune before the answer appears | ring + `midi:minuet-in-g` + rhythm lock |
@@ -173,7 +175,7 @@ The [scene-by-scene review](docs/preset-review.md) covers all 50 presets, their 
 | [`nested-rings`](scenes/nested-rings.json) | Fourteen shells to slip through or break | `nested` + breakable segments |
 | [`battle-royale`](scenes/battle-royale.json) | Hit points, last ball standing | closed ring + `battle` |
 | [`country-battle`](scenes/country-battle.json) | Same battle with country names and colors | battle-royale + labels |
-| [`hexagon-escape`](scenes/hexagon-escape.json) | A spinning hexagon with a narrow exit | `polygon` |
+| [`hexagon-escape`](scenes/hexagon-escape.json) | A spinning hexagon with a narrow exit, 30 s to find it | `polygon` + `clock` |
 | [`plinko`](scenes/plinko.json) | Balls rain through pegs into counted bins | `pegboard` + `bins` + timeline spawner |
 | [`paint-the-ring`](scenes/paint-the-ring.json) | Three brushes compete for painted area over 24 seconds | `territory` paint layout + timed scoring |
 | [`weapon-battle`](scenes/weapon-battle.json) | Sword, dagger, spear and scythe duel | four ball `weapon` kinds |
@@ -187,9 +189,9 @@ The [scene-by-scene review](docs/preset-review.md) covers all 50 presets, their 
 | Scene | Format | Built from |
 | --- | --- | --- |
 | [`ring-breaker`](scenes/ring-breaker.json) | Smash through 12 layers of breakable segments | `nested` + `segments` |
-| [`hp-ring`](scenes/hp-ring.json) | 45 hits to break out | ring `hp` + `climax: gong` |
+| [`hp-ring`](scenes/hp-ring.json) | 45 hits to break out before the clock runs out | ring `hp` + `clock` + `climax: gong` |
 | [`crusher`](scenes/crusher.json) | A spinning paddle makes more balls until the ring bursts | `spinner` + script spawn + ring `hp` |
-| [`brick-breaker`](scenes/brick-breaker.json) | Clear the wall of numbered bricks | `brickwall` + `endOn: cleared` |
+| [`brick-breaker`](scenes/brick-breaker.json) | Clear the wall of numbered bricks in 40 s | `brickwall` + `endOn: cleared` + `clock` |
 | [`pong-wars`](scenes/pong-wars.json) | Day and Night trade territory for 24 seconds | split `territory` board + timed scoring |
 | [`color-war`](scenes/color-war.json) | Four colors have 28 seconds to take the board | quadrant `territory` board + timed scoring |
 | [`rock-paper-scissors`](scenes/rock-paper-scissors.json) | Who takes over? | `rps` |
@@ -199,9 +201,9 @@ The [scene-by-scene review](docs/preset-review.md) covers all 50 presets, their 
 | [`shrinking-arena`](scenes/shrinking-arena.json) | Battle royale with a storm | `battle` + `storm` |
 | [`survival`](scenes/survival.json) | Dodge the spinning blade | deadly `spinner` + `storm` |
 | [`black-hole`](scenes/black-hole.json) | Which of seven moons will survive? | `black-hole` + named contenders |
-| [`orbit-escape`](scenes/orbit-escape.json) | Slingshot out of a sun's pull | `force: attract` |
+| [`orbit-escape`](scenes/orbit-escape.json) | Slingshot out of a sun's pull before time runs out | `force: attract` + `clock` (the exit widens in the final stretch) |
 | [`vortex-drain`](scenes/vortex-drain.json) | Two opposite streams spiral into a single drain | `force: vortex` + two finite emitters + drain count |
-| [`portal-escape`](scenes/portal-escape.json) | The only way out is a portal | `portal` |
+| [`portal-escape`](scenes/portal-escape.json) | The only way out is a portal, with 30 s to find it | `portal` + `clock` |
 | [`meow-escape`](scenes/meow-escape.json) | The cat meows the song | `meow` + emoji |
 | [`gap-jumper`](scenes/gap-jumper.json) | The exit keeps moving | `gap-jump` |
 | [`every-bounce-a-side`](scenes/every-bounce-a-side.json) | Triangle to circle | `add-side` |

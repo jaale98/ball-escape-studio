@@ -8,10 +8,11 @@
  *   npm run sim -- ring-escape --events                 also print every bounce / escape / hit
  *   npm run sim -- ring-escape --resolved               print the scene after extends, modifiers, prefabs
  *   npm run sim -- ring-escape --director slow-burn --target 30 [--seeds 1-300] [--vary 0.1]
- *       the Director: score candidates for a story shape (slow-burn, last-second, chaos,
- *       comeback, music-sync) and print the best, with optional speed/spin variation
+ *       the Director: score candidates for a story shape (slow-burn, last-second, beat-the-clock,
+ *       chaos, comeback, music-sync…) and print the best, with optional speed/spin variation.
+ *       --target defaults to the scene's (with a clock: just before zero)
  */
-import { candidates, refinements, type RunScore, scoreRun, type Template, TEMPLATES } from '../src/director/score';
+import { candidates, defaultTarget, refinements, type RunScore, scoreRun, type Template, TEMPLATES } from '../src/director/score';
 import { World } from '../src/engine/world';
 import { loadSources, resolveWithSongs, sceneName } from './scenes';
 
@@ -46,7 +47,7 @@ if (director) {
     console.error(`Unknown template "${director}". Choose: ${Object.keys(TEMPLATES).join(', ')}`);
     process.exit(1);
   }
-  const target = Number(flag('target') ?? 30);
+  const target = Number(flag('target') ?? defaultTarget(base));
   const vary = Number(flag('vary') ?? 0);
   const [a, b] = (flag('seeds') ?? '1-300').split('-').map(Number);
   const t0 = performance.now();
@@ -105,6 +106,8 @@ if (seeds) {
   console.log(`seed         ${r.seed}`);
   console.log(`ended        ${r.end} at ${fmt(r.length)}`);
   console.log(`climax       ${fmt(r.climax)}`);
+  const left = r.world.clockLeft();
+  if (left !== null) console.log(`clock        ${r.end === 'timeUp' ? 'ran out' : `${left.toFixed(2)}s to spare of ${base.clock!.seconds}s`}`);
   if (r.winner) console.log(`winner       ${r.winner}`);
   console.log(`bounces      ${r.bounces}`);
   console.log(`escapes      ${r.escapes}`);

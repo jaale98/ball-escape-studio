@@ -273,7 +273,11 @@ export type SimEventType =
   | 'corner'
   | 'finish'
   | 'shoot'
-  | 'swing';
+  | 'swing'
+  /** Clock: a whole second of the final stretch passed (n = seconds left). */
+  | 'clock'
+  /** Clock: zero, before the run's ending happened. */
+  | 'timeUp';
 
 export interface SimEvent {
   step: number;
@@ -448,6 +452,19 @@ export class World {
       script: t.script ? compileScript(t.script, `timeline.${i}`) : undefined,
       where: `timeline.${i}`,
     }));
+    // The clock's rush: escalate through the final stretch so the climax tends to land just before zero.
+    const clock = scene.clock;
+    if (clock?.rush?.length && clock.final > 0) {
+      this.timeline.push({
+        atStep: undefined,
+        everySteps: Math.max(1, Math.round(clock.rushEvery * PHYSICS_HZ)),
+        startStep: Math.round((clock.seconds - clock.final) * PHYSICS_HZ),
+        untilStep: Math.round(clock.seconds * PHYSICS_HZ) - 1,
+        actions: clock.rush,
+        script: undefined,
+        where: 'clock.rush',
+      });
+    }
 
     for (const e of scene.entities) {
       if (e.type === 'ring') {
@@ -1756,6 +1773,28 @@ export class World {
 
   // ---- V2 mechanics ---------------------------------------------------------------
 
+  /** Seconds left on the clock at the climax (or now, before it); null without a clock. */
+  clockLeft(): number | null {
+    const clock = this.scene.clock;
+    if (!clock) return null;
+    const step = this.climaxStep >= 0 ? Math.min(this.stepCount, this.climaxStep) : this.stepCount;
+    return Math.max(0, clock.seconds - step / PHYSICS_HZ);
+  }
+
+  /** Ticks through the final stretch, and the hard stop at zero. */
+  private checkClock(clock: NonNullable<Scene['clock']>): void {
+    if (this.endStep !== Infinity) return;
+    const zero = Math.round(clock.seconds * PHYSICS_HZ);
+    const left = zero - this.stepCount;
+    if (left > 0 && left % PHYSICS_HZ === 0 && left / PHYSICS_HZ <= clock.final) {
+      this.events.push({ step: this.stepCount, type: 'clock', ball: -1, ring: -1, solid: -1, zone: -1, x: WIDTH / 2, y: 0, speed: 0, n: left / PHYSICS_HZ });
+    }
+    if (left <= 0) {
+      this.events.push({ step: this.stepCount, type: 'timeUp', ball: -1, ring: -1, solid: -1, zone: -1, x: WIDTH / 2, y: 0, speed: 0 });
+      this.endNow('timeUp');
+    }
+  }
+
   /** End the run now (rule action or script). */
   endNow(reason: string): void {
     if (this.endStep !== Infinity) return;
@@ -2400,6 +2439,7 @@ export class World {
         this.endStep = this.stepCount + Math.round(duration.tail * PHYSICS_HZ);
       }
     }
+    if (this.scene.clock) this.checkClock(this.scene.clock);
     if (this.stepCount >= this.endStep) this.done = true;
     if (this.time >= duration.max) {
       this.done = true;

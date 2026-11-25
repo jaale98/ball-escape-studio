@@ -2,14 +2,27 @@
   "$schema": "../scene.schema.json",
   "title": "Brick breaker",
   "category": "destruction",
-  "seed": 16,
+  "seed": 1,
   "duration": {
     "max": 60,
     "endOn": "cleared",
     "tail": 1.35
   },
+  "clock": {
+    "seconds": 40,
+    "final": 5,
+    "rush": [
+      {
+        "do": "speedUp",
+        "factor": 1.06,
+        "max": 3200
+      }
+    ]
+  },
   "world": {
-    "gravity": 0
+    "gravity": 0,
+    "speedScale": 1.053,
+    "spinScale": 1.076
   },
   "entities": [
     {
@@ -69,7 +82,7 @@
   "overlay": {
     "title": "Which brick falls last?",
     "counter": "bricks",
-    "timer": false,
+    "timer": true,
     "counterY": 1515
   }
 }

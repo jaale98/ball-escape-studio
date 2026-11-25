@@ -23,6 +23,7 @@ const TAGS: [RegExp | ((s: Scene) => boolean), string[]][] = [
   [(s) => s.entities.some((e) => e.type === 'zone' && e.finish), ['#marblerace']],
   [(s) => !!s.style.reveal, ['#waitforit', '#oddlysatisfying']],
   [(s) => s.audio.instrument === 'meow', ['#cat', '#meow']],
+  [(s) => !!s.clock, ['#beattheclock', '#clutch']],
   [(s) => s.entities.some((e) => e.type === 'ball' && e.copies > 1), ['#butterflyeffect', '#chaostheory']],
 ];
 
@@ -44,6 +45,7 @@ export function caption(scene: Scene, facts: string[] = [], winner = ''): Captio
   else if (scene.duration.endOn === 'cleared') lines.push('How long until it is all gone?');
   else if (scene.duration.trimStart > 0) lines.push('It loops forever. Try to find the cut.');
   else lines.push('Turn the sound on.');
+  if (scene.clock && scene.duration.endOn !== 'never' && scene.duration.endOn !== 'mostTerritory') lines.push(`${scene.clock.seconds} seconds on the clock.`);
   if (winner) lines.push(`(Spoiler for the comments: ${winner}.)`);
   const tags = new Set(['#satisfying', '#physics', '#simulation']);
   for (const [test, t] of TAGS) if (typeof test === 'function' && test(scene)) t.forEach((x) => tags.add(x));

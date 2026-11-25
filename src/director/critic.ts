@@ -4,7 +4,7 @@
  * studio offers to send its notes to Claude to fix.
  */
 import type { Scene } from '../engine/scene';
-import type { RunScore } from './score';
+import { racesClock, type RunScore } from './score';
 
 export interface Note {
   level: 'good' | 'warn';
@@ -19,6 +19,11 @@ export function critique(scene: Scene, r: RunScore): Note[] {
   const loopScene = scene.duration.trimStart > 0;
 
   if (s.scriptError) warn(`A rule script failed and was switched off: ${s.scriptError}`);
+  const clock = scene.clock;
+  if (clock && racesClock(scene)) {
+    if (r.endReason === 'timeUp') warn(`The clock ran out before the ending (${scene.duration.endOn}). That can work as a fail video, but a finish just before zero lands harder: try the Director’s “Beat the clock” story, or add a clock “rush”.`);
+    else if (r.climax >= 0 && clock.seconds - r.climax > Math.max(3, clock.final)) warn(`It finishes with ${(clock.seconds - r.climax).toFixed(1)}s still on the clock, so the countdown never gets tense. Shorten the clock or use the Director’s “Beat the clock” story.`);
+  }
   if (endsOnClimax && r.climax < 0) {
     warn(`The ending (${scene.duration.endOn}) never happens within ${scene.duration.max}s. Make it easier (a wider gap, a smaller ball, more damage) or allow more time.`);
   } else if (r.climax >= 0 && !loopScene) {

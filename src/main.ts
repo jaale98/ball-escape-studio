@@ -6,7 +6,7 @@ import { critique } from './director/critic';
 import { weirdModifiers } from './director/remix';
 import { revealColors } from './director/reveal';
 import { direct, landingSpots, scoreOne } from './director/pool';
-import { defaultTemplate, type RunScore } from './director/score';
+import { defaultTarget, defaultTemplate, type RunScore } from './director/score';
 import { PHYSICS_HZ, type Scene } from './engine/scene';
 import { rateAt, type Timing, timingFor } from './engine/timing';
 import { mergeSource, resolveScene } from './engine/source';
@@ -755,7 +755,7 @@ function scheduleCritic(): void {
     $('critic-list').innerHTML = '<li class="muted">Checking…</li>';
     try {
       const loop = s.duration.trimStart > 0;
-      const r = await scoreOne(s, loop ? { template: 'perfect-loop', target: s.duration.max - s.duration.trimStart } : { template: defaultTemplate(s), target: 30 });
+      const r = await scoreOne(s, loop ? { template: 'perfect-loop', target: s.duration.max - s.duration.trimStart } : { template: defaultTemplate(s), target: defaultTarget(s) });
       if (token !== criticToken) return;
       setRun(r.length, r.markers, r.climax);
       knownClimaxStep = r.climax >= 0 ? Math.round(r.climax * PHYSICS_HZ) : -1;
