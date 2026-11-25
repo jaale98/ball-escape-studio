@@ -1,26 +1,26 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Multiply on escape",
-  "seed": 5,
+  "seed": 56591,
   "duration": {
-    "max": 40,
+    "max": 49.8,
     "endOn": "firstEscape",
     "tail": 2.5
   },
   "world": {
     "gravity": 900,
-    "maxBalls": 160
+    "maxBalls": 1000
   },
   "entities": [
     {
       "type": "ring",
       "radius": 400,
       "thickness": 14,
-      "spin": 1.0,
+      "spin": 1,
       "gaps": [
         {
           "at": 0,
-          "width": 34
+          "width": 51.5
         }
       ]
     },
@@ -40,7 +40,9 @@
   },
   "overlay": {
     "title": "Every escape makes 2 more",
-    "counter": "bounces"
+    "counter": "bounces",
+    "titleY": 390,
+    "counterY": 1530
   },
   "modifiers": [
     "multiply"

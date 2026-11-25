@@ -1,43 +1,65 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Ring escape",
-  "seed": 25,
+  "seed": 33,
   "duration": {
     "max": 60,
-    "endOn": "firstEscape",
+    "endOn": "allEscaped",
     "tail": 2.5
   },
   "world": {
-    "gravity": 900
+    "gravity": 300
   },
   "entities": [
     {
-      "type": "ring",
-      "radius": 420,
-      "thickness": 14,
-      "spin": 0.9,
-      "gaps": [
-        {
-          "at": 0,
-          "width": 26
-        }
+      "type": "nested",
+      "count": 5,
+      "inner": 150,
+      "outer": 470,
+      "spin": 1.4,
+      "spinFalloff": 0.8,
+      "gapWidth": 46,
+      "gapShrink": 3,
+      "gapOffset": 130,
+      "colors": [
+        "#ff00e5",
+        "#9d4dff",
+        "#00f0ff",
+        "#39ff9a",
+        "#fff23f"
       ]
     },
     {
       "type": "ball",
-      "radius": 24,
-      "speed": 900
+      "radius": 16,
+      "speed": 800,
+      "color": "#ffffff"
     }
   ],
   "style": {
-    "trail": 0.85
+    "background": "#232323",
+    "trail": 0.95,
+    "glow": true,
+    "palette": [
+      "#ff00e5",
+      "#9d4dff",
+      "#00f0ff",
+      "#39ff9a",
+      "#fff23f"
+    ]
   },
   "audio": {
-    "melody": "pentatonic",
-    "instrument": "pluck"
+    "melody": "midi:habanera",
+    "instrument": "bell",
+    "parts": [
+      0
+    ]
   },
   "overlay": {
-    "title": "Can it escape?",
-    "counter": "bounces"
+    "title": "Escape the rings",
+    "counter": "bounces",
+    "titleY": 400,
+    "counterSize": 46,
+    "counterY": 1610
   }
 }

@@ -1,50 +1,55 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Nested rings",
-  "seed": 18,
+  "seed": 105,
   "duration": {
     "max": 60,
     "endOn": "allEscaped",
     "tail": 2.5
   },
   "world": {
-    "gravity": 700
+    "gravity": 0
   },
   "entities": [
     {
       "type": "nested",
-      "count": 5,
-      "inner": 150,
+      "count": 14,
+      "inner": 110,
       "outer": 470,
-      "spin": 1.6,
-      "spinFalloff": 0.8,
-      "gapWidth": 40,
-      "gapShrink": 4.5,
+      "thickness": 9,
+      "spin": 1.1,
+      "spinFalloff": 0.9,
+      "gapWidth": 34,
+      "gapShrink": 2.2,
+      "minGap": 6,
       "gapOffset": 120,
-      "colors": [
-        "#ff4d6d",
-        "#ff9f1c",
-        "#ffd23f",
-        "#7cff6b",
-        "#4dd4ff"
-      ]
+      "segments": 14,
+      "segmentHp": 2,
+      "segmentHpGrow": 0.4,
+      "rainbow": true
     },
     {
       "type": "ball",
-      "radius": 18,
-      "speed": 800,
+      "radius": 14,
+      "speed": 900,
       "color": "#ffffff"
     }
   ],
   "style": {
-    "trail": 0.8
+    "trail": 0.8,
+    "ringStyle": "segments"
+  },
+  "camera": {
+    "shake": 0.4,
+    "slowmo": 1.5
   },
   "audio": {
     "melody": "pentatonic",
-    "instrument": "bell"
+    "instrument": "bell",
+    "climax": "drop"
   },
   "overlay": {
-    "title": "5 rings. 1 ball.",
+    "title": "14 rings. 1 ball.",
     "counter": "escaped"
   }
 }

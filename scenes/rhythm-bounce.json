@@ -1,49 +1,54 @@
 {
   "$schema": "../scene.schema.json",
-  "extends": "music-bounce",
-  "title": "Rhythm bounce",
+  "title": "Psychedelic escape",
   "seed": 1,
   "modifiers": [
     "zero-g"
   ],
   "duration": {
-    "max": 40,
-    "endOn": "never"
+    "max": 60,
+    "endOn": "allEscaped",
+    "tail": 2.5
   },
   "entities": [
     {
-      "type": "ring",
-      "radius": 430,
-      "thickness": 12,
-      "spin": 0.5,
-      "gaps": []
+      "type": "nested",
+      "count": 6,
+      "inner": 120,
+      "outer": 480,
+      "spin": 1.1,
+      "spinFalloff": 0.6,
+      "gapWidth": 34,
+      "gapOffset": 60,
+      "colors": [
+        "#ff2bd6",
+        "#9bff00",
+        "#00e5ff",
+        "#7a2cff",
+        "#ffb000",
+        "#ff3b3b"
+      ]
     },
     {
       "type": "ball",
-      "radius": 28,
-      "speed": 900,
-      "color": "#7cff6b",
-      "x": 700,
-      "y": 960,
-      "direction": 75
+      "radius": 20,
+      "speed": 700,
+      "color": "#e6fff0"
     }
   ],
-  "audio": {
-    "melody": "midi:minuet-in-g",
-    "parts": [
-      0
-    ],
-    "chords": false,
-    "rhythmLock": true,
-    "instrument": "marimba"
-  },
   "style": {
-    "trail": 0.9,
-    "ringColor": "#c8ffd0"
+    "background": "#0b0014",
+    "trail": 0.93,
+    "ringColor": "#f0c8ff",
+    "glow": true
+  },
+  "audio": {
+    "melody": "pentatonic",
+    "instrument": "bell"
   },
   "overlay": {
-    "title": "Every bounce is in time",
-    "subtitle": "Minuet in G",
-    "counter": "bounces"
+    "title": "Don't look too long",
+    "subtitle": "Six rings. Wrong colors.",
+    "counter": "escaped"
   }
 }

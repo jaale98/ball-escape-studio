@@ -34,20 +34,30 @@
     {
       "type": "ball",
       "team": "Day",
+      "count": 3,
+      "spread": 120,
       "x": 320,
       "y": 900,
-      "radius": 20,
+      "radius": 16,
       "speed": 950,
       "color": "#114c5a"
     },
     {
       "type": "ball",
       "team": "Night",
+      "count": 3,
+      "spread": 120,
       "x": 760,
       "y": 1000,
-      "radius": 20,
+      "radius": 16,
       "speed": 950,
       "color": "#d9e8e3"
+    }
+  ],
+  "rules": [
+    {
+      "on": "capture",
+      "script": "const s = ctx.state; if (s.day === undefined) { s.day = 240; s.night = 240; } const mine = ctx.ball.team === 'Day' ? 'day' : 'night'; const other = mine === 'day' ? 'night' : 'day'; s[mine]++; s[other]--; const lead = s.day >= s.night ? 'Day' : 'Night'; if (Math.max(s.day, s.night) >= 466) { ctx.world.end(); } else if (ctx.ball.team === lead) { for (const b of ctx.world.balls()) { if (b.team === lead && Math.hypot(b.vx, b.vy) < 1600) { b.vx *= 1.02; b.vy *= 1.02; } } }"
     }
   ],
   "style": {
