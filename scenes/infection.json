@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "title": "Infection",
   "category": "teams",
-  "seed": 150,
+  "seed": 7,
   "modifiers": [
     {
       "use": "infection",

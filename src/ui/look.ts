@@ -160,23 +160,33 @@ function buildStyle(scene: Scene): void {
   if (focused && box.contains(focused) && (focused as HTMLInputElement).type === 'text') return; // don't steal a text box mid-typing
   box.replaceChildren();
   const resolved = scene as unknown as Raw;
+  let toggles: HTMLElement | null = null;
   for (const f of STYLE_FIELDS) {
     if ('group' in f) {
       const h = document.createElement('div');
       h.className = 'slider-group';
       h.textContent = f.group;
       box.append(h);
+      toggles = null;
       continue;
     }
     const value = getPath(resolved, f.path);
     const label = document.createElement('label');
-    label.className = f.kind === 'check' ? 'check' : f.kind === 'range' ? 'slider' : 'field';
+    label.className = f.kind === 'check' ? 'check' : f.kind === 'range' ? 'slider' : 'style-field';
     if (f.kind === 'check') {
       const input = document.createElement('input');
       input.type = 'checkbox';
       input.checked = !!value;
       input.addEventListener('change', () => hooks.set(f.path, input.checked, false));
       label.append(input, ` ${f.label}`);
+      // Checkboxes of a group share a compact two-column grid.
+      if (!toggles) {
+        toggles = document.createElement('div');
+        toggles.className = 'toggles';
+        box.append(toggles);
+      }
+      toggles.append(label);
+      continue;
     } else {
       const span = document.createElement('span');
       span.textContent = f.label;
@@ -200,9 +210,10 @@ function buildStyle(scene: Scene): void {
         input.step = String(f.step);
         input.value = String(value ?? f.min);
         const out = document.createElement('output');
-        out.textContent = input.value;
+        const show = () => (out.textContent = String(Math.round(Number(input.value) * 100) / 100));
+        show();
         input.addEventListener('input', () => {
-          out.textContent = input.value;
+          show();
           hooks.set(f.path, Number(input.value), false);
         });
         label.append(input, out);

@@ -1,7 +1,7 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Hexagon escape",
-  "seed": 272,
+  "seed": 197,
   "duration": {
     "max": 60,
     "endOn": "firstEscape",

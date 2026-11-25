@@ -9,7 +9,7 @@ When the user describes a video idea:
 1. **Start from the closest preset** (see the README's preset table). Prefer `"extends": "<preset>"` plus `"modifiers"` over copying. Only write a scene from scratch when nothing is close.
 2. Write `scenes/<kebab-name>.json` with `"$schema": "../scene.schema.json"`. Field reference: `src/engine/scene.ts` (primitives), `src/engine/source.ts` (extends, prefabs), `src/engine/modifiers.ts` (modifiers and their options).
 3. Check it: `npm run sim -- <name>`. Parse errors list every bad field by path; unknown keys are errors. `npm run sim -- <name> --resolved` shows what the engine actually runs.
-4. Tune the seed with the Director: `npm run sim -- <name> --director <story> --target <seconds> [--vary 0.1]`, where story is slow-burn, last-second, chaos, comeback or music-sync. It prints the best seeds with their facts and a ready-to-paste `seed` (and `world.speedScale` / `spinScale` when `--vary` is on). For a plain timing search, `--seeds 1-300 --target <s>` also works. Aim for 20–45 s unless asked otherwise.
+4. Tune the seed with the Director: `npm run sim -- <name> --director <story> --target <seconds> [--vary 0.1]`, where story is slow-burn, last-second, chaos, comeback, music-sync, underdog (teams), photo-finish (races) or destruction (breakables). It prints the best seeds with their facts and a ready-to-paste `seed` (and `world.speedScale` / `spinScale` when `--vary` is on). For a plain timing search, `--seeds 1-300 --target <s>` also works. Aim for 20–45 s unless asked otherwise.
 5. To look at a frame, run in the browser page: `await studio.capture('name', 12.5)`. It saves the exact export frame at 12.5 s to `captures/name.png`; read the image to check it.
 6. Run `npm test` before finishing.
 
@@ -54,6 +54,7 @@ Reaching for code is the last resort. If a format truly needs a new engine capab
 ## Engine rules (don't break these)
 
 - `src/engine/` must stay deterministic: no `Math.random`, `Date`, `performance.now`, or iteration over unordered collections in simulation code. Use `Rng` with a named stream.
+- Use `src/engine/dmath.ts` (`sin`, `cos`, `atan2`, `exp`, `log`, `pow`, `ipow`, `hypot`) instead of the `Math` versions in simulation code. Browsers and Node disagree on `Math.sin` & co. in the last bit, and a run amplifies that until the CLI Director and the studio play the same seed differently. `Math.sqrt`, `floor`, `abs`, `min`/`max` are exact everywhere. Scripts get the deterministic versions as `Math.*` automatically; avoid `**` with fractional exponents in scripts (use `Math.pow`).
 - After any engine change, run `npm test`. It resolves and replays every scene twice and compares state hashes. Hashes change when physics changes, which is expected; a FAIL is not. Re-tune affected preset seeds.
 - After changing a schema in `scene.ts`, `source.ts` or `modifiers.ts`, run `npm run schema`.
 - Visual effects in `src/render/` may only depend on the event log, the renderer's own `Rng`, and `dt`. The export re-renders from scratch and must match the preview.

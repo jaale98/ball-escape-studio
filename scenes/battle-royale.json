@@ -1,7 +1,7 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Battle royale",
-  "seed": 85,
+  "seed": 84,
   "modifiers": [
     {
       "use": "battle",

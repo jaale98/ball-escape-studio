@@ -1,7 +1,7 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Bouncing square",
-  "seed": 243,
+  "seed": 152,
   "duration": {
     "max": 60,
     "endOn": "firstEscape",

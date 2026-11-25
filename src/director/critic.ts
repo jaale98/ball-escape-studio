@@ -26,9 +26,14 @@ export function critique(scene: Scene, r: RunScore): Note[] {
     else if (r.climax > 50) warn(`The climax comes late (${r.climax.toFixed(1)}s); many viewers will have scrolled on. Make the ending easier or use the Director.`);
   }
   if (s.deadTime > 4 && !loopScene) warn(`There's a ${s.deadTime.toFixed(1)}s stretch where nothing hits anything.`);
-  if (s.bounceRate < 0.6 && !loopScene) warn(`It's quiet: ${s.bounceRate.toFixed(1)} bounces a second. More speed or a smaller container would add energy.`);
-  if (scene.duration.endOn === 'firstEscape' && r.climax > 0 && s.nearMisses === 0) warn('No near-misses before the escape, so there is little suspense. A narrower gap or a different seed builds tension.');
-  if (scene.duration.endOn === 'lastStanding' && s.leadChanges === 0) warn('One ball leads the whole battle. A different seed (Director: Comeback) makes it closer.');
+  // Pendulums and territory boards don't bounce off walls: no 'quiet' note for them.
+  const bounceless = scene.entities.some((e) => e.type === 'pendulum' || e.type === 'territory');
+  if (s.bounceRate < 0.6 && !loopScene && !bounceless) warn(`It's quiet: ${s.bounceRate.toFixed(1)} bounces a second. More speed or a smaller container would add energy.`);
+  // Near-misses are measured at ring gaps; polygons and gapless (breakable) rings don't have them.
+  const gapRings = scene.entities.some((e) => e.type === 'ring' && e.gaps.length > 0);
+  if (scene.duration.endOn === 'firstEscape' && gapRings && r.climax > 0 && s.nearMisses === 0) warn('No near-misses before the escape, so there is little suspense. A narrower gap or a different seed builds tension.');
+  const hpFight = scene.entities.some((e) => e.type === 'ball' && e.hp !== undefined);
+  if (scene.duration.endOn === 'lastStanding' && hpFight && s.leadChanges === 0) warn('One ball leads the whole battle. A different seed (Director: Comeback) makes it closer.');
   if (s.capped) warn(`The ball cap (${scene.world.maxBalls}) was reached, so spawning stopped.`);
   if (scene.audio.rhythmLock && r.signals.rhythm !== undefined && r.signals.rhythm < 0.9) {
     warn(`Rhythm lock keeps only ${Math.round(r.signals.rhythm * 100)}% of notes on time with this seed (some paths can't hit the beat). The Director's “In time with the song” story finds seeds that stay in time.`);

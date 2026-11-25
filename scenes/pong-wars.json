@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "title": "Pong wars",
   "category": "teams",
-  "seed": 7,
+  "seed": 1,
   "duration": {
     "max": 40,
     "endOn": "oneTeam",

@@ -1,7 +1,7 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Nested rings",
-  "seed": 1,
+  "seed": 18,
   "duration": {
     "max": 60,
     "endOn": "allEscaped",

@@ -826,6 +826,11 @@ export class Renderer {
       ctx.strokeStyle = g;
     }
     if (ringStyle === 'dashed') ctx.setLineDash([26, 18]);
+    else if (ringStyle === 'segments' && c.kind === 'ring' && !c.segments) {
+      // The look of a breakable ring on a plain one: 24 segments with small gaps.
+      const seg = (TAU * c.radius) / 24;
+      ctx.setLineDash([Math.max(4, seg - 10 - c.thickness), 10 + c.thickness]);
+    }
     if (c.kind === 'ring' && c.segments) {
       this.strokeSegments(c, color, alpha);
       ctx.setLineDash([]);

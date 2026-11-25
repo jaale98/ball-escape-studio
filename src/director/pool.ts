@@ -84,3 +84,19 @@ export function scoreOne(scene: Scene, opts: DirectorOptions): Promise<RunScore>
     w.postMessage({ id: 0, scene, jobs: [{ seed: scene.seed, speed: 1, spin: 1 }], opts });
   });
 }
+
+/** Picture reveal: where each ball ends up, computed off the main thread. */
+export function landingSpots(scene: Scene): Promise<{ id: number; x: number; y: number; r: number }[]> {
+  return new Promise((resolve, reject) => {
+    const w = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+    w.onmessage = (e: MessageEvent<{ spots: { id: number; x: number; y: number; r: number }[] }>) => {
+      w.terminate();
+      resolve(e.data.spots);
+    };
+    w.onerror = (e) => {
+      w.terminate();
+      reject(new Error(e.message));
+    };
+    w.postMessage({ id: 0, kind: 'landing', scene });
+  });
+}

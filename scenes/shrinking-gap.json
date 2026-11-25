@@ -1,7 +1,7 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Shrinking gap",
-  "seed": 260,
+  "seed": 59,
   "duration": {
     "max": 60,
     "endOn": "firstEscape",

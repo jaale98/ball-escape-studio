@@ -15,7 +15,8 @@
     "schema": "tsx scripts/schema.ts",
     "eval:ai": "tsx scripts/ai-eval.ts",
     "tournament": "tsx scripts/tournament.ts",
-    "songs": "tsx scripts/songbook.ts"
+    "songs": "tsx scripts/songbook.ts",
+    "fuzz": "tsx scripts/fuzz.ts"
   },
   "dependencies": {
     "mp4-muxer": "^5.2.2",

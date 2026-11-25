@@ -1,7 +1,7 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Grow on bounce",
-  "seed": 11,
+  "seed": 110,
   "duration": {
     "max": 60,
     "endOn": "firstEscape",

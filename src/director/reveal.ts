@@ -9,6 +9,13 @@ import { HEIGHT, PHYSICS_HZ, type Scene, WIDTH } from '../engine/scene';
 import { World } from '../engine/world';
 import { getImage } from '../images';
 
+export interface Spot {
+  id: number;
+  x: number;
+  y: number;
+  r: number;
+}
+
 /** A copy of the scene with style.revealColors filled in (or the scene itself if it has no reveal). */
 export function withReveal(scene: Scene, finished?: World): Scene {
   const reveal = scene.style.reveal;
@@ -21,8 +28,15 @@ export function withReveal(scene: Scene, finished?: World): Scene {
     const stop = at !== undefined ? Math.round(at * PHYSICS_HZ) : Infinity;
     while (!world.done && world.stepCount < stop) world.step();
   }
-  const balls = world.balls.filter((b) => b.alive && !b.projectile);
-  if (!balls.length) return scene;
+  const spots = world.balls.filter((b) => b.alive && !b.projectile).map((b) => ({ id: b.id, x: b.x, y: b.y, r: b.r }));
+  const colors = revealColors(scene, spots);
+  return colors ? { ...scene, style: { ...scene.style, revealColors: colors } } : scene;
+}
+
+/** Color per ball id: the word or picture sampled at each ball's landing spot. */
+export function revealColors(scene: Scene, balls: Spot[]): string[] | null {
+  const reveal = scene.style.reveal;
+  if (!reveal || (!reveal.text && !reveal.image) || !balls.length) return null;
   // The picture fills the box the balls settled into.
   // (2nd–98th percentile, so a few strays don't stretch it.)
   const xs = balls.map((b) => b.x).sort((a, b) => a - b);
@@ -71,5 +85,5 @@ export function withReveal(scene: Scene, finished?: World): Scene {
     colors[b.id] = `#${[data[i], data[i + 1], data[i + 2]].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
   }
   for (let i = 0; i < colors.length; i++) colors[i] ??= dark;
-  return { ...scene, style: { ...scene.style, revealColors: colors } };
+  return colors;
 }

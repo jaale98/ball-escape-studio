@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "title": "Weapon legends",
   "category": "battle",
-  "seed": 94,
+  "seed": 113,
   "duration": {
     "max": 60,
     "endOn": "lastStanding",

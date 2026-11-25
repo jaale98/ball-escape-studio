@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "title": "Rock paper scissors",
   "category": "teams",
-  "seed": 69,
+  "seed": 129,
   "modifiers": [
     "rps"
   ],

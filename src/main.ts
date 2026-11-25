@@ -4,8 +4,8 @@ import { caption, captionText } from './director/caption';
 import { hasScripts, preflight } from './director/check';
 import { critique } from './director/critic';
 import { weirdModifiers } from './director/remix';
-import { withReveal } from './director/reveal';
-import { direct, scoreOne } from './director/pool';
+import { revealColors } from './director/reveal';
+import { direct, landingSpots, scoreOne } from './director/pool';
 import { defaultTemplate, type RunScore } from './director/score';
 import { PHYSICS_HZ, type Scene } from './engine/scene';
 import { rateAt, type Timing, timingFor } from './engine/timing';
@@ -153,6 +153,8 @@ function updateDirty(): void {
   const labels = [...overrides.keys()].map((p) => (p === 'seed' ? 'seed' : p.split('.').slice(-1)[0]));
   $('dirty-text').textContent = n ? `${n} unsaved change${n === 1 ? '' : 's'}: ${[...new Set(labels)].slice(0, 4).join(', ')}${labels.length > 4 ? '…' : ''}` : '';
   $('dirty-text').title = [...overrides.keys()].join('\n');
+  // The "Make it weird" note only makes sense while its change is unsaved.
+  if (n === 0 && $('export-msg').textContent?.startsWith('Weird:')) $('export-msg').textContent = '';
 }
 
 /** Set (or with undefined, clear) a change from any panel, and re-run the preview. */
@@ -173,6 +175,13 @@ async function saveChanges(): Promise<boolean> {
   const skipped: string[] = [];
   for (const [path, v] of overrides) {
     const parts = path.split('.');
+    if (parts[0] === 'modifiers' && parts.length === 1) {
+      // The whole list (Make it weird): inherited modifiers come first; keep this file's share.
+      const list = Array.isArray(v) ? v.slice(inheritedMods) : [];
+      if (list.length) child.modifiers = list;
+      else delete child.modifiers;
+      continue;
+    }
     if (parts[0] === 'modifiers') {
       const i = Number(parts[1]) - inheritedMods;
       if (i < 0) {
@@ -276,7 +285,23 @@ async function loadScene(rebuild = true): Promise<void> {
       if (token !== loadToken) return;
       $('script-msg').textContent = scriptError ? `Script error: ${scriptError} (that script was switched off)` : '';
     } else $('script-msg').textContent = '';
-    scene = withReveal(resolved);
+    scene = resolved;
+    // Picture reveal: find where every ball lands in a worker, then color the balls (the run itself is unchanged).
+    const PREPARING = 'Preparing the picture reveal…';
+    if ($('export-msg').textContent === PREPARING) $('export-msg').textContent = '';
+    if (resolved.style.reveal && (resolved.style.reveal.text || resolved.style.reveal.image)) {
+      $('export-msg').textContent = PREPARING;
+      void landingSpots(resolved)
+        .then((spots) => {
+          if (scene !== resolved) return;
+          if ($('export-msg').textContent === PREPARING) $('export-msg').textContent = '';
+          const colors = revealColors(resolved, spots);
+          if (!colors) return;
+          resolved.style.revealColors = colors;
+          for (const b of world?.balls ?? []) if (colors[b.id]) b.color = colors[b.id];
+        })
+        .catch((err) => ($('export-msg').textContent = `Picture reveal failed: ${(err as Error).message}`));
+    }
     seedInput.value = String(scene.seed);
     $('resolved-json').textContent = JSON.stringify({ ...scene, audio: { ...scene.audio, notes: scene.audio.notes ? `(${scene.audio.notes.length} note groups)` : undefined, noteTimes: undefined } }, null, 2);
     refreshMusic(scene, Object.keys(songs), song, rhythmLockStatus(scene));
@@ -393,6 +418,8 @@ async function seek(t: number): Promise<void> {
     }
     r.render(w, 0);
     audioCursor = w.events.length; // don't replay the skipped sounds
+    if (t > 0) videoClock = timing.intro; // past the countdown
+    climaxPlayed = w.climaxStep >= 0;
     if (w.done) endedAt = performance.now();
     setTime(w.time);
   } finally {

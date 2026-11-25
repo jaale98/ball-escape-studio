@@ -22,6 +22,7 @@
  * files you trust. The studio runs every scripted scene headless in a Worker
  * first, so a script that loops forever is caught instead of freezing the page.
  */
+import * as D from './dmath';
 import type { Ball, Container } from './world';
 
 export interface ScriptWorld {
@@ -47,10 +48,25 @@ export interface ScriptContext {
 
 export type ScriptFn = (ctx: ScriptContext) => void;
 
-/** Math without Math.random. */
-const SAFE_MATH: Readonly<Record<string, unknown>> = Object.freeze(
-  Object.fromEntries(Object.getOwnPropertyNames(Math).filter((k) => k !== 'random').map((k) => [k, (Math as unknown as Record<string, unknown>)[k]])),
-);
+/**
+ * Math without Math.random, with the transcendental functions swapped for the
+ * engine's deterministic ones (dmath.ts), so scripts give the same results in
+ * every browser and in Node.
+ */
+const SAFE_MATH: Readonly<Record<string, unknown>> = Object.freeze({
+  ...Object.fromEntries(Object.getOwnPropertyNames(Math).filter((k) => k !== 'random').map((k) => [k, (Math as unknown as Record<string, unknown>)[k]])),
+  sin: D.sin,
+  cos: D.cos,
+  tan: D.tan,
+  atan: D.atan,
+  atan2: D.atan2,
+  asin: D.asin,
+  acos: D.acos,
+  exp: D.exp,
+  log: D.log,
+  pow: D.pow,
+  hypot: (...xs: number[]) => Math.sqrt(xs.reduce((a, x) => a + x * x, 0)),
+});
 
 /** Names shadowed (set to undefined) inside scripts. */
 const SHADOWED = ['Date', 'window', 'document', 'globalThis', 'self', 'fetch', 'XMLHttpRequest', 'WebSocket', 'setTimeout', 'setInterval', 'performance', 'crypto', 'process', 'require'];

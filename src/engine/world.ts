@@ -1,3 +1,4 @@
+import * as M from './dmath';
 import { Rng } from './rng';
 import { type Action, ActionSchema, type BallSpec, gravityVec, HEIGHT, PHYSICS_HZ, type Scene, songLoopLength, type TeamSpec, WIDTH } from './scene';
 import { compileScript, type ScriptContext, type ScriptFn } from './script';
@@ -316,6 +317,8 @@ const WEAPON_GROW: Record<Weapon['kind'], Weapon['grow']> = {
   unarmed: { damage: 0, spin: 1, length: 0, speed: 1.12, arrows: 0 },
 };
 const MAX_WEAPON_SPIN = 22;
+/** Top speed a knockback or arrow can give (px/s). */
+const MAX_HIT_SPEED = 2600;
 interface RuleEntry {
   actions: Action[];
   script?: ScriptFn;
@@ -338,10 +341,10 @@ function segmentDistance(ax: number, ay: number, bx: number, by: number, cx: num
   const d4 = cross(dx - cx, dy - cy, bx - cx, by - cy);
   if (d1 * d2 < 0 && d3 * d4 < 0) return 0;
   const pt = (px: number, py: number, x1: number, y1: number, x2: number, y2: number) => {
-    const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
+    const l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
     let t = l2 ? ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2 : 0;
     t = Math.max(0, Math.min(1, t));
-    return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+    return M.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
   };
   return Math.min(pt(ax, ay, cx, cy, dx, dy), pt(bx, by, cx, cy, dx, dy), pt(cx, cy, ax, ay, bx, by), pt(dx, dy, ax, ay, bx, by));
 }
@@ -506,8 +509,8 @@ export class World {
           x: e.x,
           y: e.y,
           strength: e.strength,
-          dx: Math.cos(e.direction * DEG),
-          dy: Math.sin(e.direction * DEG),
+          dx: M.cos(e.direction * DEG),
+          dy: M.sin(e.direction * DEG),
           radius: e.radius,
           swallow: e.swallow,
           inward: e.inward,
@@ -544,7 +547,7 @@ export class World {
           if (e.wave > 0) {
             // Pendulum k swings (waveBase + k) times per wave period: the pattern repeats every `wave` seconds.
             const swings = e.waveBase + (e.count - 1 - i);
-            l1 = e.gravity * (e.wave / (2 * Math.PI * swings)) ** 2;
+            l1 = e.gravity * M.ipow(e.wave / (2 * Math.PI * swings), 2);
             x = e.x + (i - (e.count - 1) / 2) * Math.min(64, 760 / Math.max(1, e.count));
           }
           const last = e.arms === 2 ? 1 : 0;
@@ -583,8 +586,8 @@ export class World {
           // Butterfly effect: identical copies, each launched a hair apart, that never touch each other.
           const first = this.spawnBall(spec, i, spec.x, spec.y, spec.spread ?? (spec.count > 1 ? 40 : 0));
           if (!first) continue;
-          const dir = Math.atan2(first.vy, first.vx);
-          const speed = Math.hypot(first.vx, first.vy) / this.scene.world.speedScale;
+          const dir = M.atan2(first.vy, first.vx);
+          const speed = M.hypot(first.vx, first.vy) / this.scene.world.speedScale;
           first.group = 0;
           for (let k = 1; k < spec.copies; k++) {
             const c = this.spawnBall(spec, i, first.x, first.y, 0, speed, dir / DEG + k * spec.jitter);
@@ -623,7 +626,7 @@ export class World {
         .sort((a, b) => a - b);
       const median = intervals[Math.floor(intervals.length / 2)];
       const b = this.balls[0];
-      const speed = Math.max(1, Math.hypot(b.vx, b.vy));
+      const speed = Math.max(1, M.hypot(b.vx, b.vy));
       // How long the ball naturally takes to reach the wall at its launch speed.
       const natural = this.ghostTime(b, this.containers[0], b.vx / speed, b.vy / speed, speed, 4);
       // Default tempo: the most common note length plays at about that pace,
@@ -728,7 +731,7 @@ export class World {
     const out: [number, number][] = [];
     for (let k = 0; k < c.sides; k++) {
       const a = c.angle + (k / c.sides) * TAU - Math.PI / 2;
-      out.push([c.x + c.radius * Math.cos(a), c.y + c.radius * Math.sin(a)]);
+      out.push([c.x + c.radius * M.cos(a), c.y + c.radius * M.sin(a)]);
     }
     return out;
   }
@@ -744,7 +747,7 @@ export class World {
         out.push([ax, ay, bx, by]);
         continue;
       }
-      const len = Math.hypot(bx - ax, by - ay);
+      const len = M.hypot(bx - ax, by - ay);
       if (c.gap === undefined || c.gap >= len) continue; // whole side open
       // Two stubs either side of a centered exit.
       const f = (len - c.gap) / 2 / len;
@@ -770,8 +773,8 @@ export class World {
       id,
       x: cx,
       y: cy,
-      vx: Math.cos(dir) * v,
-      vy: Math.sin(dir) * v,
+      vx: M.cos(dir) * v,
+      vy: M.sin(dir) * v,
       r: spec.radius,
       color: spec.colors?.[index % spec.colors.length] ?? spec.color ?? palette[id % palette.length],
       colorIndex: id % palette.length,
@@ -809,7 +812,7 @@ export class World {
             knockback: spec.weapon.knockback * (spec.weapon.kind === 'hammer' ? 1.9 : 1),
           }
         : undefined,
-      escaped: this.containers.map((c) => Math.hypot(cx - c.x, cy - c.y) >= this.innerRadius(c)),
+      escaped: this.containers.map((c) => c.broken || M.hypot(cx - c.x, cy - c.y) >= this.innerRadius(c)),
       everEscaped: [],
       inZone: this.zones.map(() => false),
       energy: 0,
@@ -836,7 +839,7 @@ export class World {
   }
 
   private innerRadius(c: Container): number {
-    const r = c.kind === 'ring' ? c.radius : c.radius * Math.cos(Math.PI / c.sides);
+    const r = c.kind === 'ring' ? c.radius : c.radius * M.cos(Math.PI / c.sides);
     return r - c.thickness / 2;
   }
 
@@ -848,7 +851,7 @@ export class World {
   private restoreEnergy(b: Ball): void {
     if (!this.scene.world.keepEnergy) return;
     const target2 = 2 * (b.energy + this.gx * b.x + this.gy * b.y);
-    const s = Math.hypot(b.vx, b.vy);
+    const s = M.hypot(b.vx, b.vy);
     if (target2 > 0 && s > 1e-6) {
       const k = Math.sqrt(target2) / s;
       b.vx *= k;
@@ -859,8 +862,8 @@ export class World {
   private integrate(b: Ball): void {
     // Substep so a ball never moves more than ~30% of its radius per substep:
     // thin walls can't be tunneled through.
-    const gmag = Math.hypot(this.gx, this.gy);
-    const travel = (Math.hypot(b.vx, b.vy) + gmag * DT) * DT;
+    const gmag = M.hypot(this.gx, this.gy);
+    const travel = (M.hypot(b.vx, b.vy) + gmag * DT) * DT;
     const n = Math.min(32, Math.max(1, Math.ceil(travel / (0.3 * b.r))));
     const h = DT / n;
     const e = this.scene.world.restitution;
@@ -869,7 +872,7 @@ export class World {
       b.vx += this.gx * h;
       b.vy += this.gy * h;
       if (this.damping > 0) {
-        const k = Math.exp(-this.damping * h);
+        const k = M.exp(-this.damping * h);
         b.vx *= k;
         b.vy *= k;
       }
@@ -904,6 +907,10 @@ export class World {
         b.alive = false;
         this.emit('exit', b);
       }
+    } else if (b.alive && (Math.abs(b.x - WIDTH / 2) > WIDTH * 4 || Math.abs(b.y - HEIGHT / 2) > HEIGHT * 4)) {
+      // Safety net: a ball this far off-screen has slipped out of everything; let it go.
+      b.alive = false;
+      this.emit('exit', b);
     }
   }
 
@@ -917,13 +924,13 @@ export class World {
   private collideRing(b: Ball, ring: RingContainer, idx: number): void {
     const dx = b.x - ring.x;
     const dy = b.y - ring.y;
-    const d = Math.hypot(dx, dy) || 1e-9;
+    const d = M.hypot(dx, dy) || 1e-9;
     const half = ring.thickness / 2;
     const inner = ring.radius - half;
     const outer = ring.radius + half;
     if (d + b.r < inner) return; // not touching the wall
 
-    const theta = Math.atan2(dy, dx) - ring.angle;
+    const theta = M.atan2(dy, dx) - ring.angle;
     const gap = this.gapAt(ring, theta);
     if (gap) {
       if (d - b.r > outer) {
@@ -971,11 +978,11 @@ export class World {
   private collideRingOutside(b: Ball, ring: RingContainer, idx: number): void {
     const dx = b.x - ring.x;
     const dy = b.y - ring.y;
-    const d = Math.hypot(dx, dy) || 1e-9;
+    const d = M.hypot(dx, dy) || 1e-9;
     const half = ring.thickness / 2;
     const outer = ring.radius + half;
     if (d - b.r > outer) return;
-    const theta = Math.atan2(dy, dx) - ring.angle;
+    const theta = M.atan2(dy, dx) - ring.angle;
     if (ring.segments && ring.segments[this.segmentAt(ring, theta)] <= 0) {
       if (d + b.r < ring.radius - half) b.escaped[idx] = false;
       return;
@@ -1007,8 +1014,8 @@ export class World {
 
   private collideCap(b: Ball, ring: RingContainer, edge: number, silent: boolean): void {
     const a = ring.angle + edge;
-    const px = ring.x + ring.radius * Math.cos(a);
-    const py = ring.y + ring.radius * Math.sin(a);
+    const px = ring.x + ring.radius * M.cos(a);
+    const py = ring.y + ring.radius * M.sin(a);
     const e = this.scene.world.restitution * (silent ? 0.6 : 1);
     const hit = this.collideCapsule(b, px, py, px, py, ring.thickness / 2, ring.x, ring.y, ring.spin, e);
     if (hit > 0 && !silent) this.onBounce(b, ring, -1, hit);
@@ -1016,7 +1023,7 @@ export class World {
 
   /** Polygon sides are two-sided capsules; escape = fully outside the corner circle. */
   private collidePoly(b: Ball, c: PolyContainer, idx: number): void {
-    const d = Math.hypot(b.x - c.x, b.y - c.y);
+    const d = M.hypot(b.x - c.x, b.y - c.y);
     const half = c.thickness / 2;
     if (d - b.r > c.radius + half) {
       if (!b.escaped[idx]) this.escape(b, c, idx);
@@ -1203,8 +1210,8 @@ export class World {
     for (const a of armed) a.weapon!.angle = wrap(a.weapon!.angle + a.weapon!.spin * DT);
     const blade = (a: Ball): [number, number, number, number] => {
       const w = a.weapon!;
-      const ca = Math.cos(w.angle);
-      const sa = Math.sin(w.angle);
+      const ca = M.cos(w.angle);
+      const sa = M.sin(w.angle);
       return [a.x + ca * a.r, a.y + sa * a.r, a.x + ca * (a.r + w.length), a.y + sa * (a.r + w.length)];
     };
     // Clashes.
@@ -1265,13 +1272,17 @@ export class World {
         }
         // The blade point moves with the ball and its rotation.
         const arm = a.r + t * w.length;
-        const pvx = a.vx - w.spin * arm * Math.sin(w.angle);
-        const pvy = a.vy + w.spin * arm * Math.cos(w.angle);
+        const pvx = a.vx - w.spin * arm * M.sin(w.angle);
+        const pvy = a.vy + w.spin * arm * M.cos(w.angle);
         const vn = (b.vx - pvx) * nx + (b.vy - pvy) * ny;
         if (vn < 0) {
           b.vx -= (1 + e) * vn * nx * w.knockback;
           b.vy -= (1 + e) * vn * ny * w.knockback;
-          if (b.energy === 0 || w.knockback !== 1) b.energy = this.energyOf(b);
+          if (w.knockback !== 1) {
+            // A heavy hit sets a new pace, but never beyond a sane top speed.
+            this.capSpeed(b, MAX_HIT_SPEED);
+            b.energy = this.energyOf(b);
+          } else if (b.energy === 0) b.energy = this.energyOf(b);
           else this.restoreEnergy(b);
         }
         if (this.stepCount - b.lastDamageStep >= DAMAGE_COOLDOWN) {
@@ -1325,7 +1336,7 @@ export class World {
     this.restoreEnergy(b);
     if (s && s.boost !== 1) {
       // Bumper: a harder kick out (energy re-based so it sticks).
-      const sp = Math.hypot(b.vx, b.vy);
+      const sp = M.hypot(b.vx, b.vy);
       const k = Math.min(3500, sp * s.boost) / Math.max(1e-6, sp);
       b.vx *= k;
       b.vy *= k;
@@ -1360,7 +1371,7 @@ export class World {
       const z = nt[(j + 1) % nt.length] + Math.floor((j + 1) / nt.length) * songLength;
       dt = z - a;
     }
-    const s0 = Math.hypot(b.vx, b.vy);
+    const s0 = M.hypot(b.vx, b.vy);
     if (s0 < 1e-6 || dt < 1e-6) return;
     const ux = b.vx / s0;
     const uy = b.vy / s0;
@@ -1385,7 +1396,7 @@ export class World {
       const speeds: number[] = [];
       const err: number[] = [];
       for (let k = 0; k < N; k++) {
-        const s = RHYTHM_MIN_SPEED * (RHYTHM_MAX_SPEED / RHYTHM_MIN_SPEED) ** (k / (N - 1));
+        const s = RHYTHM_MIN_SPEED * M.pow(RHYTHM_MAX_SPEED / RHYTHM_MIN_SPEED, k / (N - 1));
         speeds.push(s);
         err.push(this.ghostTime(b, c, ux, uy, s, limit) - want);
       }
@@ -1403,7 +1414,7 @@ export class World {
           else hi = mid;
         }
         const root = Math.sqrt(lo * hi);
-        const cost = Math.abs(Math.log(root / s0));
+        const cost = Math.abs(M.log(root / s0));
         if (cost < bestCost) {
           bestCost = cost;
           best = root;
@@ -1444,22 +1455,22 @@ export class World {
       x += vx * h;
       y += vy * h;
       let touching: boolean;
-      if (c.kind === 'ring') touching = Math.hypot(x - c.x, y - c.y) + b.r >= inner;
+      if (c.kind === 'ring') touching = M.hypot(x - c.x, y - c.y) + b.r >= inner;
       else {
         const ang = c.angle + c.spin * t;
         touching = false;
         for (let k = 0; k < c.sides && !touching; k++) {
           const a1 = ang + (k / c.sides) * TAU - Math.PI / 2;
           const a2 = ang + ((k + 1) / c.sides) * TAU - Math.PI / 2;
-          const ax = c.x + c.radius * Math.cos(a1);
-          const ay = c.y + c.radius * Math.sin(a1);
-          const bx = c.x + c.radius * Math.cos(a2);
-          const by = c.y + c.radius * Math.sin(a2);
+          const ax = c.x + c.radius * M.cos(a1);
+          const ay = c.y + c.radius * M.sin(a1);
+          const bx = c.x + c.radius * M.cos(a2);
+          const by = c.y + c.radius * M.sin(a2);
           const abx = bx - ax;
           const aby = by - ay;
           let u = ((x - ax) * abx + (y - ay) * aby) / (abx * abx + aby * aby);
           u = u < 0 ? 0 : u > 1 ? 1 : u;
-          touching = Math.hypot(x - (ax + u * abx), y - (ay + u * aby)) <= b.r + half;
+          touching = M.hypot(x - (ax + u * abx), y - (ay + u * aby)) <= b.r + half;
         }
       }
       if (!touching) left = true;
@@ -1481,7 +1492,7 @@ export class World {
       // Only a race (several balls at the start) has a winner worth announcing.
       if (this.scene.duration.endOn === 'firstEscape' && this.startingBalls > 1) this.winner = b.id;
     }
-    this.emit('escape', b, idx, -1, -1, Math.hypot(b.vx, b.vy));
+    this.emit('escape', b, idx, -1, -1, M.hypot(b.vx, b.vy));
     this.runRules('escape', b, c, 0, null);
   }
 
@@ -1613,7 +1624,7 @@ export class World {
           break;
         case 'speedUp': {
           if (!b || !b.alive) break;
-          const s = Math.hypot(b.vx, b.vy);
+          const s = M.hypot(b.vx, b.vy);
           if (s > 1e-6) {
             const k = Math.min(act.max, s * act.factor) / s;
             b.vx *= k;
@@ -1644,8 +1655,8 @@ export class World {
           break;
         case 'rotateGravity': {
           const a = act.degrees * DEG;
-          const ca = Math.cos(a);
-          const sa = Math.sin(a);
+          const ca = M.cos(a);
+          const sa = M.sin(a);
           [this.gx, this.gy] = [this.gx * ca - this.gy * sa, this.gx * sa + this.gy * ca];
           this.gravityChanged();
           break;
@@ -1763,8 +1774,8 @@ export class World {
   }
 
   private placeSpinner(s: Solid): void {
-    const ca = Math.cos(s.angle);
-    const sa = Math.sin(s.angle);
+    const ca = M.cos(s.angle);
+    const sa = M.sin(s.angle);
     if (s.pivotEnd) {
       s.x1 = s.cx;
       s.y1 = s.cy;
@@ -1780,8 +1791,8 @@ export class World {
 
   /** Ball vs. a (possibly rotated) rectangle. Returns the impact speed, or 0. */
   private collideBox(b: Ball, s: Solid, e: number): number {
-    const ca = Math.cos(s.angle);
-    const sa = Math.sin(s.angle);
+    const ca = M.cos(s.angle);
+    const sa = M.sin(s.angle);
     const dx = b.x - s.cx;
     const dy = b.y - s.cy;
     const lx = dx * ca + dy * sa;
@@ -1833,7 +1844,7 @@ export class World {
       }
       const dx = f.x - b.x;
       const dy = f.y - b.y;
-      const d = Math.hypot(dx, dy) || 1e-9;
+      const d = M.hypot(dx, dy) || 1e-9;
       if (f.radius > 0 && d > f.radius) continue;
       if (f.kind === 'attract' && f.swallow > 0 && d < f.swallow + b.r * 0.5 && !b.projectile) {
         if (!(this.scene.duration.endOn === 'lastStanding' && this.aliveCount <= 1)) {
@@ -1845,7 +1856,7 @@ export class World {
       const uy = dy / d;
       const dd = Math.max(d, 30);
       if (f.kind === 'attract' || f.kind === 'repel') {
-        const a = f.strength * (100 / dd) ** 2 * (f.kind === 'repel' ? -1 : 1);
+        const a = f.strength * M.ipow(100 / dd, 2) * (f.kind === 'repel' ? -1 : 1);
         b.vx += ux * a * h;
         b.vy += uy * a * h;
       } else {
@@ -1859,13 +1870,20 @@ export class World {
     }
   }
 
+  private capSpeed(b: Ball, max: number): void {
+    const sp = M.hypot(b.vx, b.vy);
+    if (sp <= max) return;
+    b.vx *= max / sp;
+    b.vy *= max / sp;
+  }
+
   /** A ball eaten by a black hole, drain or bigger ball. */
   private swallowBall(b: Ball, f: Force | null): void {
     if (!b.alive) return;
     b.alive = false;
     this.swallowed++;
     if (f) f.eaten++;
-    this.emit('swallow', b, -1, -1, -1, Math.hypot(b.vx, b.vy), f ? f.x : b.x, f ? f.y : b.y);
+    this.emit('swallow', b, -1, -1, -1, M.hypot(b.vx, b.vy), f ? f.x : b.x, f ? f.y : b.y);
     this.runRules('swallow', b, null, 0, null);
   }
 
@@ -1874,18 +1892,18 @@ export class World {
       // Must leave the mouth it came out of before it can enter again.
       const p = this.portals[b.portal >> 1];
       const [mx, my] = b.portal & 1 ? [p.bx, p.by] : [p.ax, p.ay];
-      if (Math.hypot(b.x - mx, b.y - my) > p.r + b.r) b.portal = -1;
+      if (M.hypot(b.x - mx, b.y - my) > p.r + b.r) b.portal = -1;
       return;
     }
     for (const p of this.portals) {
       let from: [number, number] | null = null;
       let to: [number, number] = [0, 0];
       let end = 0;
-      if (Math.hypot(b.x - p.ax, b.y - p.ay) < p.r * 0.7) {
+      if (M.hypot(b.x - p.ax, b.y - p.ay) < p.r * 0.7) {
         from = [p.ax, p.ay];
         to = [p.bx, p.by];
         end = 1;
-      } else if (Math.hypot(b.x - p.bx, b.y - p.by) < p.r * 0.7) {
+      } else if (M.hypot(b.x - p.bx, b.y - p.by) < p.r * 0.7) {
         from = [p.bx, p.by];
         to = [p.ax, p.ay];
         end = 0;
@@ -1897,11 +1915,11 @@ export class World {
       b.y = to[1] + (b.y - from[1]);
       b.portal = p.id * 2 + end;
       b.energy = this.energyOf(b);
-      this.emit('teleport', b, -1, -1, -1, Math.hypot(b.vx, b.vy), ox, oy);
+      this.emit('teleport', b, -1, -1, -1, M.hypot(b.vx, b.vy), ox, oy);
       // Coming out on the other side of a wall counts as an escape (or a recapture).
       this.containers.forEach((c, i) => {
         if (c.broken) return;
-        const inside = Math.hypot(b.x - c.x, b.y - c.y) < this.innerRadius(c);
+        const inside = M.hypot(b.x - c.x, b.y - c.y) < this.innerRadius(c);
         if (!inside && !b.escaped[i]) this.escape(b, c, i);
         else if (inside && b.escaped[i]) b.escaped[i] = false;
       });
@@ -1941,11 +1959,11 @@ export class World {
       else b.vy = -b.vy;
       // A hair of randomness keeps the paths from settling into a loop.
       const tw = this.rngAct.range(-0.03, 0.03);
-      const c = Math.cos(tw);
-      const sn = Math.sin(tw);
+      const c = M.cos(tw);
+      const sn = M.sin(tw);
       [b.vx, b.vy] = [b.vx * c - b.vy * sn, b.vx * sn + b.vy * c];
       this.captures++;
-      this.emit('capture', b, -1, -1, -1, Math.hypot(b.vx, b.vy), px, py);
+      this.emit('capture', b, -1, -1, -1, M.hypot(b.vx, b.vy), px, py);
       this.events[this.events.length - 1].n = team;
       this.runRules('capture', b, null, 0, null);
     }
@@ -1966,7 +1984,7 @@ export class World {
           if (mine >= sp.count) break;
         }
         const level = sp.level === undefined ? undefined : sp.levels ? this.rngAct.int(sp.level + 1) : sp.level;
-        const r = Math.max(2, (sp.radius + (sp.radiusJitter ? this.rngAct.range(-sp.radiusJitter, sp.radiusJitter) : 0)) * 1.25 ** (level ?? 0));
+        const r = Math.max(2, (sp.radius + (sp.radiusJitter ? this.rngAct.range(-sp.radiusJitter, sp.radiusJitter) : 0)) * M.ipow(1.25, level ?? 0));
         const pal = this.scene.style.palette;
         const color = sp.rainbow
           ? `hsl(${Math.round((em.made * (sp.loop ? 9 : 360 / Math.max(12, sp.count))) % 360)}, 92%, 60%)`
@@ -1993,7 +2011,7 @@ export class World {
       const before = p.t1;
       if (p.arms === 1) {
         // Simple pendulum, RK4.
-        const f = (t: number) => (-p.g / p.l1) * Math.sin(t);
+        const f = (t: number) => (-p.g / p.l1) * M.sin(t);
         const k1t = p.w1;
         const k1w = f(p.t1);
         const k2t = p.w1 + (h / 2) * k1w;
@@ -2011,9 +2029,9 @@ export class World {
         const l2 = p.l2;
         const acc = (t1: number, t2: number, w1: number, w2: number): [number, number] => {
           const d = t1 - t2;
-          const den = 3 - Math.cos(2 * d);
-          const a1 = (-3 * g * Math.sin(t1) - g * Math.sin(t1 - 2 * t2) - 2 * Math.sin(d) * (w2 * w2 * l2 + w1 * w1 * l1 * Math.cos(d))) / (l1 * den);
-          const a2 = (2 * Math.sin(d) * (2 * w1 * w1 * l1 + 2 * g * Math.cos(t1) + w2 * w2 * l2 * Math.cos(d))) / (l2 * den);
+          const den = 3 - M.cos(2 * d);
+          const a1 = (-3 * g * M.sin(t1) - g * M.sin(t1 - 2 * t2) - 2 * M.sin(d) * (w2 * w2 * l2 + w1 * w1 * l1 * M.cos(d))) / (l1 * den);
+          const a2 = (2 * M.sin(d) * (2 * w1 * w1 * l1 + 2 * g * M.cos(t1) + w2 * w2 * l2 * M.cos(d))) / (l2 * den);
           return [a1, a2];
         };
         const s0 = [p.t1, p.t2, p.w1, p.w2];
@@ -2030,7 +2048,7 @@ export class World {
         [p.t1, p.t2, p.w1, p.w2] = next;
       }
       // A chime when the (upper) arm swings through the bottom.
-      if (p.chime && Math.sin(before) * Math.sin(p.t1) < 0 && Math.cos(p.t1) > 0) {
+      if (p.chime && M.sin(before) * M.sin(p.t1) < 0 && M.cos(p.t1) > 0) {
         const [x, y] = this.pendulumBob(p);
         this.events.push({ step: this.stepCount, type: 'swing', ball: -1, ring: -1, solid: -1, zone: -1, x, y, speed: Math.abs(p.w1) * p.l1, n: p.id });
       }
@@ -2039,16 +2057,16 @@ export class World {
 
   /** Where a pendulum's last bob is. */
   pendulumBob(p: Pendulum): [number, number] {
-    const x1 = p.x + p.l1 * Math.sin(p.t1);
-    const y1 = p.y + p.l1 * Math.cos(p.t1);
+    const x1 = p.x + p.l1 * M.sin(p.t1);
+    const y1 = p.y + p.l1 * M.cos(p.t1);
     if (p.arms === 1) return [x1, y1];
-    return [x1 + p.l2 * Math.sin(p.t2), y1 + p.l2 * Math.cos(p.t2)];
+    return [x1 + p.l2 * M.sin(p.t2), y1 + p.l2 * M.cos(p.t2)];
   }
 
   /** A polygon bounce right next to a vertex. */
   private checkCorner(b: Ball, c: PolyContainer): void {
     let best = Infinity;
-    for (const [vx, vy] of this.polyVertices(c)) best = Math.min(best, Math.hypot(b.x - vx, b.y - vy));
+    for (const [vx, vy] of this.polyVertices(c)) best = Math.min(best, M.hypot(b.x - vx, b.y - vy));
     if (best > b.r * 1.45 + c.thickness / 2) return;
     this.corners++;
     this.emit('corner', b, c.id);
@@ -2065,12 +2083,12 @@ export class World {
   private hitContainer(b: Ball, c: Container): void {
     if (c.broken) return;
     if (c.kind === 'ring' && c.segments) {
-      const i = this.segmentAt(c, Math.atan2(b.y - c.y, b.x - c.x) - c.angle);
+      const i = this.segmentAt(c, M.atan2(b.y - c.y, b.x - c.x) - c.angle);
       if (c.segments[i] <= 0) return;
       c.segments[i]--;
       if (c.segments[i] <= 0) {
         this.breaks++;
-        this.emit('break', b, c.id, -1, -1, Math.hypot(b.vx, b.vy));
+        this.emit('break', b, c.id, -1, -1, M.hypot(b.vx, b.vy));
         this.events[this.events.length - 1].n = i;
         this.runRules('break', b, c, 0, null);
       }
@@ -2081,7 +2099,7 @@ export class World {
     if (c.hp > 0) return;
     c.broken = true;
     this.breaks++;
-    this.emit('break', b, c.id, -1, -1, Math.hypot(b.vx, b.vy), c.x, c.y);
+    this.emit('break', b, c.id, -1, -1, M.hypot(b.vx, b.vy), c.x, c.y);
     this.events[this.events.length - 1].n = -1;
     this.runRules('break', b, c, 0, null);
     // Everything inside is free.
@@ -2094,7 +2112,7 @@ export class World {
     if (s.hp! > 0) return;
     s.alive = false;
     this.breaks++;
-    this.emit('break', b, -1, s.id, -1, Math.hypot(b.vx, b.vy), s.kind === 'brick' ? s.cx : b.x, s.kind === 'brick' ? s.cy : b.y);
+    this.emit('break', b, -1, s.id, -1, M.hypot(b.vx, b.vy), s.kind === 'brick' ? s.cx : b.x, s.kind === 'brick' ? s.cy : b.y);
     this.runRules('break', b, null, 0, null);
   }
 
@@ -2102,7 +2120,7 @@ export class World {
   private collideAnchored(rock: Ball, b: Ball): void {
     const dx = b.x - rock.x;
     const dy = b.y - rock.y;
-    const d = Math.hypot(dx, dy) || 1e-9;
+    const d = M.hypot(dx, dy) || 1e-9;
     const nx = dx / d;
     const ny = dy / d;
     if (b.frozen) return;
@@ -2125,6 +2143,7 @@ export class World {
     target.vx += arrow.vx * 0.12;
     target.vy += arrow.vy * 0.12;
     if (target.frozen) target.frozen = false;
+    this.capSpeed(target, MAX_HIT_SPEED);
     target.energy = this.energyOf(target);
     this.emit('strike', owner ?? arrow, -1, -1, -1, 600, arrow.x, arrow.y);
     this.damage(target, arrow.projectile!.damage, true);
@@ -2135,7 +2154,7 @@ export class World {
   private punch(a: Ball, b: Ball): void {
     const w = a.weapon!;
     if (this.stepCount - b.lastDamageStep < DAMAGE_COOLDOWN) return;
-    this.emit('strike', a, -1, -1, -1, Math.hypot(a.vx, a.vy), (a.x + b.x) / 2, (a.y + b.y) / 2);
+    this.emit('strike', a, -1, -1, -1, M.hypot(a.vx, a.vy), (a.x + b.x) / 2, (a.y + b.y) / 2);
     this.damage(b, w.damage, true);
     this.runRules('strike', a, null, 0, b);
     this.powerUp(a);
@@ -2152,7 +2171,7 @@ export class World {
     if (g.length) w.length = Math.min(420, w.length + g.length);
     if (g.arrows) w.arrows = Math.min(12, w.arrows + g.arrows);
     if (g.speed !== 1) {
-      const sp = Math.hypot(a.vx, a.vy);
+      const sp = M.hypot(a.vx, a.vy);
       const k = Math.min(2600, sp * g.speed) / Math.max(1e-6, sp);
       a.vx *= k;
       a.vy *= k;
@@ -2169,18 +2188,18 @@ export class World {
     for (const b of this.balls) {
       if (b === a || !b.alive || b.projectile || b.group !== a.group) continue;
       if (a.team !== undefined && a.team === b.team) continue;
-      const d = Math.hypot(b.x - a.x, b.y - a.y);
+      const d = M.hypot(b.x - a.x, b.y - a.y);
       if (d < best) {
         best = d;
         target = b;
       }
     }
     if (!target) return;
-    const base = Math.atan2(target.y - a.y, target.x - a.x);
+    const base = M.atan2(target.y - a.y, target.x - a.x);
     w.angle = base;
     for (let k = 0; k < w.arrows; k++) {
       const ang = base + (k - (w.arrows - 1) / 2) * 0.14;
-      const arrow = this.spawnLike(a, a.x + Math.cos(ang) * (a.r + 10), a.y + Math.sin(ang) * (a.r + 10), Math.cos(ang) * 1500, Math.sin(ang) * 1500, 6);
+      const arrow = this.spawnLike(a, a.x + M.cos(ang) * (a.r + 10), a.y + M.sin(ang) * (a.r + 10), M.cos(ang) * 1500, M.sin(ang) * 1500, 6);
       if (!arrow) return;
       arrow.projectile = { owner: a.id, damage: Math.max(1, w.damage) };
       arrow.color = w.color ?? '#fff3b0';
@@ -2229,17 +2248,17 @@ export class World {
   private splitBall(b: Ball, min: number, spread: number, recolor: boolean): void {
     const r = b.r / Math.SQRT2;
     if (r < min) return;
-    const sp = Math.hypot(b.vx, b.vy);
-    const dir = Math.atan2(b.vy, b.vx);
-    const px = -Math.sin(dir) * r * 0.6;
-    const py = Math.cos(dir) * r * 0.6;
-    const twin = this.spawnLike(b, b.x + px, b.y + py, Math.cos(dir + spread / 2) * sp, Math.sin(dir + spread / 2) * sp, r);
+    const sp = M.hypot(b.vx, b.vy);
+    const dir = M.atan2(b.vy, b.vx);
+    const px = -M.sin(dir) * r * 0.6;
+    const py = M.cos(dir) * r * 0.6;
+    const twin = this.spawnLike(b, b.x + px, b.y + py, M.cos(dir + spread / 2) * sp, M.sin(dir + spread / 2) * sp, r);
     if (!twin) return;
     b.r = r;
     b.x -= px;
     b.y -= py;
-    b.vx = Math.cos(dir - spread / 2) * sp;
-    b.vy = Math.sin(dir - spread / 2) * sp;
+    b.vx = M.cos(dir - spread / 2) * sp;
+    b.vy = M.sin(dir - spread / 2) * sp;
     b.energy = this.energyOf(b);
     if (recolor) {
       const pal = this.scene.style.palette;
@@ -2258,7 +2277,7 @@ export class World {
     this.maxR = Math.max(this.maxR, big.r);
     small.alive = false;
     this.swallowed++;
-    this.emit('swallow', small, -1, -1, -1, Math.hypot(small.vx, small.vy), big.x, big.y);
+    this.emit('swallow', small, -1, -1, -1, M.hypot(small.vx, small.vy), big.x, big.y);
     this.runRules('swallow', small, null, 0, big);
   }
 
@@ -2306,7 +2325,7 @@ export class World {
     c.weapon = undefined;
     c.energy = 0;
     // The original steps off its clone so they don't start overlapped.
-    const sp = Math.hypot(b.vx, b.vy) || 1;
+    const sp = M.hypot(b.vx, b.vy) || 1;
     b.x += (b.vx / sp) * 0.5;
     b.y += (b.vy / sp) * 0.5;
   }
@@ -2327,6 +2346,12 @@ export class World {
         if (team) {
           reason = 'oneTeam';
           this.winnerTeam = team;
+        } else if (this.territory && this.time >= duration.max - duration.tail) {
+          // Territory battles rarely end in a full takeover: when time runs out, the biggest share wins
+          // (decided early enough for the winner banner to show during the tail).
+          const c = this.territory.counts;
+          reason = 'oneTeam';
+          this.winnerTeam = this.teams[c.indexOf(Math.max(...c))]?.name ?? '';
         }
       } else if (duration.endOn === 'finish' && this.finishWinner >= 0) {
         reason = 'finish';

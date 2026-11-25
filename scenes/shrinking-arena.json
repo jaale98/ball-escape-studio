@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "title": "Shrinking arena",
   "category": "battle",
-  "seed": 84,
+  "seed": 85,
   "modifiers": [
     {
       "use": "battle",

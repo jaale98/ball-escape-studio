@@ -1,5 +1,5 @@
 import { FPS, type Scene } from '../engine/scene';
-import { framePlan, hasTiming, timingFor } from '../engine/timing';
+import { framePlan, timingFor } from '../engine/timing';
 import { World } from '../engine/world';
 import { withReveal } from '../director/reveal';
 import { ensureImages } from '../images';
@@ -14,13 +14,17 @@ import { tick } from './mp4';
  */
 export async function renderStill(scene: Scene, seconds: number, scale = 1): Promise<HTMLCanvasElement> {
   await ensureImages(scene);
-  scene = withReveal(scene);
+  // Thumbnails (small scale) skip the costly full pre-runs: the picture reveal and the slow-motion
+  // timing only matter late in a run, and a thumbnail shows its first seconds. Full-size stills
+  // (captures) are exact export frames.
+  const exact = scale >= 0.5;
+  if (exact) scene = withReveal(scene);
   const canvas = document.createElement('canvas');
   const world = new World(scene);
   const renderer = new Renderer(canvas, scene, { scale, glow: scale >= 0.5 });
   const target = Math.max(0, Math.round(seconds * FPS));
   // The same frame plan as the export (slow motion and countdown included).
-  const pre = hasTiming(scene) ? new World(scene).runToEnd() : null;
+  const pre = exact && scene.camera.slowmo > 0 ? new World(scene).runToEnd() : null;
   const timing = timingFor(scene, pre?.climaxStep ?? -1);
   const plan = framePlan(timing, pre?.stepCount ?? Math.ceil(scene.duration.max * 240) + 4);
   renderer.render(world, 0);

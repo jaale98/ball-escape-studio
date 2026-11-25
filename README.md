@@ -47,7 +47,7 @@ Every run is **deterministic**: the same scene and seed always produce exactly t
 - **Custom rule scripts.** When built-in actions aren't enough, a rule can run a few lines of JavaScript, deterministic and checked in a Worker before it runs.
 - **Crowds.** Thousands of balls with WebGL rendering and spatial-hash collisions.
 - **A small scene language.** Scenes can `extend` other scenes, stack named `modifiers` (`"multiply"`, `"battle"`, `"gravity-flip"`…), and use prefabs (`nested` rings, a `pegboard`, `bins`). Most new formats need no code at all.
-- **Deterministic physics.** Fixed 240 Hz timestep, seeded randomness, no wall-clock time. A state hash proves two runs are identical.
+- **Deterministic physics, everywhere.** Fixed 240 Hz timestep, seeded randomness, no wall-clock time, and the engine's own trigonometry (browsers and Node disagree on `Math.sin` in the last bit), so a seed tuned in the terminal plays exactly the same in the studio, in any browser. A state hash proves two runs are identical. `npm run fuzz` stress-tests every scene, seed and modifier combination.
 - **Built for the genre.** Spinning rings and polygons with exits, walls, pegs, counting zones, hit points, winners, timed events, and bounces that never lose energy.
 - **Live sliders.** Every number in a scene becomes a slider. Changes preview instantly, and **Save to file** writes them back to the JSON.
 - **Music from bounces.** Every bounce plays the next note of a song. The built-in **songbook** has 27 public-domain pieces (Bach, Beethoven, Mozart, Grieg, Joplin, folk songs and nursery tunes, as simple melody-and-bass arrangements), plus an improvised pentatonic mode; drag any `.mid` onto the studio to add your own.
@@ -316,6 +316,7 @@ npm run sim -- ring-escape --events     # every bounce, escape and hit, timestam
 npm run sim -- ring-escape --resolved   # the scene after extends, modifiers and prefabs
 npm run sim -- ring-escape --director slow-burn --target 30 --vary 0.1   # the Director, headless
 npm test                                # every scene resolves and replays identically
+npm run fuzz                            # stress test: every scene × seeds, every modifier, random combos
 npm run schema                          # regenerate scene.schema.json
 ```
 

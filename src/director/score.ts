@@ -120,6 +120,9 @@ function snapDistance(a: number[], b: number[]): number {
   return d;
 }
 
+/** Events that count as something happening (for lulls). */
+const ACTIVITY = new Set(['bounce', 'hit', 'escape', 'eliminate', 'capture', 'swing', 'break', 'merge', 'swallow', 'convert', 'teleport', 'finish']);
+
 const gauss = (x: number, sigma: number) => Math.exp(-0.5 * (x / sigma) ** 2);
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -179,7 +182,7 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
     }
     for (; cursor < w.events.length; cursor++) {
       const e = w.events[cursor];
-      if (e.type === 'bounce' || e.type === 'hit' || e.type === 'escape' || e.type === 'eliminate') {
+      if (ACTIVITY.has(e.type)) {
         const et = e.step / PHYSICS_HZ;
         deadTime = Math.max(deadTime, et - lastActivity);
         lastActivity = et;

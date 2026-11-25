@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "title": "Brick breaker",
   "category": "destruction",
-  "seed": 19,
+  "seed": 16,
   "duration": {
     "max": 60,
     "endOn": "cleared",

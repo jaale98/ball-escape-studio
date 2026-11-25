@@ -1,7 +1,7 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Gravity flip",
-  "seed": 101,
+  "seed": 17,
   "duration": {
     "max": 60,
     "endOn": "firstEscape",

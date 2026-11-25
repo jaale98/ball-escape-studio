@@ -1,7 +1,7 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Weapon battle",
-  "seed": 62,
+  "seed": 16,
   "duration": {
     "max": 75,
     "endOn": "lastStanding",

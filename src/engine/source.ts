@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ipow } from './dmath';
 import { applyModifiers, MODIFIERS } from './modifiers';
 import { EntitySchema, HEIGHT, parseScene, type Scene, SceneSchema, WIDTH } from './scene';
 
@@ -148,7 +149,7 @@ function expandPrefab(raw: unknown, path: string): Raw[] {
         y: p.y,
         radius: p.spacing !== undefined ? p.inner + i * p.spacing : p.inner + (p.outer - p.inner) * t,
         thickness: p.thickness,
-        spin: p.spin * p.spinFalloff ** i * (p.alternate && i % 2 ? -1 : 1),
+        spin: p.spin * ipow(p.spinFalloff, i) * (p.alternate && i % 2 ? -1 : 1),
         gaps: Array.from({ length: p.gapCount }, (_, k) => ({ at: ((i * p.gapOffset) % 360) + (k * 360) / p.gapCount, width: Math.max(p.minGap, p.gapWidth - i * p.gapShrink) })),
         ...(color ? { color } : {}),
         ...(p.segments ? { segments: p.segments, segmentHp: Math.round((p.segmentHp ?? 1) + i * p.segmentHpGrow) } : {}),

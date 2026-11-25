@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "title": "Hundred rings",
   "category": "escape",
-  "seed": 14,
+  "seed": 32,
   "duration": {
     "max": 150,
     "endOn": "allEscaped",

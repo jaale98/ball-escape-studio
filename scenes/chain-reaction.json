@@ -1,7 +1,7 @@
 {
   "$schema": "../scene.schema.json",
   "title": "Chain reaction",
-  "seed": 1,
+  "seed": 39,
   "duration": {
     "max": 60,
     "endOn": "never",
