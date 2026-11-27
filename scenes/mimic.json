@@ -1,0 +1,94 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Mimic",
+  "category": "battle",
+  "seed": 392,
+  "duration": {
+    "endOn": "lastStanding",
+    "tail": 2.5
+  },
+  "clock": {
+    "seconds": 30,
+    "final": 5,
+    "rush": [
+      {
+        "do": "speedUp",
+        "factor": 1.04,
+        "max": 2200
+      }
+    ]
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 470,
+      "thickness": 12,
+      "spin": 0,
+      "gaps": []
+    },
+    {
+      "type": "stalker",
+      "mode": "chase",
+      "x": 640,
+      "y": 1060,
+      "emoji": "🙂",
+      "radius": 34,
+      "speed": 55,
+      "accel": 7,
+      "maxSpeed": 520,
+      "start": 2.5,
+      "eyes": "#ff1f3d"
+    },
+    {
+      "type": "ball",
+      "count": 7,
+      "radius": 34,
+      "speed": 520,
+      "spread": 300,
+      "arrange": "grid",
+      "emoji": "🙂"
+    }
+  ],
+  "camera": {
+    "shake": 0.8
+  },
+  "style": {
+    "background": "#fdf3e7",
+    "ringColor": "#e8b4c8",
+    "trail": 0,
+    "glow": false,
+    "palette": [
+      "#ffd6e0",
+      "#ffefb5",
+      "#c9f2e3",
+      "#d6e4ff",
+      "#f1d6ff"
+    ],
+    "subliminal": [
+      "it’s not one of them",
+      "smile"
+    ]
+  },
+  "audio": {
+    "instrument": "bell",
+    "transpose": 12,
+    "melody": "midi:twinkle-twinkle",
+    "volume": 0.6,
+    "bounceSpacing": 0.1,
+    "reverb": 0.55,
+    "hitSound": false
+  },
+  "overlay": {
+    "title": "One of them isn't a ball.",
+    "titleSize": 64,
+    "font": "rounded",
+    "textColor": "#5b3a4a",
+    "counter": "balls",
+    "counterSize": 50,
+    "winner": false,
+    "endCard": "it’s still smiling."
+  }
+}

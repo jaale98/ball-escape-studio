@@ -1,0 +1,86 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Last light",
+  "category": "surreal",
+  "seed": 26,
+  "duration": {
+    "endOn": "allEscaped",
+    "tail": 2.5
+  },
+  "clock": {
+    "seconds": 30,
+    "final": 6,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
+  "world": {
+    "gravity": 350
+  },
+  "entities": [
+    {
+      "type": "nested",
+      "count": 8,
+      "inner": 110,
+      "outer": 480,
+      "spin": 1.3,
+      "spinFalloff": 0.82,
+      "gapWidth": 44,
+      "gapShrink": 2.5,
+      "gapOffset": 100,
+      "colors": [
+        "#ffe8b0",
+        "#f7d48a",
+        "#eebd66",
+        "#e3a347",
+        "#d58a33",
+        "#c27026",
+        "#a8571e",
+        "#8a4318"
+      ]
+    },
+    {
+      "type": "ball",
+      "radius": 13,
+      "speed": 780,
+      "color": "#fff6dc"
+    }
+  ],
+  "camera": {
+    "shake": 0.6
+  },
+  "style": {
+    "background": "#0a0705",
+    "ringColor": "#ffe8b0",
+    "trail": 0.75,
+    "trailStyle": "comet",
+    "glow": true,
+    "darkness": 0.985,
+    "light": 340,
+    "lightEnd": 34,
+    "grain": true,
+    "vignette": true
+  },
+  "audio": {
+    "melody": "midi:moonlight-sonata",
+    "instrument": "piano",
+    "volume": 0.6,
+    "bounceSpacing": 0.1,
+    "escapeStyle": "musicbox",
+    "drone": "shepard",
+    "droneVolume": 0.45,
+    "reverb": 0.6
+  },
+  "overlay": {
+    "title": "The light is dying.",
+    "titleSize": 68,
+    "font": "serif",
+    "counter": "ringsLeft",
+    "counterSize": 50,
+    "reveal": "get out before it goes dark",
+    "endCard": "it went dark anyway."
+  }
+}

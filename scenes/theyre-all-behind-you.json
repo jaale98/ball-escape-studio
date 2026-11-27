@@ -1,0 +1,106 @@
+{
+  "$schema": "../scene.schema.json",
+  "extends": "the-descent",
+  "title": "They're all behind you",
+  "category": "surreal",
+  "seed": 78,
+  "clock": {
+    "seconds": 40,
+    "final": 6
+  },
+  "entities": [
+    {
+      "type": "strata",
+      "count": 1200,
+      "inner": 150,
+      "spacing": 21,
+      "thickness": 3,
+      "gapArc": 70,
+      "gapEvery": 180,
+      "layerMin": 18,
+      "layerMax": 260,
+      "layerCurve": 1.25,
+      "drift": 5,
+      "speed": 220,
+      "seed": 11,
+      "fall": 4000,
+      "fallDrag": 1.0,
+      "colors": [
+        "#e6dcf2",
+        "#a99bc0",
+        "#7d6f96",
+        "#c4b6d8"
+      ],
+      "fadeTo": "#140d1f"
+    },
+    {
+      "type": "force",
+      "kind": "radial",
+      "strength": 4000,
+      "visible": false
+    },
+    {
+      "type": "ball",
+      "radius": 6,
+      "speed": 520,
+      "color": "#ffffff"
+    },
+    {
+      "type": "stalker",
+      "mode": "shadow",
+      "count": 5,
+      "delay": 1.0,
+      "catchUp": 0.008,
+      "minDelay": 0.42,
+      "start": 1.0,
+      "radius": 9,
+      "eyes": "#ff3d6e"
+    }
+  ],
+  "camera": {
+    "mode": "chase",
+    "orient": "up",
+    "zoom": 2.7,
+    "shake": 1.4,
+    "unease": 0.3
+  },
+  "style": {
+    "background": "#07050b",
+    "ringColor": "#e6dcf2",
+    "trail": 0.5,
+    "trailStyle": "ribbon",
+    "grain": true,
+    "vignette": true,
+    "chromatic": true,
+    "glitch": true,
+    "darkness": 0.85,
+    "light": 150,
+    "subliminal": [
+      "count them",
+      "five",
+      "six"
+    ]
+  },
+  "audio": {
+    "instrument": "glass",
+    "volume": 0.6,
+    "bounceSpacing": 0.09,
+    "escapeStyle": "reverse",
+    "burst": "choir",
+    "burstAt": 6,
+    "drone": "heartbeat",
+    "droneVolume": 0.8,
+    "reverb": 0.5,
+    "transpose": -6
+  },
+  "overlay": {
+    "title": "They're all behind you.",
+    "titleSize": 64,
+    "counter": "ringsLeft",
+    "counterSize": 64,
+    "streak": true,
+    "vhs": false,
+    "font": "mono",
+    "endCard": "don’t turn around."
+  }
+}

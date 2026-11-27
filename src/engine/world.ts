@@ -1,4 +1,5 @@
 import * as M from './dmath';
+import { isDark } from './flicker';
 import { Rng } from './rng';
 import { type Action, ActionSchema, type BallSpec, gravityVec, HEIGHT, PHYSICS_HZ, type Scene, songLoopLength, type TeamSpec, WIDTH } from './scene';
 import { compileScript, type ScriptContext, type ScriptFn } from './script';
@@ -275,6 +276,8 @@ export interface Stalker {
   /** shadow: the ball whose path it retraces (-1 = none). */
   target: number;
   deadly: boolean;
+  /** chase: only moves while the lights are out. */
+  blink: boolean;
   /** Showing yet (a shadow appears at its start time). */
   visible: boolean;
   /** Where it is looking (its target), for the eyes. */
@@ -522,6 +525,8 @@ export class World {
       });
     }
 
+    /** Each stalker's place on its circle (added once the center is known). */
+    const stalkerOffsets: [number, number][] = [];
     for (const e of scene.entities) {
       if (e.type === 'ring') {
         this.containers.push({
@@ -617,6 +622,10 @@ export class World {
         for (const t of owner) if (t >= 0) counts[t]++;
         this.territory = { x: e.x, y: e.y, cols: e.cols, rows: e.rows, cell: e.cell, owner, counts, paint: e.layout === 'paint' };
       } else if (e.type === 'stalker') {
+        for (let k = 0; k < e.count; k++) {
+        // A ring of them (chase), or a line of shadows each `delay` further back.
+        const a = (k / e.count) * 2 * Math.PI - Math.PI / 2;
+        const ring = e.mode === 'chase' && e.count > 1 && e.circle > 0;
         this.stalkers.push({
           id: this.stalkers.length,
           mode: e.mode,
@@ -626,12 +635,13 @@ export class World {
           speed: e.speed,
           accel: e.accel,
           maxSpeed: e.maxSpeed,
-          startStep: Math.round(e.start * PHYSICS_HZ),
-          delay: e.delay,
+          startStep: Math.round((e.mode === 'shadow' ? e.start + k * e.delay : e.start) * PHYSICS_HZ),
+          delay: e.mode === 'shadow' ? e.delay * (k + 1) : e.delay,
           catchUp: e.catchUp,
-          minDelay: Math.min(e.minDelay, e.delay),
+          minDelay: e.mode === 'shadow' ? Math.min(e.minDelay * (k + 1), e.delay * (k + 1)) : Math.min(e.minDelay, e.delay),
           target: e.target,
           deadly: e.deadly,
+          blink: e.blink,
           visible: e.mode === 'chase',
           lookX: 0,
           lookY: 0,
@@ -644,6 +654,8 @@ export class World {
           homeY: 0,
           goneUntil: -1,
         });
+        stalkerOffsets.push(ring ? [e.circle * M.cos(a), e.circle * M.sin(a)] : [0, 0]);
+        }
       } else if (e.type === 'pendulum') {
         const rainbow = (i: number) => `hsl(${Math.round((i / Math.max(1, e.count)) * 300)}, 95%, 62%)`;
         for (let i = 0; i < e.count; i++) {
@@ -715,6 +727,8 @@ export class World {
     for (const s of this.stalkers) {
       if (Number.isNaN(s.x)) s.x = this.containers[0]?.x ?? WIDTH / 2;
       if (Number.isNaN(s.y)) s.y = this.containers[0]?.y ?? HEIGHT / 2;
+      s.x += stalkerOffsets[s.id][0];
+      s.y += stalkerOffsets[s.id][1];
       if (s.mode === 'shadow') {
         // target is an index into the starting balls; from here on it's that ball's id.
         const b = this.balls[s.target];
@@ -957,9 +971,10 @@ export class World {
         }
         if (!prey) continue;
         s.speed = Math.min(s.maxSpeed, s.speed + s.accel * DT);
-        const move = s.speed * DT;
-        if (best <= move) [s.x, s.y] = [prey.x, prey.y];
-        else {
+        // A blink stalker holds perfectly still while the lights are on.
+        const move = s.blink && !isDark(this.stepCount) ? 0 : s.speed * DT;
+        if (move > 0 && best <= move) [s.x, s.y] = [prey.x, prey.y];
+        else if (move > 0) {
           s.x += ((prey.x - s.x) / best) * move;
           s.y += ((prey.y - s.y) / best) * move;
         }
@@ -974,6 +989,8 @@ export class World {
         [s.x, s.y] = [path.x[k], path.y[k]];
         [s.lookX, s.lookY] = [b.x, b.y];
       }
+      // Once the run has ended (the winner is decided), it stops catching: the tail is the aftermath.
+      if (this.endStep !== Infinity) continue;
       for (const b of this.balls) {
         if (!b.alive || b.projectile || this.safe(b)) continue;
         const d = M.hypot(b.x - s.x, b.y - s.y);

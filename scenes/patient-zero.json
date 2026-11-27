@@ -1,0 +1,133 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Patient zero",
+  "category": "teams",
+  "seed": 47,
+  "modifiers": [
+    {
+      "use": "infection",
+      "chance": 0.25
+    }
+  ],
+  "teams": [
+    {
+      "name": "infected",
+      "color": "#7dff5a",
+      "emoji": "🧟",
+      "beats": [
+        "human"
+      ]
+    },
+    {
+      "name": "human",
+      "color": "#ffd9a8",
+      "emoji": "😨",
+      "beats": []
+    }
+  ],
+  "duration": {
+    "tail": 2.5
+  },
+  "clock": {
+    "seconds": 35,
+    "final": 6,
+    "rush": [
+      {
+        "do": "speedUp",
+        "factor": 1.05,
+        "max": 2600
+      }
+    ]
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 470,
+      "thickness": 12,
+      "spin": 0,
+      "gaps": []
+    },
+    {
+      "type": "ball",
+      "count": 28,
+      "radius": 22,
+      "speed": 330,
+      "spread": 330,
+      "teams": [
+        "infected",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human",
+        "human"
+      ],
+      "color": "#1a1a1a"
+    }
+  ],
+  "camera": {
+    "shake": 0.6,
+    "unease": 0.25
+  },
+  "style": {
+    "background": "#080b07",
+    "ringColor": "#cfd8c4",
+    "trail": 0.2,
+    "glow": false,
+    "darkness": 0.94,
+    "light": 62,
+    "flicker": true,
+    "grain": true,
+    "vignette": true,
+    "chromatic": true,
+    "glitch": true,
+    "subliminal": [
+      "don’t touch them",
+      "it’s spreading",
+      "you’re next"
+    ]
+  },
+  "audio": {
+    "instrument": "glass",
+    "transpose": -10,
+    "volume": 0.55,
+    "hitSound": false,
+    "drone": "hum",
+    "droneVolume": 0.5,
+    "reverb": 0.4,
+    "climax": "gong"
+  },
+  "overlay": {
+    "title": "It only takes one.",
+    "titleSize": 68,
+    "font": "mono",
+    "counter": "teams",
+    "timer": false,
+    "winner": true,
+    "resultPosition": "title"
+  }
+}

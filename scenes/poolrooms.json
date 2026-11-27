@@ -1,0 +1,83 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Poolrooms",
+  "category": "surreal",
+  "seed": 116,
+  "duration": {
+    "endOn": "firstEscape",
+    "tail": 2.5
+  },
+  "clock": {
+    "seconds": 25,
+    "final": 5,
+    "rush": [
+      {
+        "do": "speedUp",
+        "factor": 1.05,
+        "max": 2600
+      }
+    ]
+  },
+  "world": {
+    "gravity": 500
+  },
+  "entities": [
+    {
+      "type": "polygon",
+      "sides": 6,
+      "radius": 400,
+      "thickness": 18,
+      "spin": 0.35,
+      "open": [
+        0
+      ],
+      "gap": 85,
+      "color": "#2a7f8f"
+    },
+    {
+      "type": "ball",
+      "radius": 24,
+      "speed": 820,
+      "color": "#ffffff"
+    }
+  ],
+  "camera": {
+    "unease": 0.65
+  },
+  "style": {
+    "background": "#bfe9ef",
+    "backdrop": "grid",
+    "ringColor": "#2a7f8f",
+    "palette": [
+      "#ffffff",
+      "#e8fbff",
+      "#9fe3ee"
+    ],
+    "trail": 0.85,
+    "trailStyle": "ribbon",
+    "glow": false,
+    "ballStyle": "glossy",
+    "droste": 3,
+    "vignette": true,
+    "grain": true
+  },
+  "audio": {
+    "instrument": "bell",
+    "transpose": 12,
+    "volume": 0.55,
+    "escapeStyle": "musicbox",
+    "reverb": 0.92,
+    "drone": "choir",
+    "droneVolume": 0.3
+  },
+  "overlay": {
+    "title": "You’ve been swimming for hours.",
+    "titleSize": 60,
+    "font": "rounded",
+    "textColor": "#1d5b66",
+    "counter": "bounces",
+    "counterSize": 46,
+    "reveal": "nobody is here",
+    "clockLies": true
+  }
+}

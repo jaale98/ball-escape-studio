@@ -1,0 +1,100 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Level 0",
+  "category": "surreal",
+  "seed": 587,
+  "modifiers": [
+    "backrooms",
+    {
+      "use": "unease",
+      "amount": 0.5
+    },
+    {
+      "use": "subliminal",
+      "set": 2
+    }
+  ],
+  "duration": {
+    "endOn": "allEscaped",
+    "tail": 2.5
+  },
+  "clock": {
+    "seconds": 30,
+    "final": 6,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
+  "world": {
+    "gravity": 280
+  },
+  "entities": [
+    {
+      "type": "nested",
+      "count": 6,
+      "inner": 140,
+      "outer": 470,
+      "spin": 1.1,
+      "spinFalloff": 0.8,
+      "gapWidth": 40,
+      "gapShrink": 3,
+      "gapOffset": 140,
+      "colors": [
+        "#4a3f1c",
+        "#54481f",
+        "#5e5123",
+        "#685a27",
+        "#72632b",
+        "#7c6c2f"
+      ]
+    },
+    {
+      "type": "stalker",
+      "mode": "chase",
+      "x": 540,
+      "y": 1470,
+      "speed": 20,
+      "accel": 4,
+      "start": 3,
+      "radius": 34,
+      "color": "#1b1608",
+      "eyes": "#fff6c9"
+    },
+    {
+      "type": "ball",
+      "radius": 15,
+      "speed": 760,
+      "color": "#2b2410"
+    }
+  ],
+  "camera": {
+    "shake": 0.8
+  },
+  "style": {
+    "trail": 0.7,
+    "trailStyle": "comet",
+    "scanlines": true,
+    "chromatic": true
+  },
+  "audio": {
+    "instrument": "pluck",
+    "transpose": -7,
+    "volume": 0.6,
+    "bounceSpacing": 0.12,
+    "escapeStyle": "tape",
+    "burst": "rewind",
+    "burstAt": 3,
+    "reverb": 0.55
+  },
+  "overlay": {
+    "title": "Something else is in here.",
+    "titleSize": 60,
+    "font": "mono",
+    "counter": "ringsLeft",
+    "counterSize": 50,
+    "endCard": "you noclipped out."
+  }
+}

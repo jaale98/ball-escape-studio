@@ -1,0 +1,84 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Signal lost",
+  "category": "surreal",
+  "seed": 502,
+  "modifiers": [
+    "vhs",
+    {
+      "use": "subliminal",
+      "set": 1
+    },
+    "liar"
+  ],
+  "duration": {
+    "endOn": "allEscaped",
+    "tail": 2.5
+  },
+  "clock": {
+    "seconds": 30,
+    "final": 6,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
+  "world": {
+    "gravity": 400
+  },
+  "entities": [
+    {
+      "type": "nested",
+      "count": 5,
+      "inner": 140,
+      "outer": 440,
+      "spin": 1.5,
+      "spinFalloff": 0.8,
+      "gapWidth": 42,
+      "gapShrink": 3,
+      "gapOffset": 110,
+      "colors": [
+        "#f0f0f0",
+        "#cfcfcf",
+        "#adadad",
+        "#8c8c8c",
+        "#6b6b6b"
+      ]
+    },
+    {
+      "type": "ball",
+      "radius": 15,
+      "speed": 820,
+      "color": "#ffffff"
+    }
+  ],
+  "camera": {
+    "shake": 1.3,
+    "unease": 0.45
+  },
+  "style": {
+    "background": "#050505",
+    "ringColor": "#f0f0f0",
+    "trail": 0.7,
+    "trailStyle": "comet"
+  },
+  "audio": {
+    "instrument": "chip",
+    "transpose": -12,
+    "volume": 0.6,
+    "escapeStyle": "static",
+    "burst": "drop",
+    "burstAt": 3,
+    "droneVolume": 0.6,
+    "reverb": 0.3
+  },
+  "overlay": {
+    "title": "If you can read this, look away.",
+    "titleSize": 60,
+    "counter": "ringsLeft",
+    "counterSize": 50,
+    "endCard": "we told you."
+  }
+}

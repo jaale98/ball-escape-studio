@@ -1,4 +1,5 @@
 import { Rng } from '../engine/rng';
+import { lightLevel } from '../engine/flicker';
 import { HEIGHT, PHYSICS_HZ, racesClock, type Scene, WIDTH } from '../engine/scene';
 import type { Ball, Container, Pendulum, Solid, World } from '../engine/world';
 import { getImage } from '../images';
@@ -419,7 +420,25 @@ export class Renderer {
         ctx.restore();
         continue;
       }
-      if (s.emoji) continue;
+      if (s.emoji) {
+        // A mimic: red eyes show on it only when it is close to its prey.
+        let gap = Infinity;
+        for (const b of world.balls) if (b.alive && !b.projectile) gap = Math.min(gap, Math.hypot(b.x - s.x, b.y - s.y) - s.r - b.r);
+        if (gap > 170) continue;
+        const a = Math.min(1, (170 - gap) / 90);
+        ctx.save();
+        ctx.globalAlpha = a;
+        ctx.fillStyle = s.eyes;
+        ctx.shadowColor = s.eyes;
+        ctx.shadowBlur = this.glowAllowed ? 18 : 0;
+        for (const side of [-1, 1]) {
+          ctx.beginPath();
+          ctx.ellipse(s.x + side * s.r * 0.36, s.y - s.r * 0.18, s.r * 0.17, s.r * 0.12, 0, 0, TAU);
+          ctx.fill();
+        }
+        ctx.restore();
+        continue;
+      }
       // Eyes: they look at the prey, blink now and then, and stay shut until it wakes.
       const blink = !awake || hash01(Math.floor(t * 3) * 1.3 + s.id * 17) < 0.07;
       const px = -Math.sin(dir);
@@ -475,21 +494,17 @@ export class Renderer {
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.globalCompositeOperation = 'source-over';
     g.clearRect(0, 0, d.width, d.height);
-    let level = 1;
-    if (style.flicker) {
-      const t = world.time;
-      const fast = hash01(Math.floor(t * 18) + 0.5);
-      const slow = hash01(Math.floor(t * 1.5) * 3.7 + 11);
-      if (slow < 0.14 && (t * 1.5) % 1 < 0.4) level = 0.05;
-      else if (fast < 0.1) level = 0.3;
-      else if (fast < 0.24) level = 0.72;
-    }
+    // The same schedule blink stalkers move by, so they only ever move when you can't see them.
+    let level = style.flicker ? lightLevel(world.stepCount) : 1;
     // Every escape lights the room up for a moment.
     level = Math.min(1, level + this.escapeFlash * 0.5);
     g.fillStyle = `rgba(0,0,0,${style.darkness})`;
     g.fillRect(0, 0, d.width, d.height);
     g.globalCompositeOperation = 'destination-out';
     const zoom = scale * this.camZoom * this.fitS;
+    // lightEnd: the light shrinks (or grows) toward it as the clock runs down.
+    const span = this.scene.clock?.seconds ?? this.scene.duration.max;
+    const light = style.lightEnd === undefined ? style.light : style.light + (style.lightEnd - style.light) * Math.min(1, world.time / span);
     let n = 0;
     for (const b of world.balls) {
       if (!b.alive || b.projectile) continue;
@@ -497,7 +512,7 @@ export class Renderer {
       const [sx, sy] = this.toScreen(b.x, b.y);
       const x = sx * scale;
       const y = sy * scale;
-      const r = (style.light + b.r) * zoom * (0.8 + 0.2 * level);
+      const r = (light + b.r) * zoom * (0.8 + 0.2 * level);
       const grad = g.createRadialGradient(x, y, 0, x, y, r);
       grad.addColorStop(0, `rgba(0,0,0,${level})`);
       grad.addColorStop(0.5, `rgba(0,0,0,${(0.8 * level).toFixed(3)})`);

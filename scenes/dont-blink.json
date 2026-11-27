@@ -1,0 +1,104 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Don't blink",
+  "category": "surreal",
+  "seed": 697,
+  "duration": {
+    "endOn": "allEscaped",
+    "tail": 2.5
+  },
+  "clock": {
+    "seconds": 30,
+    "final": 6,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
+  "world": {
+    "gravity": 300
+  },
+  "entities": [
+    {
+      "type": "nested",
+      "count": 6,
+      "inner": 140,
+      "outer": 470,
+      "spin": 1.2,
+      "spinFalloff": 0.8,
+      "gapWidth": 40,
+      "gapShrink": 3,
+      "gapOffset": 120,
+      "colors": [
+        "#e9e4d4",
+        "#d7d0bc",
+        "#c4bba3",
+        "#b1a78b",
+        "#9e9374",
+        "#8b7f5e"
+      ]
+    },
+    {
+      "type": "stalker",
+      "mode": "chase",
+      "x": 540,
+      "y": 1470,
+      "blink": true,
+      "speed": 520,
+      "accel": 12,
+      "maxSpeed": 1100,
+      "start": 1,
+      "radius": 32,
+      "eyes": "#f2f2f2"
+    },
+    {
+      "type": "ball",
+      "radius": 15,
+      "speed": 760,
+      "color": "#fff3cf"
+    }
+  ],
+  "camera": {
+    "shake": 0.9
+  },
+  "style": {
+    "background": "#0b0a09",
+    "ringColor": "#e9e4d4",
+    "trail": 0.7,
+    "trailStyle": "comet",
+    "darkness": 0.98,
+    "light": 230,
+    "flicker": true,
+    "grain": true,
+    "vignette": true,
+    "chromatic": true,
+    "glitch": true,
+    "subliminal": [
+      "don’t blink",
+      "it moved",
+      "closer"
+    ]
+  },
+  "audio": {
+    "instrument": "glass",
+    "transpose": -5,
+    "volume": 0.65,
+    "bounceSpacing": 0.12,
+    "escapeStyle": "static",
+    "burst": "rewind",
+    "burstAt": 3,
+    "drone": "heartbeat",
+    "droneVolume": 0.9,
+    "reverb": 0.35
+  },
+  "overlay": {
+    "title": "It only moves in the dark.",
+    "titleSize": 60,
+    "font": "mono",
+    "counter": "ringsLeft",
+    "counterSize": 52,
+    "endCard": "don’t turn the lights off."
+  }
+}

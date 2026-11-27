@@ -1,0 +1,102 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "The void",
+  "category": "forces",
+  "seed": 119,
+  "modifiers": [
+    {
+      "use": "black-hole",
+      "strength": 800,
+      "swallow": 30,
+      "grow": 1.055
+    }
+  ],
+  "duration": {
+    "endOn": "lastStanding",
+    "tail": 2.5
+  },
+  "clock": {
+    "seconds": 30,
+    "final": 5,
+    "rush": [
+      {
+        "do": "speedUp",
+        "factor": 1.05,
+        "max": 3000
+      }
+    ]
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 470,
+      "thickness": 10,
+      "spin": 0,
+      "gaps": [],
+      "color": "#3a2f55"
+    },
+    {
+      "type": "ball",
+      "count": 9,
+      "radius": 18,
+      "speed": 640,
+      "spread": 260,
+      "arrange": "grid",
+      "emoji": "👁️",
+      "labels": [
+        "Ada",
+        "Bram",
+        "Cleo",
+        "Dov",
+        "Esme",
+        "Finn",
+        "Gus",
+        "Hale",
+        "Iris"
+      ]
+    }
+  ],
+  "camera": {
+    "shake": 1.0,
+    "unease": 0.5
+  },
+  "style": {
+    "background": "#030206",
+    "ringColor": "#3a2f55",
+    "trail": 0.85,
+    "trailStyle": "ribbon",
+    "glow": true,
+    "bloom": true,
+    "droste": 2,
+    "glitch": true,
+    "chromatic": true,
+    "grain": true,
+    "vignette": true,
+    "subliminal": [
+      "don’t look into it",
+      "it sees you",
+      "come closer"
+    ]
+  },
+  "audio": {
+    "instrument": "glass",
+    "transpose": -12,
+    "volume": 0.6,
+    "drone": "choir",
+    "droneVolume": 0.6,
+    "reverb": 0.8,
+    "burst": "choir"
+  },
+  "overlay": {
+    "title": "Don’t look into it.",
+    "titleSize": 68,
+    "font": "serif",
+    "counter": "balls",
+    "counterSize": 50,
+    "winner": true,
+    "endCard": "it looked back."
+  }
+}

@@ -40,7 +40,7 @@ Reaching for code is the last resort. If a format truly needs a new engine capab
 
 ## V2 building blocks
 
-- Formats by family (`category` on the scene: escape, destruction, battle, teams, forces, surreal, chaos, satisfying, music). The README's preset table lists all 56.
+- Formats by family (`category` on the scene: escape, destruction, battle, teams, forces, surreal, chaos, satisfying, music). The README's preset table lists all 69.
 - Destruction: ring `hp` or `segments`/`segmentHp`, breakable `wall`/`peg` `hp`, `brick` (or the `brickwall` prefab), `endOn: cleared`.
 - Teams: declare `teams` (name, color, emoji, `beats`), give balls `team`/`teams`. Conversion is the `convert` action (`chance` slows it); `endOn: oneTeam`; counter `teams`. A `territory` board repaints cells (Pong wars); team balls need a contrasting `color` because they take their team color otherwise.
 - Forces and fields: `force` (attract, repel, vortex, wind; `swallow` makes a black hole, `growForce` makes it hungrier), `portal`, `spinner` (paddles; `deadly` blades), bumpers (`boost`), `zone` `kill` (drains) and `finish` (`endOn: finish`), `emitter` (pours balls; `loop` keeps a count alive).
@@ -63,7 +63,7 @@ Reaching for code is the last resort. If a format truly needs a new engine capab
 - Audio: `escapeStyle` (`voice`, `glitch`, `static`, `tape` are pre-rendered clips that restart on every escape and cut themselves off), `burst` + `burstAt` (a streak sound), `drone` (`shepard`, `hum`, `choir`, swelling with the clock), `reverb`. Style: `glitch` (tears on big moments), `mirror` (`x`, `y`, `quad`).
 - "Make it weird" (`weirdPick` in `src/director/remix.ts`) picks a vibe and then a look, a sound and one or two twists that suit the scene. The weird modifiers:
   - `vhs`, `dreamcore`, `stutter`, `shepard`, `glitch`, `mirror`, `eyes`, `whisper`, `breathe`, `backrooms`, `tunnel-vision`, `descent`
-  - `lights-out`, `stalker`, `shadow`, `heartbeat`, `backmask`, `music-box`, `subliminal`, `droste`, `liar`, `unease`
+  - `lights-out`, `stalker`, `shadow`, `watchers`, `heartbeat`, `backmask`, `music-box`, `subliminal`, `droste`, `liar`, `unease`
 
   Add new ones to `MODIFIERS`, to the `ok` table and to a vibe's slots. `npm run fuzz` tries random picks.
 
@@ -72,15 +72,20 @@ Reaching for code is the last resort. If a format truly needs a new engine capab
 - `stalker` entity (`world.ts`). It moves through walls and catches a ball on touch (a `caught` event; `deadly: false` only haunts). A ball that has escaped every container is safe, and when the last ball is caught the run ends with `endReason: caught`, which the Director scores as a fail. Two modes:
   - `chase`: drifts at the nearest ball (`speed`, `accel`, `maxSpeed`, `start`).
   - `shadow`: replays the `target` ball's recorded path `delay` seconds behind and closes in by `catchUp` per second down to `minDelay`. Shadows need much shorter delays in fast-moving formats: about 1 s in a descent.
+  - `blink`: a chase stalker that moves only while `lightLevel(step)` (`src/engine/flicker.ts`, integer hashing) is dark. The renderer's `flicker` reads the same schedule, so it never moves on screen; give blink scenes `style.flicker`. Blink speeds are high (100–500 px/s) because it moves about 15% of the time.
+  - `count`: chase stalkers spread on a `circle` (speed 0 + `deadly: false` is a ring of watchers; the `watchers` modifier builds one), or shadows each `delay` further back.
+  - An `emoji` stalker is a mimic: red eyes show on it only within about 170 px of its prey.
+  - A harmless stalker (`deadly: false`) scares, vanishes for 2.5 s and comes back from where it started. Nothing is caught once the run has ended (the tail).
 - Scenes with stalkers or a drone emit a `pulse` event four times a second. Its `n` is the closest any stalker came to its prey in that quarter second (px between edges, -1 = none). The `heartbeat` drone races on it, the Director counts gaps under 60 px as near misses, and drones use it to keep going through quiet stretches. Stalker state goes into `hash()` only when stalkers exist.
 - Drawing only (`renderer.ts`):
-  - `style.darkness` + `light` + `flicker`: a dark layer with light cut out around the balls; stalker eyes are drawn after it, so they glow.
+  - `style.darkness` + `light` + `flicker` (+ `lightEnd`: the light shrinks to it by clock zero): a dark layer with light cut out around the balls; stalker eyes are drawn after it, so they glow. With many balls, keep `light` small or the pools cover the arena.
   - `style.subliminal`: single frames timed by world time, plus forced flashes on a catch.
   - `style.droste`: the frame drawn inside itself. It blends with `darken` on pale backgrounds and `lighten` on dark ones, then redraws the balls on top.
   - `overlay.clockLies`.
   - `camera.unease`: a tilt added to the view rotation.
 
   All of them depend on world time, not wall-clock time, so the export matches the preview.
+- `style.mirror` redraws one half (or quarter) over the rest, so the ball disappears whenever it is in the overwritten part. Use it only with a chase camera, or with symmetric action.
 - Tuning a stalker scene: sweep `speed`/`accel` (or `delay`/`catchUp`) until it catches a real share of seeds, then `--director beat-the-clock`, and check the stalker's close calls in the `pulse` events, since the near-miss count also includes ring-gap misses.
 
 ## Engine rules (don't break these)

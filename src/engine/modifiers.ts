@@ -435,6 +435,16 @@ export const MODIFIERS: Record<string, ModifierDef> = {
       obj(s, 'style').chromatic = true;
     },
   },
+  watchers: {
+    description: 'A circle of eyes just outside the arena that follow the ball wherever it goes. They never move, but brush past one and it shrieks and vanishes (only to come back).',
+    params: { count: { default: 14, description: 'how many pairs of eyes' }, gap: { default: 70, description: 'px outside the outermost wall' } },
+    apply: (s, p) => {
+      const ents: Raw[] = s.entities ?? [];
+      const c = ents.find((e: Raw) => e.type === 'ring' || e.type === 'polygon' || e.type === 'nested');
+      const reach = Math.max(120, ...ents.map((e: Raw) => (e.type === 'ring' || e.type === 'polygon' ? (e.radius ?? 0) : e.type === 'nested' ? (e.outer ?? 0) : 0)));
+      list(s, 'entities').push({ type: 'stalker', mode: 'chase', x: c?.x ?? 540, y: c?.y ?? 960, count: Math.max(2, Math.round(p.count)), circle: reach + p.gap, speed: 0, accel: 0, start: 0, radius: 22, deadly: false });
+    },
+  },
   heartbeat: {
     description: 'A heartbeat under everything that races as the stalker closes in (or as the clock runs down).',
     params: { volume: { default: 0.8, description: 'volume 0–1' } },

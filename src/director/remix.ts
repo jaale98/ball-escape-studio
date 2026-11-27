@@ -128,6 +128,7 @@ export function weirdPick(merged: Raw, seed: number): WeirdPick {
     stalker: container && !many && !has('stalker') && balls >= 1 && balls <= 8 && merged.duration?.endOn !== 'never',
     // A shadow catches a ball that crosses its own path: only fair where the ball travels (descents, chase cameras).
     shadow: (has('strata') || camera.mode === 'chase') && !has('stalker') && balls >= 1 && balls <= 6 && merged.duration?.endOn !== 'never',
+    watchers: container && !many && !has('stalker'),
     heartbeat: !audio.drone || audio.drone === 'none',
     backmask: audio.escapeStyle === undefined || audio.escapeStyle === 'classic',
     'music-box': (audio.escapeStyle === undefined || audio.escapeStyle === 'classic') && audio.instrument !== 'meow',
@@ -155,7 +156,7 @@ export function weirdPick(merged: Raw, seed: number): WeirdPick {
       name: 'weirdcore',
       look: [['eyes', 'eyes'], ['mirror', { use: 'mirror', quad: true }], ['droste', 'droste']],
       sound: [['stutter', { use: 'stutter' }], ['dreamcore', 'dreamcore'], ['backmask', 'backmask']],
-      twist: [['whisper', { use: 'whisper', line }], ['clone-trail', 'clone-trail'], ['gravity-spin', 'gravity-spin'], ['breathe', 'breathe'], ['split', { use: 'split', max: 200 }]],
+      twist: [['whisper', { use: 'whisper', line }], ['clone-trail', 'clone-trail'], ['gravity-spin', 'gravity-spin'], ['breathe', 'breathe'], ['split', { use: 'split', max: 200 }], ['watchers', 'watchers']],
     },
     {
       name: 'glitch',
@@ -180,7 +181,7 @@ export function weirdPick(merged: Raw, seed: number): WeirdPick {
       name: 'it follows',
       look: [['lights-out', 'lights-out'], ['vhs', 'vhs'], ['unease', { use: 'unease', amount: 0.5 }]],
       sound: [['heartbeat', 'heartbeat'], ['backmask', 'backmask']],
-      twist: [['stalker', { use: 'stalker', speed: 30, accel: 5, start: 1, outside: true, harmless: true }], ['shadow', { use: 'shadow', delay: 1.2, catchUp: 0.02 }], ['subliminal', { use: 'subliminal', set: line % 4 }], ['liar', 'liar']],
+      twist: [['stalker', { use: 'stalker', speed: 30, accel: 5, start: 1, outside: true, harmless: true }], ['shadow', { use: 'shadow', delay: 1.2, catchUp: 0.02 }], ['subliminal', { use: 'subliminal', set: line % 4 }], ['liar', 'liar'], ['watchers', 'watchers']],
     },
     {
       // Liminal space: the room repeats, a music box plays in another room, nothing is level.

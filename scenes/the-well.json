@@ -1,0 +1,104 @@
+{
+  "$schema": "../scene.schema.json",
+  "extends": "the-descent",
+  "title": "The well",
+  "category": "surreal",
+  "seed": 479,
+  "clock": {
+    "seconds": 34,
+    "final": 6
+  },
+  "entities": [
+    {
+      "type": "strata",
+      "count": 800,
+      "inner": 150,
+      "spacing": 22,
+      "thickness": 3,
+      "gapArc": 70,
+      "gapEvery": 180,
+      "layerMin": 16,
+      "layerMax": 200,
+      "layerCurve": 1.3,
+      "drift": 5,
+      "speed": 220,
+      "seed": 7,
+      "fall": 4000,
+      "fallDrag": 1.0,
+      "colors": [
+        "#c9c3b0",
+        "#8f8a78",
+        "#6c6857",
+        "#a69f8a"
+      ],
+      "fadeTo": "#0d0b07"
+    },
+    {
+      "type": "force",
+      "kind": "radial",
+      "strength": 4000,
+      "visible": false
+    },
+    {
+      "type": "ball",
+      "radius": 6,
+      "speed": 520,
+      "color": "#ffffff"
+    },
+    {
+      "type": "stalker",
+      "mode": "chase",
+      "speed": 120,
+      "accel": 30,
+      "maxSpeed": 1400,
+      "start": 3,
+      "radius": 12,
+      "eyes": "#ff2a2a"
+    }
+  ],
+  "camera": {
+    "mode": "chase",
+    "orient": "down",
+    "zoom": 2.4,
+    "shake": 1.2
+  },
+  "style": {
+    "background": "#060504",
+    "ringColor": "#c9c3b0",
+    "trail": 0.6,
+    "trailStyle": "comet",
+    "grain": true,
+    "vignette": true,
+    "chromatic": true,
+    "glitch": true,
+    "darkness": 0.9,
+    "light": 130,
+    "subliminal": [
+      "it’s climbing",
+      "faster",
+      "don’t look up"
+    ]
+  },
+  "audio": {
+    "instrument": "glass",
+    "volume": 0.6,
+    "bounceSpacing": 0.09,
+    "escapeStyle": "voice",
+    "burst": "dive",
+    "burstAt": 6,
+    "drone": "heartbeat",
+    "droneVolume": 0.85,
+    "reverb": 0.4,
+    "transpose": -7
+  },
+  "overlay": {
+    "title": "It’s climbing after you.",
+    "titleSize": 62,
+    "counter": "ringsLeft",
+    "counterSize": 64,
+    "streak": true,
+    "vhs": false,
+    "font": "mono",
+    "endCard": "it stopped at the edge."
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "They watch",
+  "category": "surreal",
+  "seed": 303,
+  "duration": {
+    "endOn": "allEscaped",
+    "tail": 2.5
+  },
+  "clock": {
+    "seconds": 30,
+    "final": 6,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
+  "world": {
+    "gravity": 250
+  },
+  "entities": [
+    {
+      "type": "nested",
+      "count": 6,
+      "inner": 130,
+      "outer": 430,
+      "spin": 1.0,
+      "spinFalloff": 0.8,
+      "gapWidth": 42,
+      "gapShrink": 3,
+      "gapOffset": 150,
+      "colors": [
+        "#d6d9e4",
+        "#bfc3d1",
+        "#a8adbe",
+        "#9197ab",
+        "#7a8198",
+        "#636b85"
+      ]
+    },
+    {
+      "type": "stalker",
+      "mode": "chase",
+      "count": 15,
+      "circle": 500,
+      "speed": 0,
+      "accel": 0,
+      "start": 0,
+      "radius": 24,
+      "deadly": false
+    },
+    {
+      "type": "stalker",
+      "mode": "chase",
+      "x": 540,
+      "y": 1460,
+      "speed": 22,
+      "accel": 5,
+      "start": 3,
+      "radius": 24
+    },
+    {
+      "type": "ball",
+      "radius": 14,
+      "speed": 740,
+      "color": "#ffffff"
+    }
+  ],
+  "camera": {
+    "shake": 0.8,
+    "unease": 0.3
+  },
+  "style": {
+    "background": "#08080c",
+    "ringColor": "#d6d9e4",
+    "trail": 0.7,
+    "trailStyle": "comet",
+    "darkness": 0.97,
+    "light": 200,
+    "grain": true,
+    "vignette": true,
+    "chromatic": true,
+    "subliminal": [
+      "one of them",
+      "is real",
+      "it’s the one behind you"
+    ]
+  },
+  "audio": {
+    "instrument": "glass",
+    "transpose": -8,
+    "volume": 0.62,
+    "bounceSpacing": 0.12,
+    "escapeStyle": "reverse",
+    "burst": "rewind",
+    "burstAt": 3,
+    "drone": "heartbeat",
+    "droneVolume": 0.85,
+    "reverb": 0.45
+  },
+  "overlay": {
+    "title": "Only one of them is real.",
+    "titleSize": 60,
+    "font": "mono",
+    "counter": "ringsLeft",
+    "counterSize": 52,
+    "endCard": "the others are still watching."
+  }
+}

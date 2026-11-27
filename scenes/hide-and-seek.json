@@ -1,0 +1,286 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Hide and seek",
+  "category": "battle",
+  "seed": 418,
+  "duration": {
+    "endOn": "lastStanding",
+    "tail": 2.5
+  },
+  "clock": {
+    "seconds": 30,
+    "final": 5,
+    "rush": [
+      {
+        "do": "speedUp",
+        "factor": 1.04,
+        "max": 2200
+      }
+    ]
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 480,
+      "thickness": 12,
+      "spin": 0,
+      "gaps": []
+    },
+    {
+      "type": "peg",
+      "x": 710.0,
+      "y": 960.0,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 625.0,
+      "y": 1107.2,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 455.0,
+      "y": 1107.2,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 370.0,
+      "y": 960.0,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 455.0,
+      "y": 812.8,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 625.0,
+      "y": 812.8,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 825.3,
+      "y": 1052.7,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 716.3,
+      "y": 1202.7,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 540.0,
+      "y": 1260.0,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 363.7,
+      "y": 1202.7,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 254.7,
+      "y": 1052.7,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 254.7,
+      "y": 867.3,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 363.7,
+      "y": 717.3,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 540.0,
+      "y": 660.0,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 716.3,
+      "y": 717.3,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 825.3,
+      "y": 867.3,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 950.0,
+      "y": 960.0,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 909.4,
+      "y": 1137.9,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 795.6,
+      "y": 1280.6,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 631.2,
+      "y": 1359.7,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 448.8,
+      "y": 1359.7,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 284.4,
+      "y": 1280.6,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 170.6,
+      "y": 1137.9,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 130.0,
+      "y": 960.0,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 170.6,
+      "y": 782.1,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 284.4,
+      "y": 639.4,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 448.8,
+      "y": 560.3,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 631.2,
+      "y": 560.3,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 795.6,
+      "y": 639.4,
+      "radius": 16
+    },
+    {
+      "type": "peg",
+      "x": 909.4,
+      "y": 782.1,
+      "radius": 16
+    },
+    {
+      "type": "stalker",
+      "mode": "chase",
+      "blink": true,
+      "speed": 120,
+      "accel": 3,
+      "maxSpeed": 900,
+      "start": 2,
+      "radius": 30,
+      "eyes": "#ffe9a8"
+    },
+    {
+      "type": "ball",
+      "count": 5,
+      "radius": 20,
+      "speed": 560,
+      "spread": 330,
+      "arrange": "grid",
+      "labels": [
+        "Mia",
+        "Theo",
+        "Lou",
+        "Sam",
+        "June"
+      ],
+      "colors": [
+        "#ff8fa3",
+        "#8fd3ff",
+        "#ffe08f",
+        "#a8ff8f",
+        "#d9a8ff"
+      ]
+    }
+  ],
+  "camera": {
+    "shake": 0.9,
+    "unease": 0.25
+  },
+  "style": {
+    "background": "#0a0908",
+    "ringColor": "#d8d2c0",
+    "trail": 0.5,
+    "trailStyle": "comet",
+    "darkness": 0.97,
+    "light": 140,
+    "flicker": true,
+    "grain": true,
+    "vignette": true,
+    "chromatic": true,
+    "glitch": true,
+    "subliminal": [
+      "ready or not",
+      "found you",
+      "here i come"
+    ]
+  },
+  "audio": {
+    "instrument": "kalimba",
+    "transpose": -5,
+    "volume": 0.6,
+    "bounceSpacing": 0.1,
+    "drone": "heartbeat",
+    "droneVolume": 0.8,
+    "reverb": 0.45
+  },
+  "overlay": {
+    "title": "Ready or not.",
+    "titleSize": 76,
+    "font": "mono",
+    "counter": "balls",
+    "counterSize": 50,
+    "labelSize": 24,
+    "winner": true
+  }
+}

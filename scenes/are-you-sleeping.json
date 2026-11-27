@@ -1,0 +1,91 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Are you sleeping?",
+  "category": "music",
+  "seed": 465,
+  "duration": {
+    "endOn": "allEscaped",
+    "tail": 2.5
+  },
+  "clock": {
+    "seconds": 28,
+    "final": 6
+  },
+  "entities": [
+    {
+      "type": "nested",
+      "count": 6,
+      "inner": 130,
+      "outer": 470,
+      "spin": 1.0,
+      "spinFalloff": 0.65,
+      "gapWidth": 36,
+      "gapOffset": 70,
+      "colors": [
+        "#f6e7ff",
+        "#e6d2fa",
+        "#d3bcf2",
+        "#bfa6e8",
+        "#ab90dc",
+        "#967acf"
+      ]
+    },
+    {
+      "type": "stalker",
+      "mode": "chase",
+      "x": 540,
+      "y": 1470,
+      "speed": 18,
+      "accel": 4.5,
+      "start": 3,
+      "radius": 28,
+      "eyes": "#ffd1f0"
+    },
+    {
+      "type": "ball",
+      "radius": 18,
+      "speed": 700,
+      "color": "#fff4fb"
+    }
+  ],
+  "camera": {
+    "unease": 0.25
+  },
+  "style": {
+    "background": "#0d0a14",
+    "ringColor": "#f6e7ff",
+    "trail": 0.75,
+    "trailStyle": "ribbon",
+    "glow": true,
+    "darkness": 0.95,
+    "light": 230,
+    "grain": true,
+    "vignette": true,
+    "subliminal": [
+      "morning bells are ringing",
+      "wake up"
+    ]
+  },
+  "audio": {
+    "melody": "midi:frere-jacques",
+    "parts": [
+      0
+    ],
+    "rhythmLock": true,
+    "instrument": "bell",
+    "transpose": 12,
+    "volume": 0.55,
+    "escapeStyle": "musicbox",
+    "reverb": 0.7,
+    "drone": "heartbeat",
+    "droneVolume": 0.6
+  },
+  "overlay": {
+    "title": "Are you sleeping?",
+    "titleSize": 72,
+    "font": "serif",
+    "counter": "ringsLeft",
+    "counterSize": 50,
+    "endCard": "ding, dang, dong."
+  }
+}

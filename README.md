@@ -19,7 +19,7 @@ Every run is **deterministic**: the same scene and seed always produce exactly t
 
 ## Features
 
-- **56 formats out of the box**, grouped by family in the gallery. They range from the classics (ring escape, nested rings, multiply, battles, Plinko) to destruction (ring breaker, brick breaker, 45-hit rings), teams (Pong wars territory, rock-paper-scissors, infection, absorb), forces (black holes, vortex drains, portals, orbits) and surreal twists (meowing escapes, gaps that jump, a triangle that becomes a circle, clone trails, merge jars). There are chaos videos too (double pendulums, pendulum waves, butterfly-effect twins, string art) and satisfying ones (picture reveals, rainbow sand, marble races, 100 rings). The newest are unnerving: a ball falling through 1,000 or 2,000 rings with the camera locked on it, and horror formats where something follows the ball in the dark. Each one is just a scene file.
+- **69 formats out of the box**, grouped by family in the gallery. They range from the classics (ring escape, nested rings, multiply, battles, Plinko) to destruction (ring breaker, brick breaker, 45-hit rings), teams (Pong wars territory, rock-paper-scissors, infection, absorb), forces (black holes, vortex drains, portals, orbits) and surreal twists (meowing escapes, gaps that jump, a triangle that becomes a circle, clone trails, merge jars). There are chaos videos too (double pendulums, pendulum waves, butterfly-effect twins, string art) and satisfying ones (picture reveals, rainbow sand, marble races, 100 rings). The newest are unnerving: a ball falling through 1,000 or 2,000 rings with the camera locked on it, and horror formats where something follows the ball in the dark. Each one is just a scene file.
 - **V2 building blocks:**
   - **Containers:** breakable rings (segments or hit points).
   - **Solids:** numbered bricks, spinning paddles and blades, bumpers, deadly walls.
@@ -56,10 +56,13 @@ Every run is **deterministic**: the same scene and seed always produce exactly t
 - **Unnerving sound and looks.** These work in any scene:
   - **Sound:** escape clips (`voice`, `glitch`, `static`, `tape`, a backmasked `reverse` voice, a warbling `musicbox` tine), streak sounds (including a tape sucked into `rewind`), drones (including a `heartbeat` that races as danger closes in) and a reverb hall.
   - **Looks:** glitch tearing, mirrored playfields and a VHS stamp.
-- **Horror.** A `stalker` follows the ball and catches it on touch. A ball that gets out of every ring is safe.
+- **Horror.** A `stalker` follows the ball and catches it on touch. A ball that gets out of every ring is safe, and once the run is decided nothing else gets caught.
   - **`chase`:** it drifts through the walls, faster and faster.
   - **`shadow`:** it retraces the ball's exact path a few seconds behind, so a ball that stops is caught.
-  - **Looks and effects:** `darkness` with a pool of `light` around each ball, `flicker` (a failing fluorescent tube), `subliminal` single-frame words, `droste` (the frame inside itself), a lying countdown (`clockLies`) and a camera that's never level (`unease`). The stalker's eyes glow in the dark, the frame bleeds red as it closes in, and a catch slams in with static.
+  - **`blink`:** a chase stalker that moves only while the lights are out, so every time they flicker back on, it's closer.
+  - **`count`:** a whole circle of them (`watchers`: eyes that track the ball), or a line of shadows each further behind.
+  - **Mimic:** an `emoji` stalker looks like everything else until its red eyes show up close.
+  - **Looks and effects:** `darkness` with a pool of `light` around each ball, `flicker` (a failing fluorescent tube), `subliminal` single-frame words, `droste` (the frame inside itself), a light that dies as the clock runs down (`lightEnd`), a lying countdown (`clockLies`) and a camera that's never level (`unease`). The stalker's eyes glow in the dark, the frame bleeds red as it closes in, and a catch slams in with static.
 - **The Director.** Simulates hundreds of runs in a fraction of a second, scores each for the story you want (slow burn, last-second escape, beat the clock, chaos, comeback, in time with the song), and shows the best nine playing side by side. Use one, swipe through them, or export the best.
 - **Swipe review and an export queue.** Keep (→) or discard (←) candidates one by one; kept videos render in the background and land in `exports/` with a caption, the exact scene, and a line in `exports/log.csv`.
 - **Batch production.** One click makes 4–12 remixes of a scene (new palette, instrument, melody and feel), each auto-directed. **Tournaments** turn any battle into a knockout bracket: every match becomes a scene with a close fight and a winner that advances.
@@ -249,7 +252,7 @@ The [scene-by-scene review](docs/preset-review.md) covers all 50 presets, their 
 | [`the-descent`](scenes/the-descent.json) | A ball falls through 1,000 rings on a 3 a.m. tape, the last one 0.6 s before zero | `strata` × 1000 + `radial` force + `chase` camera + `voice` stutter + `dive` bursts + `shepard` drone + `vhs` |
 | [`dont-look-up`](scenes/dont-look-up.json) | An eye climbs 2,000 rings in a mirrored, buzzing dark | `strata` × 2000 + `chase` (`orient: up`) + `static` stutter + `choir` bursts + `hum` drone + `mirror` |
 
-**Horror** (4 more: something follows the ball):
+**Horror** (17 more: something follows the ball, watches it, or waits in the dark):
 
 | Scene | Format | Built from |
 | --- | --- | --- |
@@ -257,6 +260,19 @@ The [scene-by-scene review](docs/preset-review.md) covers all 50 presets, their 
 | [`your-shadow`](scenes/your-shadow.json) | 1,000 rings down, with its own shadow one second behind: stop and it catches you | `strata` × 1000 + `stalker` (`shadow`) + `chase` camera + `darkness` + `heartbeat` |
 | [`the-room-repeats`](scenes/the-room-repeats.json) | A yellow room inside a room inside a room, a music box, and a clock that lies | `backrooms` + `droste` + `music-box` + `unease` + `liar` + `whisper` + `breathe` |
 | [`six-into-the-dark`](scenes/six-into-the-dark.json) | Six eyes in a dark ring with something hungry: only one gets out | `stalker` (`chase`) + `lastStanding` + `darkness` + `flicker` + `heartbeat` |
+| [`dont-blink`](scenes/dont-blink.json) | It only moves when the lights flicker out; it gets within 21 px, and the ball escapes with 0.6 s left | `stalker` (`blink`) + `flicker` + `static` stutter + `heartbeat` |
+| [`they-watch`](scenes/they-watch.json) | Fifteen pairs of eyes circle the rings. Only one of them is real, and it gets within 2 px | `stalker` × 15 (`count`, `circle`, harmless) + one real `stalker` + `darkness` |
+| [`mimic`](scenes/mimic.json) | Seven smileys in a pastel ring, and one of them isn't a ball | emoji `stalker` (red eyes up close) + `lastStanding` + music box on Twinkle Twinkle |
+| [`the-well`](scenes/the-well.json) | 800 rings down while something climbs after you, 30 px behind at the end | `strata` × 800 + `stalker` (`chase`) from the center + `chase` camera + `darkness` |
+| [`theyre-all-behind-you`](scenes/theyre-all-behind-you.json) | Climbing 1,200 rings with five shadows on its path, each a second further back | `strata` × 1200 + `stalker` (`shadow`, `count: 5`) + `orient: up` |
+| [`last-light`](scenes/last-light.json) | Eight rings and a light that shrinks to nothing by zero | `darkness` + `lightEnd` + Moonlight Sonata + `musicbox` escapes + `shepard` |
+| [`poolrooms`](scenes/poolrooms.json) | A tiled pool room inside a pool room, a huge echo, nobody here | `droste` on a pale room + `grid` tiles + `music-box` + `unease` + `clockLies` |
+| [`are-you-sleeping`](scenes/are-you-sleeping.json) | Frère Jacques on a music box, every bounce on the beat, in the dark with something waking up | `rhythmLock` + `stalker` + `darkness` + `heartbeat` |
+| [`patient-zero`](scenes/patient-zero.json) | One infected in a flickering dark: it only takes one | `infection` + `darkness` + `flicker` + `hum` |
+| [`the-void`](scenes/the-void.json) | Nine named eyes around a black hole that keeps growing | `black-hole` + `droste` + `bloom` + `choir` drone |
+| [`signal-lost`](scenes/signal-lost.json) | Dead-channel rings on a 3 a.m. tape: if you can read this, look away | `vhs` + `subliminal` + `liar` + `static` stutter + `unease` |
+| [`hide-and-seek`](scenes/hide-and-seek.json) | Five kids hide among pegs in the dark; it moves only when the lights go out | `stalker` (`blink`) + pegs + `lastStanding` + `flicker` |
+| [`level-0`](scenes/level-0.json) | The backrooms, and something else is in here | `backrooms` + `stalker` + `tape` stutter + `rewind` bursts |
 
 ## The Director
 
