@@ -19,7 +19,7 @@ Every run is **deterministic**: the same scene and seed always produce exactly t
 
 ## Features
 
-- **50 formats out of the box**, grouped by family in the gallery. They range from the classics (ring escape, nested rings, multiply, battles, Plinko) to destruction (ring breaker, brick breaker, 45-hit rings), teams (Pong wars territory, rock-paper-scissors, infection, absorb), forces (black holes, vortex drains, portals, orbits) and surreal twists (meowing escapes, gaps that jump, a triangle that becomes a circle, clone trails, merge jars). There are chaos videos too (double pendulums, pendulum waves, butterfly-effect twins, string art) and satisfying ones (picture reveals, rainbow sand, marble races, 100 rings). Each one is just a scene file.
+- **52 formats out of the box**, grouped by family in the gallery. They range from the classics (ring escape, nested rings, multiply, battles, Plinko) to destruction (ring breaker, brick breaker, 45-hit rings), teams (Pong wars territory, rock-paper-scissors, infection, absorb), forces (black holes, vortex drains, portals, orbits) and surreal twists (meowing escapes, gaps that jump, a triangle that becomes a circle, clone trails, merge jars). There are chaos videos too (double pendulums, pendulum waves, butterfly-effect twins, string art) and satisfying ones (picture reveals, rainbow sand, marble races, 100 rings). The newest are unnerving: a ball falling through 1,000 or 2,000 rings with the camera locked on it. Each one is just a scene file.
 - **V2 building blocks:**
   - **Containers:** breakable rings (segments or hit points).
   - **Solids:** numbered bricks, spinning paddles and blades, bumpers, deadly walls.
@@ -39,7 +39,19 @@ Every run is **deterministic**: the same scene and seed always produce exactly t
   - **Event sounds:** breaks, portals, swallows, merges, captures and conversions each have their own.
   - **Climax impact:** a bass drop, cymbal swell or gong.
   - **Pitch modes:** notes can follow ball size, height or speed instead of the melody.
-- **Make it weird.** One click stacks two or three surreal modifiers (black hole, portals, gap jumping, splitting, meowing, clones, storm…) onto any scene as an unsaved change.
+- **Make it weird.** One click gives any scene a weird *vibe*, an unsaved change built from a look, a sound and a twist that belong together. Click again to re-roll, or shift-click to stack another vibe. The vibes come from the internet aesthetics that do unease best:
+  - **Analog horror:** a 3 a.m. camcorder tape, mains hum, and glitches that snap on and off.
+  - **Dreamcore:** slowed + reverb, soft haze, pastel.
+  - **Weirdcore:** eyes, out-of-place sentences, mirrored arenas.
+  - **Glitch:** the frame tears on every big moment, over a stuttering sample.
+  - **Cosmic dread:** an endless falling tone, tunnel vision, and the ring falling away.
+  - **The backrooms:** yellow wallpaper, fluorescent buzz, breathing walls.
+  - **Brainrot:** the classic stack of meowing, splitting, rainbow and shake.
+- **Thousands of rings.** The `strata` prefab lays out up to 20,000 rings in strata whose gaps line up into shafts, so a ball drops through dozens or hundreds at once. A `chase` camera locks onto the ball (turned so the way out points down), a `ringsLeft` counter counts down, and a `−47` streak counter pops beside the ball. Sound comes in three layers:
+  - **Per ring:** a clip that restarts on every escape, so a streak stutters.
+  - **Per streak:** a dive, drop or choir.
+  - **Underneath:** a Shepard-tone, mains-hum or choir drone.
+- **Unnerving sound and looks.** Escape clips (`voice`, `glitch`, `static`, `tape`), streak sounds, drones, a reverb hall, glitch tearing, mirrored playfields and a VHS stamp work in any scene.
 - **The Director.** Simulates hundreds of runs in a fraction of a second, scores each for the story you want (slow burn, last-second escape, beat the clock, chaos, comeback, in time with the song), and shows the best nine playing side by side. Use one, swipe through them, or export the best.
 - **Swipe review and an export queue.** Keep (→) or discard (←) candidates one by one; kept videos render in the background and land in `exports/` with a caption, the exact scene, and a line in `exports/log.csv`.
 - **Batch production.** One click makes 4–12 remixes of a scene (new palette, instrument, melody and feel), each auto-directed. **Tournaments** turn any battle into a knockout bracket: every match becomes a scene with a close fight and a winner that advances.
@@ -221,6 +233,13 @@ The [scene-by-scene review](docs/preset-review.md) covers all 50 presets, their 
 | [`sand-pour`](scenes/sand-pour.json) | Six batches of colored grains settle into layers | `funnel` + `pegboard` + six timed pours |
 | [`marble-race`](scenes/marble-race.json) | Eight marbles race a course to the line | `course` + `finish` zone + slow motion |
 | [`hundred-rings`](scenes/hundred-rings.json) | Can it escape 100 rings? | `nested` × 100 + `camera.mode: zoomOut` |
+
+**Thousands of rings** (2 more, for viewers who've seen every ring escape):
+
+| Scene | Format | Built from |
+| --- | --- | --- |
+| [`the-descent`](scenes/the-descent.json) | A ball falls through 1,000 rings on a 3 a.m. tape, the last one 0.6 s before zero | `strata` × 1000 + `radial` force + `chase` camera + `voice` stutter + `dive` bursts + `shepard` drone + `vhs` |
+| [`dont-look-up`](scenes/dont-look-up.json) | An eye climbs 2,000 rings in a mirrored, buzzing dark | `strata` × 2000 + `chase` (`orient: up`) + `static` stutter + `choir` bursts + `hum` drone + `mirror` |
 
 ## The Director
 

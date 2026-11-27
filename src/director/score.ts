@@ -430,8 +430,10 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
 
 /** Theta lies outside every gap but within `margin` radians of a gap edge. */
 function missesGap(c: RingContainer, theta: number, margin: number): boolean {
+  const period = (2 * Math.PI) / c.repeat;
   for (const g of c.gaps) {
-    const d = Math.abs(Math.atan2(Math.sin(theta - g.at), Math.cos(theta - g.at)));
+    const raw = theta - g.at;
+    const d = c.repeat > 1 ? Math.abs(raw - period * Math.round(raw / period)) : Math.abs(Math.atan2(Math.sin(raw), Math.cos(raw)));
     if (d >= g.width / 2 && d < g.width / 2 + margin) return true;
   }
   return false;

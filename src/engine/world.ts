@@ -135,6 +135,10 @@ export interface RingContainer extends ContainerBase {
   /** Breakable segments (hp per segment; 0 = broken), evenly spaced from angle 0. */
   segments?: number[];
   segmentHp: number;
+  /** From outside, the gaps are solid: an escaped ball never falls back in. */
+  oneWay: boolean;
+  /** The gaps repeat this many times evenly around the ring. */
+  repeat: number;
 }
 export interface PolyContainer extends ContainerBase {
   kind: 'poly';
@@ -188,7 +192,7 @@ export interface Portal {
 
 export interface Force {
   id: number;
-  kind: 'attract' | 'repel' | 'vortex' | 'wind';
+  kind: 'attract' | 'repel' | 'vortex' | 'wind' | 'radial';
   x: number;
   y: number;
   strength: number;
@@ -425,6 +429,9 @@ export class World {
   private readonly mergeGrowth: number;
   private readonly mergeMax: number;
   private readonly absorbMax: number;
+  /** Safety net: a ball still inside something but this far from the frame's center has slipped out. */
+  private farX = WIDTH * 4;
+  private farY = HEIGHT * 4;
   /** During a hit's rules: true when the ball the rules run for was the one struck. */
   private defending = true;
 
@@ -485,6 +492,8 @@ export class World {
           broken: false,
           segments: e.segments ? Array.from({ length: e.segments }, () => e.segmentHp) : undefined,
           segmentHp: e.segmentHp,
+          oneWay: e.oneWay,
+          repeat: e.repeat,
         });
       } else if (e.type === 'polygon') {
         this.containers.push({
@@ -625,6 +634,11 @@ export class World {
       }
     }
     this.startingBalls = this.balls.length;
+    // Ring systems bigger than the frame (thousands of rings) widen the safety net to fit.
+    for (const c of this.containers) {
+      this.farX = Math.max(this.farX, Math.abs(c.x - WIDTH / 2) + c.radius + c.thickness + 200);
+      this.farY = Math.max(this.farY, Math.abs(c.y - HEIGHT / 2) + c.radius + c.thickness + 200);
+    }
     this.hadBreakables = this.breakablesLeft > 0;
     const hitActs = scene.rules.filter((r) => r.on === 'hit').flatMap((r) => r.do ?? []);
     const merge = hitActs.find((a) => a.do === 'merge');
@@ -910,12 +924,30 @@ export class World {
       }
       b.x += b.vx * h;
       b.y += b.vy * h;
+      // Rings far from the ball are skipped without a call (thousands of nested rings):
+      // only when the collision code would have returned straight away, so runs are unchanged.
+      let cx = NaN;
+      let cy = NaN;
+      let cd = 0;
       for (let i = 0; i < this.containers.length && b.alive; i++) {
         const c = this.containers[i];
         if (c.broken) continue;
         if (c.kind === 'ring') {
-          if (!b.escaped[i]) this.collideRing(b, c, i);
-          else this.collideRingOutside(b, c, i);
+          if (c.x !== cx || c.y !== cy) {
+            cx = c.x;
+            cy = c.y;
+            cd = M.hypot(b.x - cx, b.y - cy);
+          }
+          const half = c.thickness / 2;
+          if (!b.escaped[i]) {
+            if (cd + b.r + 1 < c.radius - half) continue;
+            this.collideRing(b, c, i);
+          } else {
+            if (cd - b.r - 1 > c.radius + half) continue;
+            this.collideRingOutside(b, c, i);
+          }
+          // A collision moves the ball: measure again for the next ring.
+          cx = NaN;
         } else this.collidePoly(b, c, i);
       }
       for (const s of this.solids) {
@@ -930,19 +962,31 @@ export class World {
       if (this.territory && b.team !== undefined && b.alive) this.collideTerritory(b);
     }
     if (b.alive && b.escaped.every(Boolean)) {
+      // Out of everything: gone once off-screen (or, past a ring system far bigger than the frame, well beyond it).
       const m = b.r + 60;
-      if (b.y - m > HEIGHT || b.y + m < -HEIGHT || b.x + m < 0 || b.x - m > WIDTH) {
+      const huge = this.farX > WIDTH * 4;
+      if (huge ? Math.abs(b.x - WIDTH / 2) > this.farX + 8000 || Math.abs(b.y - HEIGHT / 2) > this.farY + 8000 : b.y - m > HEIGHT || b.y + m < -HEIGHT || b.x + m < 0 || b.x - m > WIDTH) {
         b.alive = false;
         this.emit('exit', b);
       }
-    } else if (b.alive && (Math.abs(b.x - WIDTH / 2) > WIDTH * 4 || Math.abs(b.y - HEIGHT / 2) > HEIGHT * 4)) {
+    } else if (b.alive && (Math.abs(b.x - WIDTH / 2) > this.farX || Math.abs(b.y - HEIGHT / 2) > this.farY)) {
       // Safety net: a ball this far off-screen has slipped out of everything; let it go.
       b.alive = false;
       this.emit('exit', b);
     }
   }
 
+  /** The gap theta falls in (with repeat > 1: a copy of it, centered on the repeat theta is in), or null. */
   private gapAt(ring: RingContainer, theta: number): Gap | null {
+    if (ring.repeat > 1) {
+      const period = TAU / ring.repeat;
+      for (const gap of ring.gaps) {
+        const d = theta - gap.at;
+        const k = Math.floor(d / period + 0.5);
+        if (Math.abs(d - k * period) < gap.width / 2) return { at: gap.at + k * period, width: gap.width };
+      }
+      return null;
+    }
     for (const gap of ring.gaps) {
       if (Math.abs(wrap(theta - gap.at)) < gap.width / 2) return gap;
     }
@@ -1011,6 +1055,11 @@ export class World {
     const outer = ring.radius + half;
     if (d - b.r > outer) return;
     const theta = M.atan2(dy, dx) - ring.angle;
+    if (ring.oneWay) {
+      // The way back is shut: the outside is a solid wall, gaps and all.
+      this.pushOutside(b, ring, d, dx, dy);
+      return;
+    }
     if (ring.segments && ring.segments[this.segmentAt(ring, theta)] <= 0) {
       if (d + b.r < ring.radius - half) b.escaped[idx] = false;
       return;
@@ -1032,6 +1081,20 @@ export class World {
     const ny = dy / d;
     b.x = ring.x + nx * (outer + b.r);
     b.y = ring.y + ny * (outer + b.r);
+    const vn = b.vx * nx + b.vy * ny;
+    if (vn < 0) {
+      const e = 0.6 * this.scene.world.restitution;
+      b.vx -= (1 + e) * vn * nx;
+      b.vy -= (1 + e) * vn * ny;
+    }
+  }
+
+  /** Rest an escaped ball against a ring's outer face (a soft bounce). */
+  private pushOutside(b: Ball, ring: RingContainer, d: number, dx: number, dy: number): void {
+    const nx = dx / d;
+    const ny = dy / d;
+    b.x = ring.x + nx * (ring.radius + ring.thickness / 2 + b.r);
+    b.y = ring.y + ny * (ring.radius + ring.thickness / 2 + b.r);
     const vn = b.vx * nx + b.vy * ny;
     if (vn < 0) {
       const e = 0.6 * this.scene.world.restitution;
@@ -1896,6 +1959,13 @@ export class World {
       const dy = f.y - b.y;
       const d = M.hypot(dx, dy) || 1e-9;
       if (f.radius > 0 && d > f.radius) continue;
+      if (f.kind === 'radial') {
+        // Gravity pointing away from the center (fading in over the first 20 px, where "away" is undefined).
+        const a = f.strength * Math.min(1, d / 20);
+        b.vx -= (dx / d) * a * h;
+        b.vy -= (dy / d) * a * h;
+        continue;
+      }
       if (f.kind === 'attract' && f.swallow > 0 && d < f.swallow + b.r * 0.5 && !b.projectile) {
         if (!(this.scene.duration.endOn === 'lastStanding' && this.aliveCount <= 1)) {
           this.swallowBall(b, f);

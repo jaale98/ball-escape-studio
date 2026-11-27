@@ -129,7 +129,7 @@ export async function exportMp4(
   // 2. Soundtrack, rendered faster than real time.
   onProgress('audio', 0);
   const actx = new OfflineAudioContext(2, Math.ceil(fullSeconds * SAMPLE_RATE) + SAMPLE_RATE, SAMPLE_RATE);
-  const master = createMaster(actx, scene.audio.volume);
+  const master = createMaster(actx, scene.audio.volume, scene.audio.reverb);
   const mapper = new SoundMapper(scene, pre.rhythmK);
   for (const e of pre.events) {
     const at = times[Math.min(e.step, times.length - 1)];

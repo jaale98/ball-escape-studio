@@ -40,7 +40,7 @@ Reaching for code is the last resort. If a format truly needs a new engine capab
 
 ## V2 building blocks
 
-- Formats by family (`category` on the scene: escape, destruction, battle, teams, forces, surreal, chaos, satisfying, music). The README's preset table lists all 50.
+- Formats by family (`category` on the scene: escape, destruction, battle, teams, forces, surreal, chaos, satisfying, music). The README's preset table lists all 52.
 - Destruction: ring `hp` or `segments`/`segmentHp`, breakable `wall`/`peg` `hp`, `brick` (or the `brickwall` prefab), `endOn: cleared`.
 - Teams: declare `teams` (name, color, emoji, `beats`), give balls `team`/`teams`. Conversion is the `convert` action (`chance` slows it); `endOn: oneTeam`; counter `teams`. A `territory` board repaints cells (Pong wars); team balls need a contrasting `color` because they take their team color otherwise.
 - Forces and fields: `force` (attract, repel, vortex, wind; `swallow` makes a black hole, `growForce` makes it hungrier), `portal`, `spinner` (paddles; `deadly` blades), bumpers (`boost`), `zone` `kill` (drains) and `finish` (`endOn: finish`), `emitter` (pours balls; `loop` keeps a count alive).
@@ -53,6 +53,15 @@ Reaching for code is the last resort. If a format truly needs a new engine capab
 - Sound: 10 instruments (meow included), `pitchBy`, `climax` (drop, swell, gong), `eventSounds`.
 - Director stories for these: `underdog` (teams), `photo-finish` (races), `destruction` (breakables). Tune with `npm run sim -- <name> --director <story> --target <s>`.
 - New V2 randomness uses the `act` stream in `world.ts`, separate from V1's streams, so V1 scenes keep their exact runs. Keep it that way: new state goes into `hash()` only when present.
+
+## Thousands of rings and weird sound
+
+- `strata` prefab (`source.ts`): up to 20,000 rings in strata. Gaps line up within a stratum (one gap per ring with `repeat`, so huge rings stay cheap), strata thicken outward, and `fall` / `fallDrag` lean each shaft so a ball dropping from rest stays in it. It has its own layout `seed`, separate from the scene seed, so the Director varies the run but not the geometry. Ring options it uses: `repeat` (gaps repeat evenly around the ring) and `oneWay` (no falling back in).
+- The falling formats use `world.gravity: 0` with a `force` of `kind: radial` (constant outward pull, set `fall` to its strength), `keepEnergy: false`, restitution about 0.45 and `damping` about 1, so the ball settles on each floor and waits for a shaft. Pacing knobs: `gapEvery`/`speed` (the wait for a hole), `layerMin`/`layerMax`/`layerCurve` (drop sizes), `gapArc` (tolerance). Probe pacing with `--director beat-the-clock`, then read the streaks.
+- Camera `mode: chase` follows the lead ball at `zoom`; `orient: down|up` turns the view so the way out points down (falling) or up. It draws only the rings and arcs in view and fades the top and bottom behind the text.
+- Overlay: `counter: ringsLeft`, `streak` (the −47 counter), `vhs` (PLAY ▶ and a 3 a.m. timestamp).
+- Audio: `escapeStyle` (`voice`, `glitch`, `static`, `tape` are pre-rendered clips that restart on every escape and cut themselves off), `burst` + `burstAt` (a streak sound), `drone` (`shepard`, `hum`, `choir`, swelling with the clock), `reverb`. Style: `glitch` (tears on big moments), `mirror` (`x`, `y`, `quad`).
+- "Make it weird" (`weirdPick` in `src/director/remix.ts`) picks a vibe and then a look, a sound and one or two twists that suit the scene. The weird modifiers are `vhs`, `dreamcore`, `stutter`, `shepard`, `glitch`, `mirror`, `eyes`, `whisper`, `breathe`, `backrooms`, `tunnel-vision` and `descent`. Add new ones to `MODIFIERS`, to the `ok` table and to a vibe's slots. `npm run fuzz` tries random picks.
 
 ## Engine rules (don't break these)
 

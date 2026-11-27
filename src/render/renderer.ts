@@ -53,6 +53,13 @@ function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: num
 
 const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif';
 const TAU = Math.PI * 2;
+/** Wrap an angle to (-PI, PI]. */
+const wrapAngle = (a: number) => a - TAU * Math.floor((a + Math.PI) / TAU);
+/** A repeatable pseudo-random number in [0, 1) for an integer (frame-locked jitter that doesn't use up an Rng). */
+const hash01 = (n: number) => {
+  const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+  return x - Math.floor(x);
+};
 
 /**
  * Cap every glow (shadowBlur) on this one context. Glows are drawn from many places; capping the
@@ -150,6 +157,19 @@ export class Renderer {
   private shakeX = 0;
   private shakeY = 0;
   private chroma = 0;
+  /** chase + orient: view rotation (radians). */
+  private camRot = 0;
+  /** Glitch tearing amount (style.glitch), 0–1. */
+  private glitch = 0;
+  private readonly rngGlitch: Rng;
+  /** Thousands of rings: cull what's off-screen, and keep per-escape effects small. */
+  private manyRings = false;
+  /** The current streak of escapes (each within 0.4 s of the last). */
+  private streak = 0;
+  private streakStep = -Infinity;
+  /** Seconds since the streak last grew (drives the streak counter's pop and fade). */
+  private streakAge = 99;
+  private streakShown = 0;
   private ripples: { x: number; y: number; t: number; color: string }[] = [];
   private stars: { x: number; y: number; r: number; tw: number }[] = [];
   private grain: HTMLCanvasElement | null = null;
@@ -182,6 +202,7 @@ export class Renderer {
     if (this.safe) capShadowBlur(this.ctx, this.safe.maxGlow);
     this.rng = new Rng(scene.seed, 'fx');
     this.rngFx2 = new Rng(scene.seed, 'fx2');
+    this.rngGlitch = new Rng(scene.seed, 'glitch');
     const startBalls = scene.entities.reduce((n, e) => n + (e.type === 'ball' ? e.count * (e.copies ?? 1) : e.type === 'emitter' ? Math.min(e.count, 400) : 0), 0);
     const crowd = scene.world.maxBalls >= 400 || startBalls >= 80;
     if (scene.style.renderer === 'webgl' || (scene.style.renderer === 'auto' && crowd)) {
@@ -224,7 +245,8 @@ export class Renderer {
       g.fillRect(0, 0, 4, 2);
       this.scan = this.ctx.createPattern(p, 'repeat');
     }
-    if (!this.safe && (style.bloom || style.chromatic)) this.fxBuf = makeCanvas(canvas.width, canvas.height);
+    if (!this.safe && (style.bloom || style.chromatic || style.glitch)) this.fxBuf = makeCanvas(canvas.width, canvas.height);
+    if (style.mirror !== 'none' && !this.fxBuf) this.fxBuf = makeCanvas(canvas.width, canvas.height);
   }
 
   /** Draw the current state. dt = seconds since the previous frame (1/60 for export, 0 when paused). */
@@ -293,6 +315,7 @@ export class Renderer {
     this.drawParticles(dt);
     this.drawConfetti(dt);
     if (aperture) ctx.restore();
+    if (scene.camera.mode === 'chase') this.drawEdgeFade();
 
     ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
     // Decay flashes.
@@ -346,7 +369,9 @@ export class Renderer {
    */
   private computeFit(world: World): void {
     this.fitDone = true;
-    if (!this.safe?.fitSafeZone) return;
+    this.manyRings = world.containers.length > 60;
+    // A chase camera frames the ball, not the playfield: nothing to fit.
+    if (!this.safe?.fitSafeZone || this.scene.camera.mode === 'chase') return;
     let x0 = Infinity;
     let y0 = Infinity;
     let x1 = -Infinity;
@@ -486,6 +511,9 @@ export class Renderer {
       tz = Math.min(cam.zoom * 2.5, (cam.zoom * 470) / Math.max(60, r + 30));
       tx = cx;
       ty = cy;
+    } else if (cam.mode === 'chase') {
+      this.chase(world, dt);
+      return;
     }
     if (!this.camInit || dt <= 0) {
       if (!this.camInit) {
@@ -500,6 +528,12 @@ export class Renderer {
       this.camY += (ty - this.camY) * k;
       this.camZoom += (tz - this.camZoom) * k;
     }
+    this.updateShake(dt);
+  }
+
+  /** Screen shake and fringe decay (every camera mode). */
+  private updateShake(dt: number): void {
+    const cam = this.scene.camera;
     if (cam.shake > 0 && dt > 0) {
       const amt = this.shake * 16 * cam.shake;
       this.shakeX = this.rngFx2.range(-1, 1) * amt;
@@ -509,25 +543,129 @@ export class Renderer {
       this.shakeX = this.shakeY = 0;
     }
     this.chroma *= Math.exp(-dt * 6);
+    this.glitch *= Math.exp(-dt * 5);
   }
 
+  /** The ball that has escaped the most (the one a chase camera follows). */
+  private leadBall(world: World): Ball | undefined {
+    let lead: Ball | undefined;
+    let best = -1;
+    for (const b of world.balls) {
+      if (!b.alive || b.projectile) continue;
+      let n = 0;
+      for (const v of b.everEscaped) if (v) n++;
+      if (n > best) {
+        best = n;
+        lead = b;
+      }
+    }
+    return lead;
+  }
+
+  /**
+   * chase: lock onto the lead ball up close. With orient, turn the view so the
+   * way out of its rings points down (or up); the ball sits a little above
+   * center so the floors it is falling toward are in view.
+   */
+  private chase(world: World, dt: number): void {
+    const cam = this.scene.camera;
+    const lead = this.leadBall(world);
+    const tz = cam.zoom;
+    let tx = this.camX;
+    let ty = this.camY;
+    let rot = this.camRot;
+    if (lead) {
+      // The center of the rings it is still inside (the one with the most rings).
+      const c = world.containers.find((k, i) => !lead.everEscaped[i] && !k.broken) ?? world.containers[world.containers.length - 1];
+      let ox = 0;
+      let oy = 0;
+      if (c && cam.orient !== 'none') {
+        const dx = lead.x - c.x;
+        const dy = lead.y - c.y;
+        const d = Math.hypot(dx, dy);
+        if (d > 1) {
+          const target = (cam.orient === 'down' ? Math.PI / 2 : -Math.PI / 2) - Math.atan2(dy, dx);
+          // Near the very middle "outward" is shaky: turn slowly there.
+          const w = Math.min(1, d / 220);
+          const k = dt > 0 ? (1 - Math.exp(-dt * 5)) * w : this.camInit ? 0 : 1;
+          rot += wrapAngle(target - rot) * k;
+          // Look ahead: shift the view outward so the ball sits above center.
+          const ahead = (260 / tz) * w * (cam.orient === 'down' ? 1 : 1);
+          ox = (dx / d) * ahead;
+          oy = (dy / d) * ahead;
+        }
+      }
+      tx = lead.x + ox;
+      ty = lead.y + oy;
+    }
+    if (!this.camInit || dt <= 0) {
+      if (!this.camInit) {
+        this.camX = tx;
+        this.camY = ty;
+        this.camZoom = tz;
+        this.camRot = rot;
+        this.camInit = true;
+      }
+    } else {
+      const k = 1 - Math.exp(-dt * 9);
+      this.camX += (tx - this.camX) * k;
+      this.camY += (ty - this.camY) * k;
+      this.camZoom += (tz - this.camZoom) * (1 - Math.exp(-dt * 2.5));
+      this.camRot = rot;
+      // Never let a fast fall drag the ball out of frame.
+      const maxLag = 330 / this.camZoom;
+      const lx = this.camX - tx;
+      const ly = this.camY - ty;
+      const lag = Math.hypot(lx, ly);
+      if (lag > maxLag) {
+        this.camX = tx + (lx / lag) * maxLag;
+        this.camY = ty + (ly / lag) * maxLag;
+      }
+    }
+    this.updateShake(dt);
+  }
   /** The world-space transform (camera, zoom, shake). */
   private worldTransform(): void {
     const f = this.fitS;
     const s = this.scale * this.camZoom * f;
+    if (this.camRot === 0) {
+      this.ctx.setTransform(
+        s,
+        0,
+        0,
+        s,
+        this.scale * (this.fitX + f * (WIDTH / 2 - this.camX * this.camZoom + this.shakeX)),
+        this.scale * (this.fitY + f * (HEIGHT / 2 - this.camY * this.camZoom + this.shakeY)),
+      );
+      return;
+    }
+    const cos = Math.cos(this.camRot) * s;
+    const sin = Math.sin(this.camRot) * s;
     this.ctx.setTransform(
-      s,
-      0,
-      0,
-      s,
-      this.scale * (this.fitX + f * (WIDTH / 2 - this.camX * this.camZoom + this.shakeX)),
-      this.scale * (this.fitY + f * (HEIGHT / 2 - this.camY * this.camZoom + this.shakeY)),
+      cos,
+      sin,
+      -sin,
+      cos,
+      this.scale * (this.fitX + f * (WIDTH / 2 + this.shakeX)) - (cos * this.camX - sin * this.camY),
+      this.scale * (this.fitY + f * (HEIGHT / 2 + this.shakeY)) - (sin * this.camX + cos * this.camY),
     );
   }
 
   private toScreen(x: number, y: number): [number, number] {
     const f = this.fitS;
-    return [this.fitX + f * (WIDTH / 2 + (x - this.camX) * this.camZoom + this.shakeX), this.fitY + f * (HEIGHT / 2 + (y - this.camY) * this.camZoom + this.shakeY)];
+    let dx = (x - this.camX) * this.camZoom;
+    let dy = (y - this.camY) * this.camZoom;
+    if (this.camRot !== 0) {
+      const c = Math.cos(this.camRot);
+      const sn = Math.sin(this.camRot);
+      [dx, dy] = [c * dx - sn * dy, sn * dx + c * dy];
+    }
+    return [this.fitX + f * (WIDTH / 2 + dx + this.shakeX), this.fitY + f * (HEIGHT / 2 + dy + this.shakeY)];
+  }
+
+  /** The world-space circle the screen shows (camera center, radius), for culling. */
+  private viewCircle(): [number, number, number] {
+    return [this.camX, this.camY, (Math.hypot(WIDTH, HEIGHT) / 2 + 40) / (this.camZoom * this.fitS)];
   }
 
   // ---- colors -------------------------------------------------------------
@@ -1036,8 +1174,19 @@ export class Renderer {
     const { ctx } = this;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    const [vx, vy, vr] = this.viewCircle();
     for (const c of world.containers) {
       if (c.broken) continue;
+      // Off-screen rings (thousands of rings around a chase camera) aren't drawn; huge ones only where they show.
+      let window: [number, number] | null = null;
+      if (this.manyRings && c.kind === 'ring') {
+        const dc = Math.hypot(vx - c.x, vy - c.y);
+        const R = c.radius;
+        if (dc + vr < R - c.thickness || dc - vr > R + c.thickness) continue;
+        const cosB = (R * R + dc * dc - vr * vr) / (2 * R * Math.max(dc, 1e-6));
+        if (cosB > -1) window = [Math.atan2(vy - c.y, vx - c.x), Math.acos(Math.min(1, cosB)) + 0.02];
+      }
+      this.ringWindow = window;
       const f = this.flash.get(`c${c.id}`);
       const amt = f?.amount ?? 0;
       ctx.lineWidth = this.minLw(c.thickness);
@@ -1061,7 +1210,30 @@ export class Renderer {
         ctx.globalAlpha = 1;
       }
     }
+    this.ringWindow = null;
     ctx.shadowBlur = 0;
+  }
+
+  /** While drawing containers: the visible arc of a huge ring (center angle, half width), or null for all of it. */
+  private ringWindow: [number, number] | null = null;
+
+  /** Add the arc from a0 to a1 (a1 > a0) to the path, clipped to the ring window. */
+  private arcPart(c: Container, a0: number, a1: number): void {
+    const { ctx } = this;
+    const w = this.ringWindow;
+    const draw = (s: number, e: number) => {
+      ctx.moveTo(c.x + c.radius * Math.cos(s), c.y + c.radius * Math.sin(s));
+      ctx.arc(c.x, c.y, c.radius, s, e);
+    };
+    if (!w) return draw(a0, a1);
+    const [mid, half] = w;
+    for (const k of [-1, 0, 1, 2]) {
+      const lo = mid - half + k * TAU;
+      const hi = mid + half + k * TAU;
+      const s = Math.max(a0, lo);
+      const e = Math.min(a1, hi);
+      if (e > s) draw(s, e);
+    }
   }
 
   private strokeContainer(world: World, c: Container, color: string, alpha: number): void {
@@ -1098,9 +1270,58 @@ export class Renderer {
         lastY = by;
       }
     } else {
-      const gaps = [...c.gaps].sort((a, b) => a.at - b.at);
+      const sorted = [...c.gaps].sort((a, b) => a.at - b.at);
+      // Repeated gaps: the visible copies only (all of them on a ring drawn whole).
+      let gaps = sorted;
+      if (c.repeat > 1 && sorted.length) {
+        const period = TAU / c.repeat;
+        let k0 = 0;
+        let k1 = c.repeat - 1;
+        if (this.ringWindow) {
+          const rel = this.ringWindow[0] - c.angle;
+          const span = Math.ceil(this.ringWindow[1] / period) + 1;
+          const mid = Math.round(rel / period);
+          if (2 * span + 1 < c.repeat) {
+            k0 = mid - span;
+            k1 = mid + span;
+          }
+        }
+        gaps = [];
+        for (let k = k0; k <= k1; k++) for (const g of sorted) gaps.push({ at: g.at + k * period, width: g.width });
+        if (k1 - k0 + 1 < c.repeat) {
+          // Only part of the ring: draw the walls between these copies (no wrap-around).
+          ctx.beginPath();
+          for (let i = 0; i + 1 < gaps.length; i++) {
+            const start = gaps[i].at + gaps[i].width / 2;
+            const end = gaps[i + 1].at - gaps[i + 1].width / 2;
+            if (end > start) this.arcPart(c, c.angle + start, c.angle + end);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.globalAlpha = 1;
+          return;
+        }
+      }
       if (gaps.length === 0) {
-        ctx.arc(c.x, c.y, c.radius, 0, TAU);
+        if (this.ringWindow) this.arcPart(c, c.angle - Math.PI, c.angle + Math.PI);
+        else ctx.arc(c.x, c.y, c.radius, 0, TAU);
+      } else if (this.ringWindow) {
+        // Normalise the window into this ring's frame, then walk only the walls near it.
+        const [mid] = this.ringWindow;
+        const rel = mid - c.angle;
+        for (let i = 0; i < gaps.length; i++) {
+          const g = gaps[i];
+          const next = gaps[(i + 1) % gaps.length];
+          const start = g.at + g.width / 2;
+          let end = next.at - next.width / 2;
+          if (i === gaps.length - 1) end += TAU;
+          if (end <= start) continue;
+          // Cheap reject: wall arc far from the window center (both measured in the ring frame).
+          const m = (start + end) / 2;
+          const d = Math.abs(m - rel - TAU * Math.round((m - rel) / TAU));
+          if (d - (end - start) / 2 > this.ringWindow[1]) continue;
+          this.arcPart(c, c.angle + start, c.angle + end);
+        }
       } else {
         for (let i = 0; i < gaps.length; i++) {
           const g = gaps[i];
@@ -1588,6 +1809,7 @@ export class Renderer {
     const { ctx } = this;
     const { style } = this.scene;
     const canvas = ctx.canvas;
+    if (this.fxBuf && style.mirror !== 'none') this.drawMirror(style.mirror);
     if (this.fxBuf && (style.bloom || (style.chromatic && this.chroma > 0.02))) {
       const b = this.fxBuf.getContext('2d')!;
       b.setTransform(1, 0, 0, 1, 0, 0);
@@ -1615,6 +1837,7 @@ export class Renderer {
       ctx.globalAlpha = 1;
       ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
     }
+    if (this.fxBuf && style.glitch && this.glitch > 0.04 && dt > 0) this.drawGlitch();
     if (style.vignette && this.safe?.gradients !== 'solid') {
       const g = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, HEIGHT * 0.3, WIDTH / 2, HEIGHT / 2, HEIGHT * 0.72);
       g.addColorStop(0, 'rgba(0,0,0,0)');
@@ -1643,6 +1866,90 @@ export class Renderer {
     }
   }
 
+  /** chase: the top and bottom of the frame fade into the background, so the title, clock and counter stay readable over the rings. */
+  private drawEdgeFade(): void {
+    const { ctx } = this;
+    ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+    const bg = this.scene.style.background;
+    const rgb = /^#[0-9a-f]{6}$/i.test(bg) ? [1, 3, 5].map((k) => parseInt(bg.slice(k, k + 2), 16)).join(',') : '0,0,0';
+    const top = ctx.createLinearGradient(0, 0, 0, 640);
+    top.addColorStop(0, `rgba(${rgb},0.92)`);
+    top.addColorStop(0.62, `rgba(${rgb},0.7)`);
+    top.addColorStop(1, `rgba(${rgb},0)`);
+    ctx.fillStyle = top;
+    ctx.fillRect(0, 0, WIDTH, 640);
+    const bottom = ctx.createLinearGradient(0, 1480, 0, HEIGHT);
+    bottom.addColorStop(0, `rgba(${rgb},0)`);
+    bottom.addColorStop(0.45, `rgba(${rgb},0.72)`);
+    bottom.addColorStop(1, `rgba(${rgb},0.92)`);
+    ctx.fillStyle = bottom;
+    ctx.fillRect(0, 1480, WIDTH, HEIGHT - 1480);
+  }
+
+  /** style.mirror: reflect one half (or quarter) of the frame onto the rest. */
+  private drawMirror(mode: 'x' | 'y' | 'quad'): void {
+    const { ctx } = this;
+    const buf = this.fxBuf!;
+    const b = buf.getContext('2d')!;
+    const w = ctx.canvas.width;
+    const h = ctx.canvas.height;
+    const flip = (horizontal: boolean) => {
+      b.setTransform(1, 0, 0, 1, 0, 0);
+      b.clearRect(0, 0, w, h);
+      b.drawImage(ctx.canvas, 0, 0);
+      if (horizontal) {
+        ctx.setTransform(-1, 0, 0, 1, w, 0);
+        ctx.drawImage(buf, 0, 0, w / 2, h, 0, 0, w / 2, h);
+      } else {
+        ctx.setTransform(1, 0, 0, -1, 0, h);
+        ctx.drawImage(buf, 0, 0, w, h / 2, 0, 0, w, h / 2);
+      }
+    };
+    if (mode === 'x' || mode === 'quad') flip(true);
+    if (mode === 'y' || mode === 'quad') flip(false);
+    ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+  }
+
+  /** style.glitch: the frame tears into horizontally shifted slices, some with split or inverted colors. */
+  private drawGlitch(): void {
+    const { ctx } = this;
+    const buf = this.fxBuf!;
+    const b = buf.getContext('2d')!;
+    const w = ctx.canvas.width;
+    const h = ctx.canvas.height;
+    const g = this.glitch;
+    const r = this.rngGlitch;
+    b.setTransform(1, 0, 0, 1, 0, 0);
+    b.clearRect(0, 0, w, h);
+    b.drawImage(ctx.canvas, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const slices = 2 + Math.round(g * 9);
+    for (let i = 0; i < slices; i++) {
+      const y = Math.floor(r.range(0, h));
+      const sh = Math.max(2, Math.floor(r.range(4, 90) * this.scale * (0.4 + g)));
+      const dx = Math.round(r.range(-1, 1) * 70 * g * this.scale);
+      const mode = r.next();
+      if (mode < 0.15 * g) {
+        ctx.globalCompositeOperation = 'difference';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, y, w, sh);
+        ctx.globalCompositeOperation = 'source-over';
+      } else {
+        ctx.drawImage(buf, 0, y, w, sh, dx, y, w, sh);
+        if (mode > 0.7) {
+          ctx.globalCompositeOperation = 'screen';
+          ctx.globalAlpha = 0.5 * g;
+          ctx.filter = 'sepia(1) saturate(8) hue-rotate(-50deg)';
+          ctx.drawImage(buf, 0, y, w, sh, dx + 10 * this.scale, y, w, sh);
+          ctx.filter = 'none';
+          ctx.globalAlpha = 1;
+          ctx.globalCompositeOperation = 'source-over';
+        }
+      }
+    }
+    ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+  }
+
   private consumeEvents(world: World): void {
     const ballColor = (id: number) => (world.balls[id] ? this.colorOf(world.balls[id], world) : '#ffffff');
     // In crowds, per-bounce sparks would be noise (and slow): keep only the big moments.
@@ -1651,6 +1958,10 @@ export class Renderer {
     const kick = (k: number) => {
       if (camera.shake > 0) this.shake = Math.min(1.6, this.shake + k);
       if (style.chromatic) this.chroma = Math.min(1, this.chroma + k);
+    };
+    // Glitch tearing on the big moments (escape streaks have their own, below).
+    const tear = (k: number) => {
+      if (style.glitch) this.glitch = Math.min(1, this.glitch + k);
     };
     for (; this.cursor < world.events.length; this.cursor++) {
       const e = world.events[this.cursor];
@@ -1671,6 +1982,7 @@ export class Renderer {
           this.burst(e.x, e.y, '#ffffff', 14, 520);
           this.burst(e.x, e.y, ballColor(e.ball), 10, 420);
           kick(0.35);
+          tear(0.15);
           break;
         case 'clash':
           this.burst(e.x, e.y, '#fff3b0', 22, 640);
@@ -1684,7 +1996,25 @@ export class Renderer {
           if (e.solid >= 0) this.flash.set(`s${e.solid}`, { amount: 1, color: ballColor(e.ball) });
           this.burst(e.x, e.y, ballColor(e.ball), e.solid >= 0 ? 3 : 8, 260);
           break;
-        case 'escape':
+        case 'escape': {
+          const burstAt = this.scene.audio.burstAt;
+          this.streak = e.step - this.streakStep < 0.4 * PHYSICS_HZ ? this.streak + 1 : 1;
+          this.streakStep = e.step;
+          this.streakAge = 0;
+          if (this.manyRings) {
+            // Thousands of rings: no flash per ring; a streak builds shake, fringe and tearing instead.
+            this.burst(e.x, e.y, ballColor(e.ball), 3, 260);
+            if (this.streak >= burstAt) {
+              kick(Math.min(0.2, 0.05 + this.streak * 0.0015));
+              if (style.glitch) this.glitch = Math.min(1, this.glitch + 0.06 + this.streak * 0.001);
+              if (this.streak === burstAt) {
+                this.escapeFlash = Math.max(this.escapeFlash, 0.35);
+                this.burst(e.x, e.y, '#ffffff', 24, 700);
+              }
+            }
+            break;
+          }
+          tear(this.streak >= burstAt ? 0.1 : e.step - this.lastFlashStep >= PHYSICS_HZ ? 0.5 : 0);
           // Flash only for escapes at least a second apart, so constant
           // escapes (multiply scenes) don't wash the frame out.
           if (e.step - this.lastFlashStep >= PHYSICS_HZ) {
@@ -1696,6 +2026,7 @@ export class Renderer {
           this.burst(e.x, e.y, ballColor(e.ball), 40, 700);
           this.burst(e.x, e.y, '#ffffff', 16, 500);
           break;
+        }
         case 'hit':
           this.burst(e.x, e.y, '#ffffff', 6, 380);
           break;
@@ -1703,11 +2034,13 @@ export class Renderer {
           this.burst(e.x, e.y, ballColor(e.ball), 60, 800);
           this.burst(e.x, e.y, '#ffffff', 20, 500);
           kick(0.7);
+          tear(0.5);
           break;
         case 'spawn':
           if (e.step > 0) this.burst(e.x, e.y, ballColor(e.ball), 6, 160);
           break;
         case 'break': {
+          tear(0.25);
           const c = e.ring >= 0 ? world.containers[e.ring] : null;
           const s = e.solid >= 0 ? world.solids[e.solid] : null;
           const color = c?.color ?? s?.color ?? '#ffffff';
@@ -1727,10 +2060,12 @@ export class Renderer {
           break;
         }
         case 'teleport':
+          tear(0.4);
           this.burst(e.x, e.y, '#c77dff', 16, 420);
           this.burst(world.balls[e.ball]?.x ?? e.x, world.balls[e.ball]?.y ?? e.y, '#4dd4ff', 16, 420);
           break;
         case 'swallow':
+          tear(0.3);
           this.burst(e.x, e.y, ballColor(e.ball), 22, 300);
           kick(0.3);
           break;
@@ -1864,6 +2199,12 @@ export class Renderer {
       }
       parts.push(`${best} / ${world.containers.length} rings`);
     }
+    if (overlay.counter === 'ringsLeft') {
+      const lead = this.leadBall(world);
+      let n = 0;
+      if (lead) world.containers.forEach((c, i) => (n += lead.everEscaped[i] || c.broken ? 0 : 1));
+      parts.push(n === 0 ? 'ESCAPED' : `${n} ${n === 1 ? 'ring' : 'rings'} left`);
+    }
     if (overlay.counter === 'bricks') parts.push(`${world.solids.filter((s) => s.alive && s.hp !== undefined).length} left`);
     if (overlay.counter === 'hp') {
       const c = world.containers.find((k) => k.hp !== undefined);
@@ -1894,6 +2235,8 @@ export class Renderer {
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
 
+    if (overlay.streak) this.drawStreak(world, dt, font);
+    if (overlay.vhs) this.drawVhs(world, secs);
     if (overlay.progress !== 'none') this.drawProgress(world, secs);
     if (clock && world.endReason === 'timeUp' && world.climaxStep >= 0) this.drawTimeUp(world, clock.timeUpText, font);
     if (overlay.reveal) this.drawReveal(world, counterY, font);
@@ -1980,6 +2323,83 @@ export class Renderer {
       ctx.fillText(text, WIDTH / 2, HEIGHT / 2);
       ctx.textBaseline = 'alphabetic';
       ctx.shadowBlur = 0;
+    }
+  }
+
+  /** overlay.streak: −47 by the ball while it escapes ring after ring, popping on each one, fading after. */
+  private drawStreak(world: World, dt: number, font: string): void {
+    const { ctx } = this;
+    this.streakAge += dt;
+    const min = Math.max(2, Math.ceil(this.scene.audio.burstAt / 2));
+    if (this.streak >= min && this.streakAge < 0.05) this.streakShown = this.streak;
+    const n = this.streakShown;
+    if (n < min) return;
+    const fade = this.streakAge < 0.5 ? 1 : Math.max(0, 1 - (this.streakAge - 0.5) / 0.6);
+    if (fade <= 0) {
+      this.streakShown = 0;
+      return;
+    }
+    const lead = this.leadBall(world);
+    const [bx, by] = lead ? this.toScreen(lead.x, lead.y) : [WIDTH / 2, HEIGHT / 2];
+    const pop = 1 + 0.35 * Math.exp(-this.streakAge * 14);
+    const size = Math.round(Math.min(124, 64 + n * 0.3) * pop);
+    const y = Math.max(560, Math.min(1500, by - 40));
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.font = `900 ${size}px ${font}`;
+    // Beside the ball, kept inside the frame (and clear of TikTok's right-hand buttons in the safe style): left of it if the right has no room.
+    const w = ctx.measureText(`−${n}`).width;
+    const right = this.safe?.safeText ? SAFE_RECT.x1 - 10 : WIDTH - 40;
+    let x = bx + 70;
+    if (x + w > right) x = bx - 70 - w;
+    x = Math.max(40, Math.min(right - w, x));
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    const big = n >= this.scene.audio.burstAt * 4;
+    const jx = big && this.streakAge < 0.5 ? (hash01(Math.floor(this.clock * 30)) - 0.5) * 8 : 0;
+    if (big) {
+      // Split colors on a big streak.
+      ctx.fillStyle = 'rgba(255,40,80,0.8)';
+      ctx.fillText(`−${n}`, x - 5 + jx, y);
+      ctx.fillStyle = 'rgba(40,220,255,0.8)';
+      ctx.fillText(`−${n}`, x + 5 + jx, y);
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(`−${n}`, x + jx, y);
+    ctx.restore();
+  }
+
+  /** overlay.vhs: a camcorder stamp (PLAY ▶, a 3 a.m. tape clock) and a faint tracking band. */
+  private drawVhs(world: World, secs: number): void {
+    const { ctx } = this;
+    const t = world.stepCount / PHYSICS_HZ;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.7)';
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.font = `600 44px ${FONTS.mono}`;
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left';
+    const top = this.safe?.safeText ? TIKTOK_ZONES.top + 40 : 120;
+    if (Math.floor(this.clock * 1.25) % 2 === 0 || world.climaxStep >= 0) ctx.fillText(world.climaxStep >= 0 ? 'STOP ■' : 'PLAY ▶', 64, top);
+    ctx.textAlign = 'right';
+    const all = Math.floor(secs);
+    const mm = 33 + Math.floor(all / 60);
+    ctx.fillText(`AM 3:${String(mm).padStart(2, '0')}:${String(all % 60).padStart(2, '0')}`, WIDTH - 64, top);
+    ctx.restore();
+    // Tracking band: a soft bright band that drifts down the frame, with a few torn lines.
+    const band = ((t * 0.11) % 1.3) * HEIGHT - 120;
+    const g = ctx.createLinearGradient(0, band - 60, 0, band + 60);
+    g.addColorStop(0, 'rgba(255,255,255,0)');
+    g.addColorStop(0.5, 'rgba(255,255,255,0.05)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, band - 60, WIDTH, 120);
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    const f = Math.floor(t * 30) * 4;
+    for (let k = 0; k < 3; k++) {
+      const y = band + (hash01(f + k * 17) - 0.5) * 100;
+      ctx.fillRect(hash01(f + k * 17 + 1) * 800 - 200, y, 200 + hash01(f + k * 17 + 2) * 600, 1 + hash01(f + k * 17 + 3) * 2);
     }
   }
 

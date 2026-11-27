@@ -1,0 +1,81 @@
+{
+  "$schema": "../scene.schema.json",
+  "extends": "the-descent",
+  "title": "2000 rings. Don't look up",
+  "seed": 113,
+  "clock": {
+    "seconds": 45,
+    "final": 6
+  },
+  "entities": [
+    {
+      "type": "strata",
+      "count": 2000,
+      "inner": 150,
+      "spacing": 20,
+      "thickness": 2.5,
+      "gapArc": 70,
+      "gapEvery": 180,
+      "layerMin": 40,
+      "layerMax": 420,
+      "layerCurve": 1.2,
+      "drift": 4,
+      "speed": 220,
+      "fall": 4000,
+      "fallDrag": 1,
+      "colors": [
+        "#f2f2f2",
+        "#8a8a8a",
+        "#c8c8c8",
+        "#5e5e5e"
+      ],
+      "fadeTo": "#1a1a1a",
+      "seed": 4
+    },
+    {
+      "type": "force",
+      "kind": "radial",
+      "strength": 4000,
+      "visible": false
+    },
+    {
+      "type": "ball",
+      "radius": 6,
+      "speed": 520,
+      "color": "#ffffff",
+      "emoji": "\ud83d\udc41\ufe0f"
+    }
+  ],
+  "style": {
+    "background": "#000000",
+    "ringColor": "#e0e0e0",
+    "trail": 0.6,
+    "trailStyle": "ribbon",
+    "grain": true,
+    "vignette": true,
+    "scanlines": false,
+    "chromatic": true,
+    "glitch": true,
+    "mirror": "x"
+  },
+  "camera": {
+    "mode": "chase",
+    "orient": "up",
+    "zoom": 3,
+    "shake": 1.8
+  },
+  "audio": {
+    "escapeStyle": "static",
+    "burst": "choir",
+    "drone": "hum",
+    "droneVolume": 0.6,
+    "reverb": 0.5,
+    "transpose": -7
+  },
+  "overlay": {
+    "title": "2000 rings. Don't look up",
+    "vhs": false,
+    "endCard": "it saw you.",
+    "titleSize": 58
+  }
+}
