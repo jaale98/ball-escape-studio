@@ -127,6 +127,13 @@
               "maximum": 5,
               "default": 0,
               "description": "A 3-2-1-GO intro: this many counts with the run frozen."
+            },
+            "unease": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0,
+              "description": "The view is never quite level: it slowly drifts, tilts and breathes (0 = off, 1 = seasick). Drawing only."
             }
           },
           "additionalProperties": false,
@@ -2105,6 +2112,40 @@
               "type": "boolean",
               "default": false
             },
+            "darkness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0,
+              "description": "Lights out: the frame goes dark except a pool of light around each ball (1 = pitch black outside it). Stalker eyes still glow."
+            },
+            "light": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "default": 190,
+              "description": "darkness: radius of the light around each ball (px)."
+            },
+            "flicker": {
+              "type": "boolean",
+              "default": false,
+              "description": "Failing fluorescent tube: the light stutters, and now and then cuts out for a moment."
+            },
+            "subliminal": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "maxItems": 12,
+              "description": "Words flashed for a single frame now and then (and on big moments), easy to miss."
+            },
+            "droste": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 6,
+              "default": 0,
+              "description": "The frame repeats inside itself this many times, shrinking toward the middle (the room repeats)."
+            },
             "confetti": {
               "type": "boolean",
               "default": false,
@@ -2301,10 +2342,12 @@
                 "voice",
                 "glitch",
                 "static",
-                "tape"
+                "tape",
+                "reverse",
+                "musicbox"
               ],
               "default": "classic",
-              "description": "The escape sound. classic: thump, whoosh and chord (spaced out). voice / glitch / static / tape: one short clip that restarts on every escape, cutting itself off, so a streak of escapes stutters (a-a-a-a-ah)."
+              "description": "The escape sound. classic: thump, whoosh and chord (spaced out). voice / glitch / static / tape / reverse (a backmasked voice) / musicbox (a detuned music-box tine): one short clip that restarts on every escape, cutting itself off, so a streak of escapes stutters (a-a-a-a-ah)."
             },
             "burst": {
               "type": "string",
@@ -2312,10 +2355,11 @@
                 "none",
                 "dive",
                 "drop",
-                "choir"
+                "choir",
+                "rewind"
               ],
               "default": "none",
-              "description": "A sound on a streak of escapes (burstAt or more within 0.4 s): dive = a falling, endless-seeming swoop and sub; drop = a bass drop; choir = a dissonant choir swell."
+              "description": "A sound on a streak of escapes (burstAt or more within 0.4 s): dive = a falling, endless-seeming swoop and sub; drop = a bass drop; choir = a dissonant choir swell; rewind = a tape being sucked backwards."
             },
             "burstAt": {
               "type": "integer",
@@ -2330,10 +2374,11 @@
                 "none",
                 "shepard",
                 "hum",
-                "choir"
+                "choir",
+                "heartbeat"
               ],
               "default": "none",
-              "description": "A bed under everything. shepard: a tone that seems to fall forever; hum: mains hum and tape hiss (analog horror); choir: a low, slowly shifting vowel cluster. It swells as the clock runs down."
+              "description": "A bed under everything. shepard: a tone that seems to fall forever; hum: mains hum and tape hiss (analog horror); choir: a low, slowly shifting vowel cluster; heartbeat: a heartbeat that races as a stalker closes in (or as the clock runs down). It swells as the clock runs down."
             },
             "droneVolume": {
               "type": "number",
@@ -2397,8 +2442,8 @@
               "type": "number",
               "minimum": 60,
               "maximum": 1800,
-              "default": 250,
-              "description": "Where the title sits (px from the top of the 1920 frame)."
+              "default": 320,
+              "description": "Where the title sits (px from the top of the 1920 frame). Never drawn above 320, so TikTok’s top bar doesn’t cover it."
             },
             "counterSize": {
               "type": "number",
@@ -2410,7 +2455,7 @@
               "type": "number",
               "minimum": 100,
               "maximum": 1900,
-              "description": "Where the counter and timer sit. Default: near the bottom."
+              "description": "Where the counter and timer sit. Default (and lowest): 1540, just above TikTok’s caption."
             },
             "labelSize": {
               "type": "number",
@@ -2472,6 +2517,11 @@
               "type": "boolean",
               "default": false,
               "description": "A camcorder stamp: PLAY ▶ and a running tape timestamp in the corners (analog horror)."
+            },
+            "clockLies": {
+              "type": "boolean",
+              "default": false,
+              "description": "The countdown sometimes shows the wrong number for a split second (it skips back, or flashes 0:00)."
             },
             "endCard": {
               "type": "string",
@@ -2584,6 +2634,16 @@
                   "backrooms",
                   "tunnel-vision",
                   "descent",
+                  "lights-out",
+                  "stalker",
+                  "shadow",
+                  "heartbeat",
+                  "backmask",
+                  "music-box",
+                  "subliminal",
+                  "droste",
+                  "liar",
+                  "unease",
                   "countdown"
                 ]
               },
@@ -2636,6 +2696,16 @@
                       "backrooms",
                       "tunnel-vision",
                       "descent",
+                      "lights-out",
+                      "stalker",
+                      "shadow",
+                      "heartbeat",
+                      "backmask",
+                      "music-box",
+                      "subliminal",
+                      "droste",
+                      "liar",
+                      "unease",
                       "countdown"
                     ]
                   }
@@ -2652,7 +2722,7 @@
               }
             ]
           },
-          "description": "grow-on-bounce: The ball grows a little with every wall bounce. Ends when it fills its ring.\nshrinking-gap: The exit gets narrower with every bounce.\nspeed-up: Every bounce makes the ball a little faster.\nspin-up: Every bounce spins the container faster.\nmultiply: Every escape spawns new balls back inside. Runs to the time limit.\nzero-g: No gravity: balls fly in straight lines.\ngravity-flip: Gravity reverses on a timer.\ngravity-spin: Gravity rotates a quarter turn on a timer.\npaint: Balls leave permanent paint instead of fading trails.\nbattle: Balls lose hp when they collide; the last one standing wins.\nrace: First ball out wins.\nbreak-rings: Rings are cut into segments that break when hit: the ball smashes its way out.\nhp-ring: Each ring has hit points and shatters when they run out.\nsplit: Every bounce splits the ball in two (until they get tiny).\nabsorb: Bigger eats smaller: on contact the bigger ball swallows the smaller one. Last one wins.\nmerge: Two balls of the same level merge into a bigger one.\ninfection: One zombie, everyone else human: a zombie hit turns a human. Ends when everyone has turned.\nrps: Rock, paper, scissors: every hit converts the loser. Ends when one side owns the arena.\nblack-hole: A black hole in the middle pulls everything in and swallows what gets too close.\nstorm: The arena shrinks steadily (battle royale storm).\nadd-side: Every bounce adds a side to the polygon: triangle to circle.\ngap-jump: The exit jumps to a new random spot on every bounce.\nclone-trail: Every bounce leaves a frozen clone behind; the ring slowly jams up.\nbutterfly: Butterfly effect: ghost copies of each ball launched a millionth of a degree apart. They never touch, and slowly drift apart.\nstring-art: Every bounce draws a line to the last bounce point: string art.\nslowmo: Slow motion around the climax.\nmeow: Every bounce meows (in tune).\nrainbow: Colors drift through the rainbow, with rainbow trails.\nshake: Screen shake on breaks, escapes and knockouts.\nportals: A pair of linked portals inside the arena.\nclock: A countdown: beat it or \"Time’s up\". The final stretch turns red, ticks, and escalates (the exit widens, or balls speed up) so the climax tends to land just before zero.\nvhs: Analog horror: a camcorder tape at 3 a.m. Scanlines, grain, color fringing, glitch tears on big moments, a PLAY ▶ stamp and a mains-hum drone.\ndreamcore: Slowed + reverb: everything a few semitones down in a huge, washed-out hall, soft bloom, long hazy trails and pastel colors.\nstutter: Every escape restarts one short clip of a voice, cutting itself off, so a run of escapes stutters (a-a-a-a-ah); a streak of them drops into an endless falling swoop.\nshepard: A Shepard tone under everything: a pitch that seems to fall forever and never lands, swelling as the clock runs down.\nglitch: Digital glitch: the frame tears into shifted, color-split slices on every big moment, with a bass drop on streaks.\nmirror: The playfield is mirrored: the left half reflected onto the right (or a four-way kaleidoscope). Text stays readable.\neyes: Every ball becomes an eye.\nwhisper: An out-of-place sentence appears one word per bounce (weirdcore text).\nbreathe: The walls breathe: every ring and polygon slowly swells and shrinks.\nbackrooms: The backrooms: damp yellow wallpaper, buzzing fluorescent hum, a camcorder grain.\ntunnel-vision: The camera locks onto the ball up close, so you never see the whole arena.\ndescent: The ring falls away: gravity points outward from the center (balls fall out through the walls) and the camera follows the ball down.\ncountdown: A 3-2-1-GO intro with the run frozen."
+          "description": "grow-on-bounce: The ball grows a little with every wall bounce. Ends when it fills its ring.\nshrinking-gap: The exit gets narrower with every bounce.\nspeed-up: Every bounce makes the ball a little faster.\nspin-up: Every bounce spins the container faster.\nmultiply: Every escape spawns new balls back inside. Runs to the time limit.\nzero-g: No gravity: balls fly in straight lines.\ngravity-flip: Gravity reverses on a timer.\ngravity-spin: Gravity rotates a quarter turn on a timer.\npaint: Balls leave permanent paint instead of fading trails.\nbattle: Balls lose hp when they collide; the last one standing wins.\nrace: First ball out wins.\nbreak-rings: Rings are cut into segments that break when hit: the ball smashes its way out.\nhp-ring: Each ring has hit points and shatters when they run out.\nsplit: Every bounce splits the ball in two (until they get tiny).\nabsorb: Bigger eats smaller: on contact the bigger ball swallows the smaller one. Last one wins.\nmerge: Two balls of the same level merge into a bigger one.\ninfection: One zombie, everyone else human: a zombie hit turns a human. Ends when everyone has turned.\nrps: Rock, paper, scissors: every hit converts the loser. Ends when one side owns the arena.\nblack-hole: A black hole in the middle pulls everything in and swallows what gets too close.\nstorm: The arena shrinks steadily (battle royale storm).\nadd-side: Every bounce adds a side to the polygon: triangle to circle.\ngap-jump: The exit jumps to a new random spot on every bounce.\nclone-trail: Every bounce leaves a frozen clone behind; the ring slowly jams up.\nbutterfly: Butterfly effect: ghost copies of each ball launched a millionth of a degree apart. They never touch, and slowly drift apart.\nstring-art: Every bounce draws a line to the last bounce point: string art.\nslowmo: Slow motion around the climax.\nmeow: Every bounce meows (in tune).\nrainbow: Colors drift through the rainbow, with rainbow trails.\nshake: Screen shake on breaks, escapes and knockouts.\nportals: A pair of linked portals inside the arena.\nclock: A countdown: beat it or \"Time’s up\". The final stretch turns red, ticks, and escalates (the exit widens, or balls speed up) so the climax tends to land just before zero.\nvhs: Analog horror: a camcorder tape at 3 a.m. Scanlines, grain, color fringing, glitch tears on big moments, a PLAY ▶ stamp and a mains-hum drone.\ndreamcore: Slowed + reverb: everything a few semitones down in a huge, washed-out hall, soft bloom, long hazy trails and pastel colors.\nstutter: Every escape restarts one short clip of a voice, cutting itself off, so a run of escapes stutters (a-a-a-a-ah); a streak of them drops into an endless falling swoop.\nshepard: A Shepard tone under everything: a pitch that seems to fall forever and never lands, swelling as the clock runs down.\nglitch: Digital glitch: the frame tears into shifted, color-split slices on every big moment, with a bass drop on streaks.\nmirror: The playfield is mirrored: the left half reflected onto the right (or a four-way kaleidoscope). Text stays readable.\neyes: Every ball becomes an eye.\nwhisper: An out-of-place sentence appears one word per bounce (weirdcore text).\nbreathe: The walls breathe: every ring and polygon slowly swells and shrinks.\nbackrooms: The backrooms: damp yellow wallpaper, buzzing fluorescent hum, a camcorder grain.\ntunnel-vision: The camera locks onto the ball up close, so you never see the whole arena.\ndescent: The ring falls away: gravity points outward from the center (balls fall out through the walls) and the camera follows the ball down.\nlights-out: Lights out: pitch black but a pool of light around each ball, from a failing fluorescent tube that stutters and cuts out.\nstalker: Something wakes up in the middle and drifts toward the ball, through the walls, faster and faster. Touch it and you are caught; get out of every ring and you are safe.\nshadow: The ball’s own shadow retraces its path a few seconds behind and slowly closes the gap. Stop moving, or cross your own path, and it catches you.\nheartbeat: A heartbeat under everything that races as the stalker closes in (or as the clock runs down).\nbackmask: Backmasked: each escape is a voice played backwards that restarts on the next one; a streak of escapes is a tape sucked into rewind.\nmusic-box: A worn-out music box: bounces ring high and glassy in a big room, escapes are a warbling tine that restarts each time.\nsubliminal: Single frames of words flash by, easy to miss (and on every big moment).\ndroste: The room repeats: the frame shows inside itself, again and again, each copy smaller and turned a little.\nliar: The countdown lies: for a split second it skips back, or flashes 0:00.\nunease: The camera is never quite level: it slowly tilts, drifts and breathes.\ncountdown: A 3-2-1-GO intro with the run frozen."
         },
         "entities": {
           "type": "array",
@@ -3716,6 +3786,106 @@
                     ],
                     "additionalProperties": false,
                     "description": "Pendulums: chaos (double pendulums a hair apart) or a pendulum wave. Drawn with trails; they don’t collide with balls."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "stalker"
+                      },
+                      "mode": {
+                        "type": "string",
+                        "enum": [
+                          "chase",
+                          "shadow"
+                        ],
+                        "default": "chase",
+                        "description": "chase: drifts straight at the nearest ball, through walls, faster and faster. shadow: retraces the ball’s exact path a few seconds behind it and slowly closes the gap, so a ball that stops (or doubles back) gets caught."
+                      },
+                      "x": {
+                        "type": "number",
+                        "description": "chase: where it starts. Default: the first container center."
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "radius": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 26
+                      },
+                      "speed": {
+                        "type": "number",
+                        "minimum": 0,
+                        "default": 40,
+                        "description": "chase: starting speed (px/s)."
+                      },
+                      "accel": {
+                        "type": "number",
+                        "default": 8,
+                        "description": "chase: speed gained per second (px/s)."
+                      },
+                      "maxSpeed": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 900,
+                        "description": "chase: top speed (px/s)."
+                      },
+                      "start": {
+                        "type": "number",
+                        "minimum": 0,
+                        "default": 1.5,
+                        "description": "Seconds before it moves (chase) or appears (shadow)."
+                      },
+                      "delay": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 3,
+                        "description": "shadow: how many seconds behind the ball it starts."
+                      },
+                      "catchUp": {
+                        "type": "number",
+                        "minimum": 0,
+                        "default": 0.05,
+                        "description": "shadow: seconds of that lead it wins back every second."
+                      },
+                      "minDelay": {
+                        "type": "number",
+                        "minimum": 0,
+                        "default": 0.35,
+                        "description": "shadow: the closest it gets, in seconds behind."
+                      },
+                      "target": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0,
+                        "description": "shadow: which starting ball it follows (0 = the first)."
+                      },
+                      "deadly": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Touching it eliminates the ball. Off: it only haunts (the \"caught\" moment still plays)."
+                      },
+                      "emoji": {
+                        "type": "string",
+                        "description": "Draw it as this emoji instead of a shadow with eyes."
+                      },
+                      "color": {
+                        "type": "string",
+                        "default": "#000000"
+                      },
+                      "eyes": {
+                        "type": "string",
+                        "default": "#ff2a2a",
+                        "description": "Eye color (the eyes glow even in the dark)."
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Something that follows the ball (horror formats). A ball that has escaped every container is safe from it."
                   }
                 ]
               },

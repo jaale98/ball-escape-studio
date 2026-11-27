@@ -366,6 +366,32 @@ export const TimelineSchema = z
   })
   .strict();
 
+export const StalkerSchema = z
+  .object({
+    type: z.literal('stalker'),
+    mode: z
+      .enum(['chase', 'shadow'])
+      .default('chase')
+      .describe('chase: drifts straight at the nearest ball, through walls, faster and faster. shadow: retraces the ball’s exact path a few seconds behind it and slowly closes the gap, so a ball that stops (or doubles back) gets caught.'),
+    x: z.number().optional().describe('chase: where it starts. Default: the first container center.'),
+    y: z.number().optional(),
+    radius: z.number().positive().default(26),
+    speed: z.number().nonnegative().default(40).describe('chase: starting speed (px/s).'),
+    accel: z.number().default(8).describe('chase: speed gained per second (px/s).'),
+    maxSpeed: z.number().positive().default(900).describe('chase: top speed (px/s).'),
+    start: z.number().nonnegative().default(1.5).describe('Seconds before it moves (chase) or appears (shadow).'),
+    delay: z.number().positive().default(3).describe('shadow: how many seconds behind the ball it starts.'),
+    catchUp: z.number().nonnegative().default(0.05).describe('shadow: seconds of that lead it wins back every second.'),
+    minDelay: z.number().nonnegative().default(0.35).describe('shadow: the closest it gets, in seconds behind.'),
+    target: z.number().int().min(0).default(0).describe('shadow: which starting ball it follows (0 = the first).'),
+    deadly: z.boolean().default(true).describe('Touching it eliminates the ball. Off: it only haunts (the "caught" moment still plays).'),
+    emoji: z.string().optional().describe('Draw it as this emoji instead of a shadow with eyes.'),
+    color: z.string().default('#000000'),
+    eyes: z.string().default('#ff2a2a').describe('Eye color (the eyes glow even in the dark).'),
+  })
+  .strict()
+  .describe('Something that follows the ball (horror formats). A ball that has escaped every container is safe from it.');
+
 export const EntitySchema = z.discriminatedUnion('type', [
   RingSchema,
   PolygonSchema,
@@ -380,6 +406,7 @@ export const EntitySchema = z.discriminatedUnion('type', [
   EmitterSchema,
   TerritorySchema,
   PendulumSchema,
+  StalkerSchema,
 ]);
 
 export const SceneSchema = z
@@ -417,6 +444,7 @@ export const SceneSchema = z
         slowmoFactor: z.number().min(0.05).max(1).default(0.25),
         slowmoLead: z.number().min(0).max(3).default(0.6).describe('Seconds of the run before the climax that are already slowed.'),
         countdown: z.number().int().min(0).max(5).default(0).describe('A 3-2-1-GO intro: this many counts with the run frozen.'),
+        unease: z.number().min(0).max(1).default(0).describe('The view is never quite level: it slowly drifts, tilts and breathes (0 = off, 1 = seasick). Drawing only.'),
       })
       .strict()
       .default({}),
@@ -491,6 +519,11 @@ export const SceneSchema = z
         glitch: z.boolean().default(false).describe('Digital glitch: the frame tears into shifted slices with split colors on big moments (streaks of escapes, breaks, knockouts).'),
         mirror: z.enum(['none', 'x', 'y', 'quad']).default('none').describe('Mirror the playfield: x = left half reflected onto the right, y = top onto bottom, quad = a four-way kaleidoscope. Drawing only; text stays readable.'),
         bloom: z.boolean().default(false),
+        darkness: z.number().min(0).max(1).default(0).describe('Lights out: the frame goes dark except a pool of light around each ball (1 = pitch black outside it). Stalker eyes still glow.'),
+        light: z.number().positive().default(190).describe('darkness: radius of the light around each ball (px).'),
+        flicker: z.boolean().default(false).describe('Failing fluorescent tube: the light stutters, and now and then cuts out for a moment.'),
+        subliminal: z.array(z.string().max(40)).max(12).optional().describe('Words flashed for a single frame now and then (and on big moments), easy to miss.'),
+        droste: z.number().int().min(0).max(6).default(0).describe('The frame repeats inside itself this many times, shrinking toward the middle (the room repeats).'),
         confetti: z.boolean().default(false).describe('Confetti on escapes and wins.'),
         reveal: z
           .object({ text: z.string().optional(), image: z.string().optional().describe('A picture from images/.'), at: z.number().nonnegative().optional().describe('Sample landing spots at this time (default: the end).') })
@@ -532,18 +565,18 @@ export const SceneSchema = z
         bounceSpacing: z.number().min(0).default(0).describe('Minimum seconds between audible bounce notes. Useful for dense pours.'),
         escapeSound: z.boolean().default(true),
         escapeStyle: z
-          .enum(['classic', 'voice', 'glitch', 'static', 'tape'])
+          .enum(['classic', 'voice', 'glitch', 'static', 'tape', 'reverse', 'musicbox'])
           .default('classic')
-          .describe('The escape sound. classic: thump, whoosh and chord (spaced out). voice / glitch / static / tape: one short clip that restarts on every escape, cutting itself off, so a streak of escapes stutters (a-a-a-a-ah).'),
+          .describe('The escape sound. classic: thump, whoosh and chord (spaced out). voice / glitch / static / tape / reverse (a backmasked voice) / musicbox (a detuned music-box tine): one short clip that restarts on every escape, cutting itself off, so a streak of escapes stutters (a-a-a-a-ah).'),
         burst: z
-          .enum(['none', 'dive', 'drop', 'choir'])
+          .enum(['none', 'dive', 'drop', 'choir', 'rewind'])
           .default('none')
-          .describe('A sound on a streak of escapes (burstAt or more within 0.4 s): dive = a falling, endless-seeming swoop and sub; drop = a bass drop; choir = a dissonant choir swell.'),
+          .describe('A sound on a streak of escapes (burstAt or more within 0.4 s): dive = a falling, endless-seeming swoop and sub; drop = a bass drop; choir = a dissonant choir swell; rewind = a tape being sucked backwards.'),
         burstAt: z.number().int().min(2).max(100).default(6).describe('Escapes within 0.4 s that count as a streak (burst sound, shake, glitch, streak counter).'),
         drone: z
-          .enum(['none', 'shepard', 'hum', 'choir'])
+          .enum(['none', 'shepard', 'hum', 'choir', 'heartbeat'])
           .default('none')
-          .describe('A bed under everything. shepard: a tone that seems to fall forever; hum: mains hum and tape hiss (analog horror); choir: a low, slowly shifting vowel cluster. It swells as the clock runs down.'),
+          .describe('A bed under everything. shepard: a tone that seems to fall forever; hum: mains hum and tape hiss (analog horror); choir: a low, slowly shifting vowel cluster; heartbeat: a heartbeat that races as a stalker closes in (or as the clock runs down). It swells as the clock runs down.'),
         droneVolume: z.number().min(0).max(1).default(0.5),
         reverb: z.number().min(0).max(1).default(0).describe('Room: 0 = dry, 1 = a huge, washed-out hall (slowed + reverb, dreamcore).'),
         hitSound: z.boolean().default(true).describe('Click when balls hit each other.'),
@@ -558,9 +591,9 @@ export const SceneSchema = z
         textColor: z.string().default('#ffffff'),
         titleSize: z.number().min(20).max(200).default(76),
         subtitleSize: z.number().min(14).max(120).default(40),
-        titleY: z.number().min(60).max(1800).default(250).describe('Where the title sits (px from the top of the 1920 frame).'),
+        titleY: z.number().min(60).max(1800).default(320).describe('Where the title sits (px from the top of the 1920 frame). Never drawn above 320, so TikTok’s top bar doesn’t cover it.'),
         counterSize: z.number().min(16).max(160).default(52),
-        counterY: z.number().min(100).max(1900).optional().describe('Where the counter and timer sit. Default: near the bottom.'),
+        counterY: z.number().min(100).max(1900).optional().describe('Where the counter and timer sit. Default (and lowest): 1540, just above TikTok’s caption.'),
         labelSize: z.number().min(10).max(80).default(26).describe('Size of the names under balls.'),
         timer: z.boolean().default(true).describe('Elapsed time on the counter line (scenes without a clock).'),
         clock: z.boolean().default(true).describe('Show the clock’s countdown (big digits and a draining bar under the title). Needs a scene clock.'),
@@ -572,6 +605,7 @@ export const SceneSchema = z
           .describe('ringsLeft: rings the lead ball still has to escape, counting down.'),
         streak: z.boolean().default(false).describe('Pop a running count (−47) next to the ball while it escapes ring after ring in one go.'),
         vhs: z.boolean().default(false).describe('A camcorder stamp: PLAY ▶ and a running tape timestamp in the corners (analog horror).'),
+        clockLies: z.boolean().default(false).describe('The countdown sometimes shows the wrong number for a split second (it skips back, or flashes 0:00).'),
         endCard: z.string().optional().describe('Text shown over the tail after the climax ("Follow for part 2").'),
         reveal: z.string().optional().describe('A message revealed one word (or letter) per bounce.'),
         revealBy: z.enum(['words', 'letters']).default('words'),

@@ -25,6 +25,8 @@ const TAGS: [RegExp | ((s: Scene) => boolean), string[]][] = [
   [(s) => s.audio.instrument === 'meow', ['#cat', '#meow']],
   [(s) => !!s.clock, ['#beattheclock', '#clutch']],
   [(s) => s.entities.some((e) => e.type === 'ball' && e.copies > 1), ['#butterflyeffect', '#chaostheory']],
+  [(s) => s.entities.some((e) => e.type === 'stalker') || s.style.darkness > 0, ['#horror', '#analoghorror']],
+  [(s) => s.style.droste > 0 || !!s.style.subliminal?.length, ['#liminalspace', '#weirdcore']],
 ];
 
 export interface Caption {

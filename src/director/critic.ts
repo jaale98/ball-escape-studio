@@ -24,6 +24,7 @@ export function critique(scene: Scene, r: RunScore): Note[] {
     if (r.endReason === 'timeUp') warn(`The clock ran out before the ending (${scene.duration.endOn}). That can work as a fail video, but a finish just before zero lands harder: try the Director’s “Beat the clock” story, or add a clock “rush”.`);
     else if (r.climax >= 0 && clock.seconds - r.climax > Math.max(3, clock.final)) warn(`It finishes with ${(clock.seconds - r.climax).toFixed(1)}s still on the clock, so the countdown never gets tense. Shorten the clock or use the Director’s “Beat the clock” story.`);
   }
+  if (r.endReason === 'caught') warn(`The stalker catches the last ball at ${r.length.toFixed(1)}s. That works as a fail video; for a narrow escape, slow it down (speed, accel, or a longer shadow delay) or try the Director’s “Beat the clock” story.`);
   if (endsOnClimax && r.climax < 0) {
     warn(`The ending (${scene.duration.endOn}) never happens within ${scene.duration.max}s. Make it easier (a wider gap, a smaller ball, more damage) or allow more time.`);
   } else if (r.climax >= 0 && !loopScene) {

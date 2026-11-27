@@ -1,0 +1,99 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "It follows",
+  "category": "surreal",
+  "seed": 794,
+  "duration": {
+    "endOn": "allEscaped",
+    "tail": 2.5
+  },
+  "clock": {
+    "seconds": 30,
+    "final": 6,
+    "rush": [
+      {
+        "do": "shrinkGap",
+        "amount": -3
+      }
+    ]
+  },
+  "world": {
+    "gravity": 300
+  },
+  "entities": [
+    {
+      "type": "nested",
+      "count": 6,
+      "inner": 140,
+      "outer": 480,
+      "spin": 1.2,
+      "spinFalloff": 0.8,
+      "gapWidth": 40,
+      "gapShrink": 3,
+      "gapOffset": 140,
+      "colors": [
+        "#e8e2d0",
+        "#d9d0b8",
+        "#c9bfa2",
+        "#b8ad8c",
+        "#a69a77",
+        "#958863"
+      ]
+    },
+    {
+      "type": "stalker",
+      "mode": "chase",
+      "speed": 30,
+      "accel": 7,
+      "start": 2.5,
+      "radius": 30
+    },
+    {
+      "type": "ball",
+      "radius": 15,
+      "speed": 760,
+      "color": "#fff6d8"
+    }
+  ],
+  "camera": {
+    "shake": 0.8,
+    "unease": 0.35
+  },
+  "style": {
+    "background": "#0d0c0a",
+    "ringColor": "#e8e2d0",
+    "trail": 0.75,
+    "trailStyle": "comet",
+    "glow": true,
+    "darkness": 0.97,
+    "light": 210,
+    "flicker": true,
+    "grain": true,
+    "vignette": true,
+    "chromatic": true,
+    "glitch": true,
+    "subliminal": ["behind you", "it sees you", "don’t look back", "closer"]
+  },
+  "audio": {
+    "instrument": "glass",
+    "transpose": -7,
+    "volume": 0.65,
+    "bounceSpacing": 0.12,
+    "escapeStyle": "reverse",
+    "burst": "rewind",
+    "burstAt": 3,
+    "drone": "heartbeat",
+    "droneVolume": 0.9,
+    "reverb": 0.4
+  },
+  "overlay": {
+    "title": "Don’t let it touch you.",
+    "titleSize": 64,
+    "font": "mono",
+    "counter": "ringsLeft",
+    "counterSize": 52,
+    "vhs": true,
+    "clockLies": true,
+    "endCard": "it’s still in there."
+  }
+}

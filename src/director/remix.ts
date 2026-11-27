@@ -61,7 +61,10 @@ const round = (x: number) => Math.round(x * 1000) / 1000;
  *  - glitch: the frame tearing on every big moment, a stuttering sample;
  *  - cosmic dread: an endless falling (Shepard) tone, a hungry black hole;
  *  - the backrooms: yellow wallpaper, fluorescent buzz, a room that breathes;
- *  - brainrot: the classic stack (meowing, splitting, rainbow, shake).
+ *  - brainrot: the classic stack (meowing, splitting, rainbow, shake);
+ *  - it follows: lights out, a heartbeat, and something that follows the
+ *    ball (a stalker, or its own shadow retracing its path);
+ *  - liminal: the frame repeating inside itself, a music box, a tilted view.
  * Picks only modifiers that suit the scene (no gap tricks without a ring)
  * and that it doesn't have already. A new seed gives a new combination.
  */
@@ -121,6 +124,17 @@ export function weirdPick(merged: Raw, seed: number): WeirdPick {
     backrooms: !style.backgroundImage,
     'tunnel-vision': camera.mode !== 'chase' && camera.mode !== 'zoomOut' && container,
     descent: container && !many && camera.mode !== 'chase' && merged.duration?.endOn !== 'never',
+    'lights-out': !(style.darkness > 0) && balls >= 1 && balls <= 40,
+    stalker: container && !many && !has('stalker') && balls >= 1 && balls <= 8 && merged.duration?.endOn !== 'never',
+    // A shadow catches a ball that crosses its own path: only fair where the ball travels (descents, chase cameras).
+    shadow: (has('strata') || camera.mode === 'chase') && !has('stalker') && balls >= 1 && balls <= 6 && merged.duration?.endOn !== 'never',
+    heartbeat: !audio.drone || audio.drone === 'none',
+    backmask: audio.escapeStyle === undefined || audio.escapeStyle === 'classic',
+    'music-box': (audio.escapeStyle === undefined || audio.escapeStyle === 'classic') && audio.instrument !== 'meow',
+    subliminal: !style.subliminal,
+    droste: !(style.droste > 0),
+    liar: !!merged.clock && !overlay.clockLies,
+    unease: !(camera.unease > 0),
   };
 
   const line = rng.int(8);
@@ -129,37 +143,51 @@ export function weirdPick(merged: Raw, seed: number): WeirdPick {
       name: 'analog horror',
       look: [['vhs', 'vhs']],
       sound: [['stutter', { use: 'stutter' }], ['shepard', { use: 'shepard', volume: 0.45 }]],
-      twist: [['gap-jump', 'gap-jump'], ['storm', { use: 'storm', rate: 6 }], ['slowmo', 'slowmo'], ['butterfly', { use: 'butterfly', copies: 6 }], ['tunnel-vision', 'tunnel-vision'], ['whisper', { use: 'whisper', line }]],
+      twist: [['gap-jump', 'gap-jump'], ['storm', { use: 'storm', rate: 6 }], ['slowmo', 'slowmo'], ['butterfly', { use: 'butterfly', copies: 6 }], ['tunnel-vision', 'tunnel-vision'], ['whisper', { use: 'whisper', line }], ['liar', 'liar'], ['subliminal', { use: 'subliminal', set: line % 4 }]],
     },
     {
       name: 'dreamcore',
       look: [['dreamcore', 'dreamcore']],
-      sound: [['shepard', { use: 'shepard', volume: 0.35 }], ['meow', 'meow']],
+      sound: [['shepard', { use: 'shepard', volume: 0.35 }], ['meow', 'meow'], ['music-box', 'music-box']],
       twist: [['breathe', 'breathe'], ['butterfly', { use: 'butterfly', copies: 8 }], ['string-art', 'string-art'], ['portals', 'portals'], ['mirror', 'mirror'], ['whisper', { use: 'whisper', line }]],
     },
     {
       name: 'weirdcore',
-      look: [['eyes', 'eyes'], ['mirror', { use: 'mirror', quad: true }]],
-      sound: [['stutter', { use: 'stutter' }], ['dreamcore', 'dreamcore']],
+      look: [['eyes', 'eyes'], ['mirror', { use: 'mirror', quad: true }], ['droste', 'droste']],
+      sound: [['stutter', { use: 'stutter' }], ['dreamcore', 'dreamcore'], ['backmask', 'backmask']],
       twist: [['whisper', { use: 'whisper', line }], ['clone-trail', 'clone-trail'], ['gravity-spin', 'gravity-spin'], ['breathe', 'breathe'], ['split', { use: 'split', max: 200 }]],
     },
     {
       name: 'glitch',
       look: [['glitch', 'glitch']],
       sound: [['stutter', { use: 'stutter', at: 3 }]],
-      twist: [['portals', 'portals'], ['gap-jump', 'gap-jump'], ['split', { use: 'split', max: 250 }], ['mirror', 'mirror'], ['descent', 'descent']],
+      twist: [['portals', 'portals'], ['gap-jump', 'gap-jump'], ['split', { use: 'split', max: 250 }], ['mirror', 'mirror'], ['descent', 'descent'], ['subliminal', { use: 'subliminal', set: line % 4 }]],
     },
     {
       name: 'cosmic dread',
       look: [['tunnel-vision', 'tunnel-vision'], ['glitch', 'glitch']],
-      sound: [['shepard', { use: 'shepard', volume: 0.6 }]],
+      sound: [['shepard', { use: 'shepard', volume: 0.6 }], ['heartbeat', 'heartbeat']],
       twist: [['black-hole', { use: 'black-hole', grow: 1.03 }], ['descent', 'descent'], ['storm', { use: 'storm', rate: 6 }], ['breathe', 'breathe'], ['slowmo', 'slowmo']],
     },
     {
       name: 'backrooms',
       look: [['backrooms', 'backrooms']],
       sound: [['stutter', { use: 'stutter' }], ['shepard', { use: 'shepard', volume: 0.3 }]],
-      twist: [['breathe', 'breathe'], ['clone-trail', 'clone-trail'], ['gap-jump', 'gap-jump'], ['tunnel-vision', 'tunnel-vision'], ['whisper', { use: 'whisper', line }]],
+      twist: [['breathe', 'breathe'], ['clone-trail', 'clone-trail'], ['gap-jump', 'gap-jump'], ['tunnel-vision', 'tunnel-vision'], ['whisper', { use: 'whisper', line }], ['liar', 'liar'], ['unease', 'unease']],
+    },
+    {
+      // Something follows you: the dark, a heartbeat, and a thing that is getting closer.
+      name: 'it follows',
+      look: [['lights-out', 'lights-out'], ['vhs', 'vhs'], ['unease', { use: 'unease', amount: 0.5 }]],
+      sound: [['heartbeat', 'heartbeat'], ['backmask', 'backmask']],
+      twist: [['stalker', { use: 'stalker', speed: 30, accel: 5, start: 1, outside: true, harmless: true }], ['shadow', { use: 'shadow', delay: 1.2, catchUp: 0.02 }], ['subliminal', { use: 'subliminal', set: line % 4 }], ['liar', 'liar']],
+    },
+    {
+      // Liminal space: the room repeats, a music box plays in another room, nothing is level.
+      name: 'liminal',
+      look: [['droste', 'droste'], ['backrooms', 'backrooms']],
+      sound: [['music-box', 'music-box'], ['shepard', { use: 'shepard', volume: 0.3 }], ['dreamcore', 'dreamcore']],
+      twist: [['unease', 'unease'], ['breathe', 'breathe'], ['whisper', { use: 'whisper', line }], ['liar', 'liar'], ['subliminal', { use: 'subliminal', set: line % 4 }]],
     },
     {
       name: 'brainrot',

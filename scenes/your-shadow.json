@@ -1,0 +1,106 @@
+{
+  "$schema": "../scene.schema.json",
+  "extends": "the-descent",
+  "title": "Your shadow",
+  "category": "surreal",
+  "seed": 103,
+  "clock": {
+    "seconds": 40,
+    "final": 6
+  },
+  "entities": [
+    {
+      "type": "strata",
+      "count": 1000,
+      "inner": 150,
+      "spacing": 22,
+      "thickness": 3,
+      "gapArc": 70,
+      "gapEvery": 180,
+      "layerMin": 16,
+      "layerMax": 220,
+      "layerCurve": 1.3,
+      "drift": 5,
+      "speed": 220,
+      "seed": 4,
+      "fall": 4000,
+      "fallDrag": 1.0,
+      "colors": [
+        "#cfd3dc",
+        "#8e97a8",
+        "#5d6577",
+        "#a7a0b8"
+      ],
+      "fadeTo": "#120f1c"
+    },
+    {
+      "type": "force",
+      "kind": "radial",
+      "strength": 4000,
+      "visible": false
+    },
+    {
+      "type": "ball",
+      "radius": 6,
+      "speed": 520,
+      "color": "#ffffff"
+    },
+    {
+      "type": "stalker",
+      "mode": "shadow",
+      "delay": 1,
+      "catchUp": 0.015,
+      "minDelay": 0.45,
+      "start": 1,
+      "radius": 9,
+      "eyes": "#ff3355"
+    }
+  ],
+  "camera": {
+    "mode": "chase",
+    "orient": "down",
+    "zoom": 2.6,
+    "shake": 1.2,
+    "unease": 0.25
+  },
+  "style": {
+    "background": "#07060c",
+    "ringColor": "#cfd3dc",
+    "trail": 0.6,
+    "trailStyle": "comet",
+    "glow": true,
+    "grain": true,
+    "vignette": true,
+    "chromatic": true,
+    "glitch": true,
+    "darkness": 0.88,
+    "light": 120,
+    "subliminal": [
+      "don’t stop",
+      "it’s you",
+      "keep falling"
+    ]
+  },
+  "audio": {
+    "instrument": "glass",
+    "volume": 0.6,
+    "bounceSpacing": 0.09,
+    "escapeStyle": "reverse",
+    "burst": "rewind",
+    "burstAt": 6,
+    "drone": "heartbeat",
+    "droneVolume": 0.85,
+    "reverb": 0.35,
+    "transpose": -5
+  },
+  "overlay": {
+    "title": "1 second behind you.",
+    "titleSize": 60,
+    "counter": "ringsLeft",
+    "counterSize": 64,
+    "streak": true,
+    "vhs": false,
+    "font": "mono",
+    "endCard": "don’t ever stop."
+  }
+}

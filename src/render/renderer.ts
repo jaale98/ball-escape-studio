@@ -3,7 +3,7 @@ import { HEIGHT, PHYSICS_HZ, racesClock, type Scene, WIDTH } from '../engine/sce
 import type { Ball, Container, Pendulum, Solid, World } from '../engine/world';
 import { getImage } from '../images';
 import { GlBallLayer } from './gl';
-import { type RenderOptions, SAFE_RECT, type SafeLook, TIKTOK_ZONES } from './look';
+import { type RenderOptions, SAFE_RECT, type SafeLook, TEXT_BAND, TIKTOK_ZONES, TRAIL_ALPHA } from './look';
 
 interface Particle {
   x: number;
@@ -180,6 +180,17 @@ export class Renderer {
   private confettiDone = false;
   /** Seconds left in the countdown intro (set by the player before each frame). */
   intro = 0;
+  /** camera.unease: extra view rotation (radians). */
+  private tilt = 0;
+  /** style.darkness: the dark layer, with holes of light cut out around the balls. */
+  private dark: HTMLCanvasElement | null = null;
+  /** 0–1: how close a stalker is to its prey (red edges, a tremble). */
+  private dread = 0;
+  /** A stalker caught a ball: a red slam that fades. */
+  private caughtFlash = 0;
+  /** Seconds a forced subliminal flash (big moments) keeps showing, and which word. */
+  private subForced = 0;
+  private subIndex = 0;
 
   /**
    * @param opts  scale, glow, fps and the tiktok-safe style (see render/look.ts)
@@ -246,7 +257,8 @@ export class Renderer {
       this.scan = this.ctx.createPattern(p, 'repeat');
     }
     if (!this.safe && (style.bloom || style.chromatic || style.glitch)) this.fxBuf = makeCanvas(canvas.width, canvas.height);
-    if (style.mirror !== 'none' && !this.fxBuf) this.fxBuf = makeCanvas(canvas.width, canvas.height);
+    if ((style.mirror !== 'none' || style.droste > 0) && !this.fxBuf) this.fxBuf = makeCanvas(canvas.width, canvas.height);
+    if (style.darkness > 0) this.dark = makeCanvas(canvas.width, canvas.height);
   }
 
   /** Draw the current state. dt = seconds since the previous frame (1/60 for export, 0 when paused). */
@@ -312,9 +324,26 @@ export class Renderer {
     if (style.lines === 'tether') this.drawTethers(world);
     if (this.gl) this.drawGl(world);
     this.drawBalls(world, glow, !!this.gl);
+    if (world.stalkers.length) this.drawStalkers(world, dt, false);
     this.drawParticles(dt);
     this.drawConfetti(dt);
     if (aperture) ctx.restore();
+    if (this.fxBuf && style.droste > 0) {
+      // The room repeats; the balls (and whatever follows them) stay on top, in the real room.
+      this.drawDroste(style.droste, world);
+      this.worldTransform();
+      this.drawBalls(world, glow, !!this.gl);
+      if (world.stalkers.length) this.drawStalkers(world, 0, false);
+      ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+    }
+    if (this.dark) this.drawDarkness(world);
+    if (world.stalkers.length) {
+      // The eyes glow through the dark.
+      this.worldTransform();
+      this.drawStalkers(world, dt, true);
+      ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+      this.drawDread(dt);
+    }
     if (scene.camera.mode === 'chase') this.drawEdgeFade();
 
     ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
@@ -329,7 +358,184 @@ export class Renderer {
 
     this.drawPost(dt);
     this.drawOverlay(world, dt);
+    if (style.subliminal?.length) this.drawSubliminal(world, dt);
     if (this.showSafeZones) this.drawSafeZones();
+  }
+
+  // ---- horror: stalkers, darkness, subliminal frames ----------------------------
+
+  /**
+   * Stalkers: a shadow that won't hold still, with two eyes on its prey. The
+   * body is drawn with the world (so darkness hides it); the eyes again after
+   * the dark layer (eyesOnly), so they glow even with the lights out.
+   */
+  private drawStalkers(world: World, dt: number, eyesOnly: boolean): void {
+    const { ctx } = this;
+    const t = world.time;
+    const tick = Math.floor(t * 30);
+    let dread = 0;
+    for (const s of world.stalkers) {
+      if (!s.visible) continue;
+      const awake = world.stepCount >= s.startStep;
+      const dir = Math.atan2(s.lookY - s.y, s.lookX - s.x);
+      if (!eyesOnly) {
+        for (const b of world.balls) {
+          if (!b.alive || b.projectile) continue;
+          const gap = Math.hypot(b.x - s.x, b.y - s.y) - s.r - b.r;
+          dread = Math.max(dread, Math.min(1, Math.max(0, 1 - gap / 360)));
+        }
+        if (s.emoji) {
+          ctx.save();
+          ctx.font = `${Math.round(s.r * 2.3)}px ${EMOJI_FONT}`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.translate(s.x + (hash01(tick + s.id * 31) - 0.5) * 3, s.y + (hash01(tick * 1.7 + s.id) - 0.5) * 3);
+          ctx.fillText(s.emoji, 0, 0);
+          ctx.restore();
+          continue;
+        }
+        // A smear of darkness that never quite holds its shape.
+        ctx.save();
+        const halo = ctx.createRadialGradient(s.x, s.y, s.r * 0.4, s.x, s.y, s.r * 2.6);
+        halo.addColorStop(0, 'rgba(0,0,0,0.55)');
+        halo.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r * 2.6, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = s.color;
+        for (let k = 0; k < 9; k++) {
+          const a = (k / 9) * TAU + t * (k % 2 ? 0.7 : -0.5);
+          const wob = 0.55 + 0.5 * hash01(tick * 0.5 + k * 13 + s.id * 7);
+          ctx.globalAlpha = 0.5 + 0.4 * hash01(k * 3 + tick * 0.25);
+          ctx.beginPath();
+          ctx.arc(s.x + Math.cos(a) * s.r * 0.55 * wob, s.y + Math.sin(a) * s.r * 0.55 * wob, s.r * (0.45 + 0.25 * wob), 0, TAU);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r * 0.78, 0, TAU);
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
+      if (s.emoji) continue;
+      // Eyes: they look at the prey, blink now and then, and stay shut until it wakes.
+      const blink = !awake || hash01(Math.floor(t * 3) * 1.3 + s.id * 17) < 0.07;
+      const px = -Math.sin(dir);
+      const py = Math.cos(dir);
+      const fx = Math.cos(dir) * s.r * 0.22;
+      const fy = Math.sin(dir) * s.r * 0.22;
+      ctx.save();
+      ctx.fillStyle = s.eyes;
+      ctx.shadowColor = s.eyes;
+      ctx.shadowBlur = this.glowAllowed ? 22 : 0;
+      for (const side of [-1, 1]) {
+        const ex = s.x + fx + px * side * s.r * 0.3;
+        const ey = s.y + fy + py * side * s.r * 0.3;
+        ctx.beginPath();
+        ctx.ellipse(ex, ey, s.r * 0.15, blink ? s.r * 0.025 : s.r * 0.1, dir + side * 0.25, 0, TAU);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    if (!eyesOnly) {
+      const k = dt > 0 ? 1 - Math.exp(-dt * 6) : 0;
+      this.dread += (dread - this.dread) * k;
+    }
+  }
+
+  /** Something is close: the frame's edges bleed red and the picture trembles. */
+  private drawDread(dt: number): void {
+    const { ctx } = this;
+    const { camera, style } = this.scene;
+    if (this.dread > 0.05) {
+      if (camera.shake > 0) this.shake = Math.max(this.shake, this.dread * 0.22);
+      if (style.chromatic) this.chroma = Math.max(this.chroma, this.dread * 0.5);
+      const a = this.dread * 0.55;
+      const g = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, HEIGHT * 0.25, WIDTH / 2, HEIGHT / 2, HEIGHT * 0.62);
+      g.addColorStop(0, 'rgba(120,0,10,0)');
+      g.addColorStop(1, `rgba(120,0,10,${a.toFixed(3)})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    }
+    if (this.caughtFlash > 0.01) {
+      ctx.fillStyle = `rgba(170,0,20,${(this.caughtFlash * 0.75).toFixed(3)})`;
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    }
+    this.caughtFlash *= Math.exp(-dt * 2.2);
+  }
+
+  /** style.darkness: black everywhere but a pool of light around each ball; flicker makes the light fail. */
+  private drawDarkness(world: World): void {
+    const { ctx, scale } = this;
+    const { style } = this.scene;
+    const d = this.dark!;
+    const g = d.getContext('2d')!;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalCompositeOperation = 'source-over';
+    g.clearRect(0, 0, d.width, d.height);
+    let level = 1;
+    if (style.flicker) {
+      const t = world.time;
+      const fast = hash01(Math.floor(t * 18) + 0.5);
+      const slow = hash01(Math.floor(t * 1.5) * 3.7 + 11);
+      if (slow < 0.14 && (t * 1.5) % 1 < 0.4) level = 0.05;
+      else if (fast < 0.1) level = 0.3;
+      else if (fast < 0.24) level = 0.72;
+    }
+    // Every escape lights the room up for a moment.
+    level = Math.min(1, level + this.escapeFlash * 0.5);
+    g.fillStyle = `rgba(0,0,0,${style.darkness})`;
+    g.fillRect(0, 0, d.width, d.height);
+    g.globalCompositeOperation = 'destination-out';
+    const zoom = scale * this.camZoom * this.fitS;
+    let n = 0;
+    for (const b of world.balls) {
+      if (!b.alive || b.projectile) continue;
+      if (++n > 40) break;
+      const [sx, sy] = this.toScreen(b.x, b.y);
+      const x = sx * scale;
+      const y = sy * scale;
+      const r = (style.light + b.r) * zoom * (0.8 + 0.2 * level);
+      const grad = g.createRadialGradient(x, y, 0, x, y, r);
+      grad.addColorStop(0, `rgba(0,0,0,${level})`);
+      grad.addColorStop(0.5, `rgba(0,0,0,${(0.8 * level).toFixed(3)})`);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grad;
+      g.fillRect(x - r, y - r, 2 * r, 2 * r);
+    }
+    g.globalCompositeOperation = 'source-over';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(d, 0, 0);
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  }
+
+  /** style.subliminal: a word on a single frame, now and then (and on big moments). */
+  private drawSubliminal(world: World, dt: number): void {
+    const words = this.scene.style.subliminal!;
+    const { ctx } = this;
+    const t = world.time;
+    let idx = -1;
+    if (this.subForced > 0) {
+      idx = this.subIndex % words.length;
+      if (dt > 0) this.subForced -= dt;
+    } else if (world.stepCount > 0 && !world.done) {
+      const bucket = Math.floor(t * 8);
+      if (t - bucket / 8 < 1 / 40 && hash01(bucket * 5.17 + 3) < 0.035) idx = Math.floor(hash01(bucket * 9.1 + 0.3) * words.length);
+    }
+    if (idx < 0) return;
+    const inverted = hash01(Math.floor(t * 8) * 2.3) < 0.5;
+    ctx.save();
+    ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+    ctx.fillStyle = inverted ? '#f2f2f2' : '#000000';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    ctx.fillStyle = inverted ? '#000000' : '#ff2a2a';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `900 190px ${FONTS.condensed}`;
+    ctx.fillText(words[idx].toUpperCase(), WIDTH / 2, HEIGHT / 2, WIDTH - 80);
+    ctx.restore();
   }
 
   // ---- tiktok-safe helpers -------------------------------------------------
@@ -476,6 +682,15 @@ export class Renderer {
     let tx = WIDTH / 2;
     let ty = HEIGHT / 2;
     let tz = cam.zoom;
+    // unease: never quite level. A slow, uneven tilt (every mode), and a drift and breathing zoom.
+    const u = cam.unease;
+    const ut = world.time;
+    this.tilt = u > 0 ? u * (0.075 * Math.sin(ut * 0.31 + 1.3) + 0.03 * Math.sin(ut * 1.07)) : 0;
+    if (u > 0 && cam.mode !== 'chase') {
+      tz *= 1 + 0.06 * u * Math.sin(ut * 0.47);
+      tx += u * 26 * Math.sin(ut * 0.23);
+      ty += u * 34 * Math.sin(ut * 0.19 + 2);
+    }
     if (cam.mode === 'follow') {
       let n = 0;
       let sx = 0;
@@ -628,7 +843,8 @@ export class Renderer {
   private worldTransform(): void {
     const f = this.fitS;
     const s = this.scale * this.camZoom * f;
-    if (this.camRot === 0) {
+    const rot = this.camRot + this.tilt;
+    if (rot === 0) {
       this.ctx.setTransform(
         s,
         0,
@@ -639,8 +855,8 @@ export class Renderer {
       );
       return;
     }
-    const cos = Math.cos(this.camRot) * s;
-    const sin = Math.sin(this.camRot) * s;
+    const cos = Math.cos(rot) * s;
+    const sin = Math.sin(rot) * s;
     this.ctx.setTransform(
       cos,
       sin,
@@ -655,9 +871,10 @@ export class Renderer {
     const f = this.fitS;
     let dx = (x - this.camX) * this.camZoom;
     let dy = (y - this.camY) * this.camZoom;
-    if (this.camRot !== 0) {
-      const c = Math.cos(this.camRot);
-      const sn = Math.sin(this.camRot);
+    const rot = this.camRot + this.tilt;
+    if (rot !== 0) {
+      const c = Math.cos(rot);
+      const sn = Math.sin(rot);
       [dx, dy] = [c * dx - sn * dy, sn * dx + c * dy];
     }
     return [this.fitX + f * (WIDTH / 2 + dx + this.shakeX), this.fitY + f * (HEIGHT / 2 + dy + this.shakeY)];
@@ -820,7 +1037,7 @@ export class Renderer {
     gl.begin();
     const n = this.history.length;
     for (let i = 0; i < n - 1; i++) {
-      const a = 0.5 * decay ** (n - 1 - i);
+      const a = 0.5 * TRAIL_ALPHA * decay ** (n - 1 - i);
       for (const p of this.history[i]) {
         const [sx, sy] = this.toScreen(p.x, p.y);
         gl.add(sx, sy, Math.max(minR, p.r) * 0.85 * z, p.color, a, false);
@@ -851,7 +1068,7 @@ export class Renderer {
       for (let i = 0; i < n - 1; i++) {
         // Solid: every dot at one opacity, every other frame (fewer, crisper shapes).
         if (solid && (n - 1 - i) % 2) continue;
-        ctx.globalAlpha = solid ? 0.45 : 0.5 * decay ** (n - 1 - i);
+        ctx.globalAlpha = (solid ? 0.45 : 0.5 * decay ** (n - 1 - i)) * TRAIL_ALPHA;
         for (const p of this.history[i]) {
           ctx.fillStyle = p.color;
           ctx.beginPath();
@@ -875,7 +1092,7 @@ export class Renderer {
     if (solid && trailStyle !== 'rainbow') {
       // One stroke per ball at one opacity: no per-segment alpha steps, no overlapping joints.
       ctx.lineJoin = 'round';
-      ctx.globalAlpha = 0.75;
+      ctx.globalAlpha = 0.75 * TRAIL_ALPHA;
       for (const pts of paths.values()) {
         if (pts.length < 2) continue;
         const last = pts[pts.length - 1];
@@ -900,7 +1117,7 @@ export class Renderer {
         const b = pts[k];
         if (Math.hypot(b.x - a.x, b.y - a.y) > 200) continue; // teleports
         const age = (n - 1 - b.i) / Math.max(1, n - 1);
-        ctx.globalAlpha = solid ? 1 : Math.max(0, (1 - age) * 0.8);
+        ctx.globalAlpha = (solid ? 1 : Math.max(0, (1 - age) * 0.8)) * TRAIL_ALPHA;
         ctx.strokeStyle = trailStyle === 'rainbow' ? `hsl(${Math.round((b.i * 9 + this.clock * 90) % 360)}, 95%, 62%)` : b.color;
         ctx.lineWidth = this.minLw(trailStyle === 'comet' ? Math.max(1, b.r * 1.6 * (1 - age)) : Math.max(2, b.r * 0.6));
         ctx.beginPath();
@@ -1886,6 +2103,41 @@ export class Renderer {
     ctx.fillRect(0, 1480, WIDTH, HEIGHT - 1480);
   }
 
+  /** style.droste: the frame inside itself, again and again, each copy smaller and turned a little (the room repeats). */
+  private drawDroste(levels: number, world: World): void {
+    const { ctx } = this;
+    const buf = this.fxBuf!;
+    const b = buf.getContext('2d')!;
+    const w = ctx.canvas.width;
+    const h = ctx.canvas.height;
+    const k = 0.62;
+    const turn = 0.06 + 0.03 * Math.sin(world.time * 0.29);
+    const bg = this.scene.style.background;
+    const rgb = /^#[0-9a-f]{6}$/i.test(bg) ? [1, 3, 5].map((k) => parseInt(bg.slice(k, k + 2), 16)) : [0, 0, 0];
+    const light = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2] > 128;
+    for (let i = 0; i < levels; i++) {
+      b.setTransform(1, 0, 0, 1, 0, 0);
+      b.clearRect(0, 0, w, h);
+      b.drawImage(ctx.canvas, 0, 0);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.translate(w / 2, h / 2);
+      ctx.rotate(turn);
+      ctx.scale(k, k);
+      ctx.translate(-w / 2, -h / 2);
+      // Blend toward the background's opposite, so the copies show and the walls survive (dark rooms: lighten; pale rooms: darken).
+      ctx.globalCompositeOperation = light ? 'darken' : 'lighten';
+      ctx.globalAlpha = 0.7;
+      ctx.drawImage(buf, 0, 0);
+      ctx.globalAlpha = 0.35;
+      ctx.strokeStyle = this.scene.style.ringColor;
+      ctx.lineWidth = 5 * this.scale;
+      ctx.strokeRect(0, 0, w, h);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+  }
+
   /** style.mirror: reflect one half (or quarter) of the frame onto the rest. */
   private drawMirror(mode: 'x' | 'y' | 'quad'): void {
     const { ctx } = this;
@@ -2079,6 +2331,13 @@ export class Renderer {
         case 'capture':
           this.burst(e.x, e.y, ballColor(e.ball), 3, 180);
           break;
+        case 'caught':
+          this.caughtFlash = 1;
+          kick(1.5);
+          if (style.glitch) this.glitch = 1;
+          this.subForced = 0.06;
+          this.subIndex++;
+          break;
         case 'corner':
           this.escapeFlash = 1;
           this.burst(e.x, e.y, '#ffffff', 50, 900);
@@ -2167,8 +2426,15 @@ export class Renderer {
     // Baseline of the last line of title text (for placing the countdown under it).
     let textBottom = safeText ? TIKTOK_ZONES.top : 60;
     if (overlay.title && !titleResult) {
-      ctx.font = `800 ${overlay.titleSize}px ${font}`;
-      textBottom = this.fillWrapped(overlay.title, WIDTH / 2, Math.max(y, safeText ? TIKTOK_ZONES.top + overlay.titleSize : y), 940, overlay.titleSize * 1.16);
+      // Shrink a long title (to 60% at most) to keep it on one line inside the text band; wrap only past that.
+      let size = overlay.titleSize;
+      ctx.font = `800 ${size}px ${font}`;
+      const wide = ctx.measureText(overlay.title).width;
+      if (wide > TEXT_BAND.width) {
+        size = Math.max(Math.round(size * 0.6), Math.floor((size * (TEXT_BAND.width - 20)) / wide));
+        ctx.font = `800 ${size}px ${font}`;
+      }
+      textBottom = this.fillWrapped(overlay.title, WIDTH / 2, Math.max(y, TEXT_BAND.top), 940, size * 1.16);
       y = textBottom + overlay.subtitleSize * 1.75;
     }
     if (overlay.subtitle && !titleResult) {
@@ -2178,12 +2444,13 @@ export class Renderer {
       ctx.globalAlpha = 1;
     }
     // The countdown keeps the spot it took on the first frame (the title may give way to a result later).
-    if (this.countdownY < 0) this.countdownY = overlay.clockY ?? textBottom + 50 + overlay.clockSize * 0.8;
+    if (this.countdownY < 0) this.countdownY = overlay.clockY !== undefined ? Math.max(overlay.clockY, TEXT_BAND.top) : textBottom + 34 + overlay.clockSize * 0.76;
 
     // The timer stops at the climax (escape, knockout…); the tail after it doesn't count.
     const secs = (world.climaxStep >= 0 ? Math.min(world.stepCount, world.climaxStep) : world.stepCount) / PHYSICS_HZ;
     let counterY = overlay.counterY ?? (world.zones.some((z) => !z.kill && !z.finish) && overlay.zones ? 1830 : 1700);
-    // Safe style: lift the counter out of TikTok's caption area (it sits at 1700 by default).
+    // Keep the counter above TikTok's caption area (the safe style lifts it a little more if needed).
+    counterY = Math.min(counterY, TEXT_BAND.bottom);
     if (safeText) counterY = Math.min(counterY, SAFE_RECT.y1 - 24);
     const parts: string[] = [];
     if (overlay.counter === 'bounces') parts.push(`${world.bounces} bounces`);
@@ -2239,6 +2506,7 @@ export class Renderer {
     if (overlay.vhs) this.drawVhs(world, secs);
     if (overlay.progress !== 'none') this.drawProgress(world, secs);
     if (clock && world.endReason === 'timeUp' && world.climaxStep >= 0) this.drawTimeUp(world, clock.timeUpText, font);
+    if (world.endReason === 'caught' && world.climaxStep >= 0) this.drawTimeUp(world, 'CAUGHT', font);
     if (overlay.reveal) this.drawReveal(world, counterY, font);
 
     // Winner banner once a race or battle is decided.
@@ -2248,7 +2516,7 @@ export class Renderer {
       const a = this.banner;
       ctx.save();
       if (titleResult) {
-        ctx.translate(WIDTH / 2, Math.max(safeText ? 260 : 140, overlay.titleY));
+        ctx.translate(WIDTH / 2, Math.max(TEXT_BAND.top - 40, overlay.titleY));
         ctx.scale(0.82, 0.82);
         ctx.translate(-WIDTH / 2, -HEIGHT / 2);
       }
@@ -2298,7 +2566,7 @@ export class Renderer {
         const w = Math.min(980, ctx.measureText(overlay.endCard).width + 80);
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.beginPath();
-        const ey = safeText ? Math.min(1440, SAFE_RECT.y1 - 130) : 1440;
+        const ey = Math.min(1440, counterY - 190);
         ctx.roundRect(WIDTH / 2 - w / 2, ey, w, 110, 28);
         ctx.fill();
         ctx.fillStyle = '#ffffff';
@@ -2349,7 +2617,7 @@ export class Renderer {
     ctx.font = `900 ${size}px ${font}`;
     // Beside the ball, kept inside the frame (and clear of TikTok's right-hand buttons in the safe style): left of it if the right has no room.
     const w = ctx.measureText(`−${n}`).width;
-    const right = this.safe?.safeText ? SAFE_RECT.x1 - 10 : WIDTH - 40;
+    const right = SAFE_RECT.x1 - 10;
     let x = bx + 70;
     if (x + w > right) x = bx - 70 - w;
     x = Math.max(40, Math.min(right - w, x));
@@ -2380,7 +2648,7 @@ export class Renderer {
     ctx.font = `600 44px ${FONTS.mono}`;
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left';
-    const top = this.safe?.safeText ? TIKTOK_ZONES.top + 40 : 120;
+    const top = TIKTOK_ZONES.top + 80;
     if (Math.floor(this.clock * 1.25) % 2 === 0 || world.climaxStep >= 0) ctx.fillText(world.climaxStep >= 0 ? 'STOP ■' : 'PLAY ▶', 64, top);
     ctx.textAlign = 'right';
     const all = Math.floor(secs);
@@ -2418,7 +2686,8 @@ export class Renderer {
     // Share bar.
     const bw = 900;
     const bx = (WIDTH - bw) / 2;
-    const by = y - (barOnly ? 150 : this.scene.overlay.timer ? 110 : this.scene.overlay.counterSize + 30);
+    // Just above the counter line, so it stays clear of the arena above.
+    const by = y - this.scene.overlay.counterSize - 30;
     let x = bx;
     ctx.save();
     ctx.beginPath();
@@ -2458,17 +2727,28 @@ export class Renderer {
     const { ctx } = this;
     const { overlay } = this.scene;
     const ended = world.climaxStep >= 0;
-    const beat = ended && racesClock(this.scene) && world.endReason !== 'timeUp';
+    const beat = ended && racesClock(this.scene) && world.endReason !== 'timeUp' && world.endReason !== 'caught';
     const final = !ended && clock.final > 0 && left <= clock.final;
     const frac = left / clock.seconds;
-    const text = beat ? `${left.toFixed(2)}s left` : left >= 10 ? `${Math.floor(Math.ceil(left) / 60)}:${String(Math.ceil(left) % 60).padStart(2, '0')}` : left.toFixed(1);
+    const fmt = (x: number) => (x >= 10 ? `${Math.floor(Math.ceil(x) / 60)}:${String(Math.ceil(x) % 60).padStart(2, '0')}` : x.toFixed(1));
+    let text = beat ? `${left.toFixed(2)}s left` : fmt(left);
+    // clockLies: for a split second it shows something it shouldn't.
+    let lying = false;
+    if (overlay.clockLies && !ended && world.stepCount > 0) {
+      const bucket = Math.floor(world.time * 3);
+      const h = hash01(bucket * 7.7 + 1.9);
+      if (h < 0.1 && (world.time * 3) % 1 < 0.4) {
+        lying = true;
+        text = h < 0.035 ? '0:00' : h < 0.07 ? fmt(left + 11 + Math.floor(hash01(bucket) * 40)) : fmt(clock.seconds * 2 + 6);
+      }
+    }
     const size = overlay.clockSize;
     const y = this.countdownY;
     // A jump on each whole second that relaxes over ~0.35 s, bigger as zero nears.
     const sub = left - Math.floor(left);
     const urgency = final ? 1 - left / Math.max(clock.final, 1e-6) : 0;
     const pulse = final ? 1 + (0.12 + 0.18 * urgency) * Math.max(0, (sub - 0.65) / 0.35) + 0.1 * urgency : 1;
-    const color = beat ? '#7cff6b' : final || (ended && left <= 0) ? '#ff3b4f' : frac < 0.5 ? '#ffd23f' : overlay.textColor;
+    const color = lying ? '#ff3b4f' : beat ? '#7cff6b' : final || (ended && left <= 0) ? '#ff3b4f' : frac < 0.5 ? '#ffd23f' : overlay.textColor;
 
     ctx.save();
     ctx.shadowColor = final ? 'rgba(255,40,60,0.85)' : 'rgba(0,0,0,0.6)';
@@ -2548,10 +2828,9 @@ export class Renderer {
     const f = Math.min(1, secs / max);
     const color = this.scene.overlay.textColor;
     // Safe style: below TikTok's top bar, and the ring clear of the button column.
-    const safe = !!this.safe?.safeText;
-    const barY = safe ? TIKTOK_ZONES.top + 24 : 130;
-    const ringX = safe ? WIDTH - TIKTOK_ZONES.right - 70 : WIDTH - 110;
-    const ringY = safe ? TIKTOK_ZONES.top + 70 : 120;
+    const barY = TIKTOK_ZONES.top + 24;
+    const ringX = WIDTH - TIKTOK_ZONES.right - 70;
+    const ringY = TIKTOK_ZONES.top + 70;
     if (this.scene.overlay.progress === 'bar') {
       ctx.fillStyle = 'rgba(255,255,255,0.18)';
       ctx.beginPath();
@@ -2599,8 +2878,8 @@ export class Renderer {
 
   /** Draw word-wrapped text; returns the baseline y of the last line. */
   private fillWrapped(text: string, x: number, y: number, maxWidth: number, lineHeight: number): number {
-    // Safe style: keep wrapped text out of the right-hand button column (centered at 540, so ≤ 840 wide).
-    if (this.safe?.safeText) maxWidth = Math.min(maxWidth, 2 * (WIDTH - TIKTOK_ZONES.right - x));
+    // Keep wrapped text out of the right-hand button column (centered at 540, so ≤ 840 wide).
+    maxWidth = Math.min(maxWidth, TEXT_BAND.width, 2 * (WIDTH - TIKTOK_ZONES.right - x));
     const words = text.split(/\s+/);
     let line = '';
     let yy = y;

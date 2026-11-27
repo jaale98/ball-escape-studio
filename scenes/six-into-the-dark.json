@@ -1,0 +1,88 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "Six into the dark",
+  "category": "battle",
+  "seed": 43,
+  "duration": {
+    "endOn": "lastStanding",
+    "tail": 2.5
+  },
+  "clock": {
+    "seconds": 30,
+    "final": 5,
+    "rush": [
+      {
+        "do": "speedUp",
+        "factor": 1.04,
+        "max": 2400
+      }
+    ]
+  },
+  "world": {
+    "gravity": 0
+  },
+  "entities": [
+    {
+      "type": "ring",
+      "radius": 470,
+      "thickness": 12,
+      "spin": 0,
+      "gaps": []
+    },
+    {
+      "type": "stalker",
+      "mode": "chase",
+      "speed": 70,
+      "accel": 9,
+      "maxSpeed": 520,
+      "start": 2,
+      "radius": 34
+    },
+    {
+      "type": "ball",
+      "count": 6,
+      "radius": 22,
+      "speed": 620,
+      "spread": 300,
+      "arrange": "grid",
+      "emoji": "👁️",
+      "labels": ["Ana", "Bo", "Cy", "Dee", "Eli", "Fen"]
+    }
+  ],
+  "camera": {
+    "shake": 1,
+    "unease": 0.3
+  },
+  "style": {
+    "background": "#0b0a10",
+    "ringColor": "#d9d4e8",
+    "trail": 0.7,
+    "trailStyle": "comet",
+    "darkness": 0.96,
+    "light": 150,
+    "flicker": true,
+    "grain": true,
+    "vignette": true,
+    "chromatic": true,
+    "glitch": true,
+    "subliminal": ["who’s next", "it’s hungry", "don’t look"]
+  },
+  "audio": {
+    "instrument": "glass",
+    "transpose": -9,
+    "volume": 0.65,
+    "bounceSpacing": 0.1,
+    "drone": "heartbeat",
+    "droneVolume": 0.85,
+    "reverb": 0.45
+  },
+  "overlay": {
+    "title": "Only one gets out.",
+    "titleSize": 56,
+    "font": "mono",
+    "counter": "balls",
+    "counterSize": 50,
+    "labelSize": 24,
+    "clockLies": true
+  }
+}

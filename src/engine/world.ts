@@ -256,6 +256,44 @@ export interface Zone {
   finish: boolean;
 }
 
+/** Something that follows the ball (stalker entity). */
+export interface Stalker {
+  id: number;
+  mode: 'chase' | 'shadow';
+  x: number;
+  y: number;
+  r: number;
+  /** chase: current speed (px/s). */
+  speed: number;
+  accel: number;
+  maxSpeed: number;
+  startStep: number;
+  /** shadow: seconds behind at the start, seconds won back per second, closest it gets. */
+  delay: number;
+  catchUp: number;
+  minDelay: number;
+  /** shadow: the ball whose path it retraces (-1 = none). */
+  target: number;
+  deadly: boolean;
+  /** Showing yet (a shadow appears at its start time). */
+  visible: boolean;
+  /** Where it is looking (its target), for the eyes. */
+  lookX: number;
+  lookY: number;
+  color: string;
+  eyes: string;
+  emoji?: string;
+  /** Balls caught so far. */
+  caught: number;
+  /** Balls touching it last step (a harmless stalker scares once per touch, not every step). */
+  touching: Set<number>;
+  /** chase: where it started; a harmless one vanishes after a scare and comes back from here. */
+  homeX: number;
+  homeY: number;
+  /** A harmless stalker is gone until this step. */
+  goneUntil: number;
+}
+
 export type SimEventType =
   | 'bounce'
   | 'escape'
@@ -281,7 +319,11 @@ export type SimEventType =
   /** Clock: a whole second of the final stretch passed (n = seconds left). */
   | 'clock'
   /** Clock: zero, before the run's ending happened. */
-  | 'timeUp';
+  | 'timeUp'
+  /** A stalker reached a ball. */
+  | 'caught'
+  /** Four times a second in scenes with stalkers or a drone (keeps sound beds going; n = px from the nearest stalker to its prey, or -1). */
+  | 'pulse';
 
 export interface SimEvent {
   step: number;
@@ -373,6 +415,7 @@ export class World {
   forces: Force[] = [];
   territory: Territory | null = null;
   pendulums: Pendulum[] = [];
+  stalkers: Stalker[] = [];
   readonly teams: TeamSpec[];
   /** Winning team (oneTeam endings, territory at the end), or ''. */
   winnerTeam = '';
@@ -434,6 +477,12 @@ export class World {
   private farY = HEIGHT * 4;
   /** During a hit's rules: true when the ball the rules run for was the one struck. */
   private defending = true;
+  /** shadow stalkers: every step's position of each followed ball (by ball id). */
+  private readonly paths = new Map<number, { x: number[]; y: number[] }>();
+  /** Emit 'pulse' events (stalkers or a drone). */
+  private readonly pulses: boolean;
+  /** Closest any stalker came to its prey since the last pulse (px between edges, -1 = none). */
+  private nearest = -1;
 
   constructor(scene: Scene) {
     this.scene = scene;
@@ -567,6 +616,34 @@ export class World {
         const counts = Array.from({ length: k }, () => 0);
         for (const t of owner) if (t >= 0) counts[t]++;
         this.territory = { x: e.x, y: e.y, cols: e.cols, rows: e.rows, cell: e.cell, owner, counts, paint: e.layout === 'paint' };
+      } else if (e.type === 'stalker') {
+        this.stalkers.push({
+          id: this.stalkers.length,
+          mode: e.mode,
+          x: e.x ?? NaN,
+          y: e.y ?? NaN,
+          r: e.radius,
+          speed: e.speed,
+          accel: e.accel,
+          maxSpeed: e.maxSpeed,
+          startStep: Math.round(e.start * PHYSICS_HZ),
+          delay: e.delay,
+          catchUp: e.catchUp,
+          minDelay: Math.min(e.minDelay, e.delay),
+          target: e.target,
+          deadly: e.deadly,
+          visible: e.mode === 'chase',
+          lookX: 0,
+          lookY: 0,
+          color: e.color,
+          eyes: e.eyes,
+          emoji: e.emoji,
+          caught: 0,
+          touching: new Set(),
+          homeX: 0,
+          homeY: 0,
+          goneUntil: -1,
+        });
       } else if (e.type === 'pendulum') {
         const rainbow = (i: number) => `hsl(${Math.round((i / Math.max(1, e.count)) * 300)}, 95%, 62%)`;
         for (let i = 0; i < e.count; i++) {
@@ -635,6 +712,22 @@ export class World {
     }
     this.liftOutOfHoles();
     this.startingBalls = this.balls.length;
+    for (const s of this.stalkers) {
+      if (Number.isNaN(s.x)) s.x = this.containers[0]?.x ?? WIDTH / 2;
+      if (Number.isNaN(s.y)) s.y = this.containers[0]?.y ?? HEIGHT / 2;
+      if (s.mode === 'shadow') {
+        // target is an index into the starting balls; from here on it's that ball's id.
+        const b = this.balls[s.target];
+        s.target = b ? b.id : -1;
+        if (b) {
+          [s.x, s.y] = [b.x, b.y];
+          if (!this.paths.has(b.id)) this.paths.set(b.id, { x: [], y: [] });
+        }
+      }
+      [s.lookX, s.lookY] = [s.x, s.y];
+      [s.homeX, s.homeY] = [s.x, s.y];
+    }
+    this.pulses = this.stalkers.length > 0 || scene.audio.drone !== 'none';
     // Ring systems bigger than the frame (thousands of rings) widen the safety net to fit.
     for (const c of this.containers) {
       this.farX = Math.max(this.farX, Math.abs(c.x - WIDTH / 2) + c.radius + c.thickness + 200);
@@ -726,6 +819,8 @@ export class World {
     this.strikes();
     this.countZones();
     if (this.pendulums.length) this.stepPendulums();
+    if (this.stalkers.length) this.stepStalkers();
+    if (this.pulses && this.stepCount % (PHYSICS_HZ / 4) === 0) this.emitPulse();
 
     this.stepCount++;
     this.checkEnd();
@@ -760,6 +855,7 @@ export class World {
     }
     for (const p of this.pendulums) values.push(p.t1, p.t2, p.w1, p.w2);
     for (const f of this.forces) values.push(f.eaten);
+    for (const s of this.stalkers) values.push(s.x, s.y, s.caught);
     const bytes = new Uint8Array(new Float64Array(values).buffer);
     let h = 2166136261;
     for (let i = 0; i < bytes.length; i++) {
@@ -828,6 +924,86 @@ export class World {
         b.y = f.y + uy * dist;
       }
     }
+  }
+
+  /** A ball that has escaped every container is out of reach. */
+  private safe(b: Ball): boolean {
+    return this.containers.length > 0 && b.escaped.every(Boolean);
+  }
+
+  /** Move every stalker, then catch whatever it touches. */
+  private stepStalkers(): void {
+    for (const [id, path] of this.paths) {
+      const b = this.balls[id];
+      path.x.push(b.x);
+      path.y.push(b.y);
+    }
+    for (const s of this.stalkers) {
+      if (this.stepCount < s.startStep) continue;
+      if (s.goneUntil >= 0) {
+        if (this.stepCount < s.goneUntil) continue;
+        // It comes back, from where it started.
+        s.goneUntil = -1;
+        s.visible = true;
+        if (s.mode === 'chase') [s.x, s.y] = [s.homeX, s.homeY];
+      }
+      if (s.mode === 'chase') {
+        let prey: Ball | null = null;
+        let best = Infinity;
+        for (const b of this.balls) {
+          if (!b.alive || b.projectile || this.safe(b)) continue;
+          const d = M.hypot(b.x - s.x, b.y - s.y);
+          if (d < best) [best, prey] = [d, b];
+        }
+        if (!prey) continue;
+        s.speed = Math.min(s.maxSpeed, s.speed + s.accel * DT);
+        const move = s.speed * DT;
+        if (best <= move) [s.x, s.y] = [prey.x, prey.y];
+        else {
+          s.x += ((prey.x - s.x) / best) * move;
+          s.y += ((prey.y - s.y) / best) * move;
+        }
+        [s.lookX, s.lookY] = [prey.x, prey.y];
+      } else {
+        const path = this.paths.get(s.target);
+        const b = this.balls[s.target];
+        if (!path || !b) continue;
+        s.visible = true;
+        const lag = Math.max(s.minDelay, s.delay - s.catchUp * (this.stepCount - s.startStep) * DT);
+        const k = Math.max(0, path.x.length - 1 - Math.round(lag * PHYSICS_HZ));
+        [s.x, s.y] = [path.x[k], path.y[k]];
+        [s.lookX, s.lookY] = [b.x, b.y];
+      }
+      for (const b of this.balls) {
+        if (!b.alive || b.projectile || this.safe(b)) continue;
+        const d = M.hypot(b.x - s.x, b.y - s.y);
+        const gap = Math.max(0, d - s.r - b.r);
+        if (this.nearest < 0 || gap < this.nearest) this.nearest = gap;
+        if (d >= s.r + b.r * 0.6) {
+          s.touching.delete(b.id);
+          continue;
+        }
+        if (s.touching.has(b.id)) continue;
+        s.caught++;
+        this.emit('caught', b, -1, -1, -1, M.hypot(b.vx, b.vy));
+        if (s.deadly) {
+          this.eliminate(b);
+          if (this.aliveCount === 0 && this.scene.duration.endOn !== 'never') this.endNow('caught');
+        } else {
+          // A harmless one scares, vanishes, and comes back a few seconds later.
+          s.touching.add(b.id);
+          s.goneUntil = this.stepCount + Math.round(2.5 * PHYSICS_HZ);
+          s.visible = false;
+          break;
+        }
+      }
+    }
+  }
+
+  /** The sound bed's heartbeat: four times a second, with the closest a stalker came to its prey since the last one. */
+  private emitPulse(): void {
+    this.events.push({ step: this.stepCount, type: 'pulse', ball: -1, ring: -1, solid: -1, zone: -1, x: WIDTH / 2, y: 0, speed: 0, n: Math.round(this.nearest) });
+    this.nearest = -1;
   }
 
   private spawnBall(spec: BallSpec, index: number, x?: number, y?: number, spread = 0, speed?: number, direction?: number): Ball | null {

@@ -23,7 +23,7 @@ export interface Voice {
   time: number;
   /** Seconds after the event that caused it (backing notes fall between bounces). */
   delay: number;
-  kind: 'note' | 'escape' | 'hit' | 'pop' | 'break' | 'zap' | 'gulp' | 'merge' | 'tick' | 'chime' | 'bell' | 'shoot' | 'drop' | 'swell' | 'gong' | 'buzzer' | 'stutter' | 'burst' | 'drone';
+  kind: 'note' | 'escape' | 'hit' | 'pop' | 'break' | 'zap' | 'gulp' | 'merge' | 'tick' | 'chime' | 'bell' | 'shoot' | 'drop' | 'swell' | 'gong' | 'buzzer' | 'stutter' | 'burst' | 'drone' | 'beat' | 'scare';
   /** Notes to play together (one for a melody, several for a chord). */
   midi: number[];
   gain: number;
@@ -69,8 +69,11 @@ export class SoundMapper {
   private streak = 0;
   private lastEscape = -Infinity;
   private burstsInStreak = 0;
-  /** Run time the next drone segment starts. */
+  /** Run time the next drone segment (or heartbeat) starts. */
   private nextDrone = 0;
+  /** px from the nearest stalker to its prey, from the latest pulse (-1 = none). */
+  private near = -1;
+  private lastScare = -Infinity;
 
   /** `rhythmK`: the world's rhythm-lock tempo (0 = off); backing only plays when locked. */
   constructor(
@@ -92,6 +95,7 @@ export class SoundMapper {
     const time = e.step / PHYSICS_HZ;
     const pan = Math.max(-1, Math.min(1, (e.x - WIDTH / 2) / (WIDTH / 2))) * 0.5;
     const one = (v: Omit<Voice, 'time' | 'delay'>): Voice[] => [{ time, delay: 0, ...v }];
+    if (e.type === 'pulse') this.near = e.n ?? -1;
     const out = this.droneFor(time);
     const voices = this.mapOne(e, time, pan, one);
     return out.length ? [...out, ...voices] : voices;
@@ -104,6 +108,18 @@ export class SoundMapper {
     // A seek (or a long silence) skips ahead instead of piling segments up.
     if (time > this.nextDrone + DRONE_SEG - DRONE_EVERY) this.nextDrone = time;
     const out: Voice[] = [];
+    if (audio.drone === 'heartbeat') {
+      // Lub-dub, faster as the clock runs down, and racing when something is close.
+      while (this.nextDrone <= time + 0.25) {
+        const start = this.nextDrone;
+        const clockT = Math.min(1, Math.max(0, clock ? start / clock.seconds : start / 40));
+        const nearT = this.near < 0 ? 0 : Math.min(1, Math.max(0, 1 - this.near / 520));
+        const tension = Math.max(clockT * 0.75, nearT);
+        out.push({ time: start, delay: Math.max(0, start - time), kind: 'beat', midi: [], gain: audio.droneVolume * (0.55 + 0.75 * tension), pan: 0 });
+        this.nextDrone += 60 / (58 + 112 * tension * tension);
+      }
+      return out;
+    }
     while (this.nextDrone <= time + 0.25) {
       const start = this.nextDrone;
       // It swells as the clock runs down (or over the first 40 s without one).
@@ -143,6 +159,11 @@ export class SoundMapper {
     // Every other sound is rate-limited too: a format like multiply can make
     // hundreds of escapes a second, and each one is several oscillators.
     if (e.type === 'escape') return this.escapeVoices(e, time, pan);
+    if (e.type === 'caught') {
+      if (time - this.lastScare < 0.5) return [];
+      this.lastScare = time;
+      return one({ kind: 'scare', midi: [], gain: 1, pan });
+    }
     if (e.type === 'eliminate') return this.allow('pop', time, 0.1, 3) ? one({ kind: 'pop', midi: [], gain: 1, pan }) : [];
     if (e.type === 'strike' && audio.hitSound) return this.allow('hit', time, 0.05, 3) ? one({ kind: 'hit', midi: [], gain: 1, pan }) : [];
     if (e.type === 'clash' && audio.hitSound) return this.allow('clash', time, 0.1, 3) ? one({ kind: 'note', midi: [96, 103], gain: 0.5, pan }) : [];
@@ -365,6 +386,8 @@ export function playVoice(ctx: BaseAudioContext, dest: AudioNode, v: Voice, when
 
   if (v.kind === 'burst') return burstSound(ctx, panner, v, when);
   if (v.kind === 'drone') return drone(ctx, panner, v, when);
+  if (v.kind === 'beat') return heartbeat(ctx, panner, v, when);
+  if (v.kind === 'scare') return scare(ctx, panner, v, when);
 
   if (v.kind === 'escape') {
     // Low thump + rising noise whoosh + a bright chord.
@@ -733,6 +756,37 @@ function renderClip(fs: number, variant: string): Float32Array {
     const c = bandpass(src, fs, 2900, 12);
     out = new Float32Array(n);
     for (let i = 0; i < n; i++) out[i] = (a[i] + 0.6 * b[i] + 0.25 * c[i]) * env(i / fs, 0.006, 0.12, 0.16);
+  } else if (variant === 'reverse') {
+    // Backmasked: the sung "ah" played backwards, so it swells out of nothing and stops dead.
+    const fwd = renderClip(fs, 'voice');
+    len = fwd.length / fs;
+    out = fwd.slice().reverse();
+    // A 4 ms fade at the very end, where the reversed attack would click.
+    const n = out.length;
+    const fade = Math.round(0.004 * fs);
+    for (let i = 0; i < fade; i++) out[n - 1 - i] *= i / fade;
+  } else if (variant === 'musicbox') {
+    // A music-box tine: inharmonic partials, a fast warble (a worn comb), a long ring.
+    len = 0.55;
+    const n = Math.ceil(len * fs);
+    out = new Float32Array(n);
+    const partials: [number, number, number][] = [
+      [1, 1, 3.2],
+      [2.01, 0.35, 5],
+      [5.43, 0.22, 9],
+      [8.93, 0.08, 14],
+    ];
+    const ph = partials.map(() => 0);
+    for (let i = 0; i < n; i++) {
+      const t = i / fs;
+      const wob = 1 + 0.009 * Math.sin(2 * Math.PI * 6.3 * t) - 0.004 * t;
+      let v = 0;
+      partials.forEach(([ratio, amp, decay], k) => {
+        ph[k] += (f * 2 * ratio * wob) / fs;
+        v += amp * Math.sin(2 * Math.PI * ph[k]) * Math.exp(-t * decay);
+      });
+      out[i] = v * Math.min(1, t / 0.002);
+    }
   } else if (variant === 'glitch') {
     // A bit-crushed blip whose pitch hops in a fixed pattern.
     len = 0.18;
@@ -836,6 +890,7 @@ const shepardWeight = (f: number) => Math.exp(-((Math.log2(f / 220) / 1.5) ** 2)
 function burstSound(ctx: BaseAudioContext, dest: AudioNode, v: Voice, when: number): void {
   const shift = 2 ** ((v.midi[0] ?? 0) / 12);
   const gain = v.gain;
+  if (v.variant === 'rewind') return rewindSound(ctx, dest, v, when);
   if (v.variant === 'drop') {
     sweep(ctx, dest, when, 140 * shift, 38, 1.4, 'sine', 0.8 * gain, undefined, 1.6);
     sweep(ctx, dest, when, 280 * shift, 76, 0.8, 'triangle', 0.22 * gain);
@@ -914,6 +969,71 @@ function burstSound(ctx: BaseAudioContext, dest: AudioNode, v: Voice, when: numb
   src.connect(lp).connect(ng).connect(dest);
   src.start(when);
   src.stop(when + dur + 0.05);
+}
+
+/** One heartbeat (drone 'heartbeat'): a low lub and a softer dub, felt more than heard. */
+function heartbeat(ctx: BaseAudioContext, dest: AudioNode, v: Voice, when: number): void {
+  const g = Math.min(1.4, v.gain);
+  for (const [dt, f0, peak] of [
+    [0, 62, 1],
+    [0.17, 54, 0.7],
+  ] as const) {
+    const t = when + dt;
+    sweep(ctx, dest, t, f0 * 1.6, f0, 0.07, 'sine', 0.95 * g * peak, undefined, 0.22);
+    noiseHit(ctx, dest, t, 'lowpass', 160, 0.8, 0.35 * g * peak, 0.09);
+  }
+}
+
+/** Caught by a stalker: a burst of static, a slammed sub, and a dissonant shriek that drops away. */
+function scare(ctx: BaseAudioContext, dest: AudioNode, v: Voice, when: number): void {
+  const g = v.gain;
+  noiseHit(ctx, dest, when, 'bandpass', 2200, 0.6, 1.1 * g, 0.55);
+  noiseHit(ctx, dest, when, 'highpass', 6000, 0.7, 0.5 * g, 0.3);
+  sweep(ctx, dest, when, 120, 30, 0.9, 'sine', 1.2 * g, undefined, 1.2);
+  for (const [f, type] of [
+    [1480, 'sawtooth'],
+    [1567, 'square'],
+    [2093, 'sawtooth'],
+  ] as const) {
+    sweep(ctx, dest, when, f, f / 3, 0.8, type, 0.06 * g, 'lowpass', 0.9);
+  }
+}
+
+/** Burst 'rewind': a tape sucked backwards. Noise and a whine rush up from nothing and stop dead. */
+function rewindSound(ctx: BaseAudioContext, dest: AudioNode, v: Voice, when: number): void {
+  const shift = 2 ** ((v.midi[0] ?? 0) / 12);
+  const dur = 0.9;
+  const src = ctx.createBufferSource();
+  src.buffer = noise(ctx);
+  src.loop = true;
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.Q.value = 2.5;
+  bp.frequency.setValueAtTime(300 * shift, when);
+  bp.frequency.exponentialRampToValueAtTime(6000 * shift, when + dur);
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(0.0001, when);
+  ng.gain.exponentialRampToValueAtTime(0.6 * v.gain, when + dur);
+  ng.gain.setValueAtTime(0.0001, when + dur + 0.004);
+  src.connect(bp).connect(ng).connect(dest);
+  src.start(when);
+  src.stop(when + dur + 0.02);
+  const osc = ctx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(90 * shift, when);
+  osc.frequency.exponentialRampToValueAtTime(1400 * shift, when + dur);
+  const og = ctx.createGain();
+  og.gain.setValueAtTime(0.0001, when);
+  og.gain.exponentialRampToValueAtTime(0.14 * v.gain, when + dur);
+  og.gain.setValueAtTime(0.0001, when + dur + 0.004);
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 2400;
+  osc.connect(lp).connect(og).connect(dest);
+  osc.start(when);
+  osc.stop(when + dur + 0.02);
+  // The tape snaps: a thud right after.
+  sweep(ctx, dest, when + dur, 110 * shift, 40, 0.3, 'sine', 0.7 * v.gain, undefined, 0.5);
 }
 
 /**

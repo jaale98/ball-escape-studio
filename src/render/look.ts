@@ -65,6 +65,17 @@ export const TIKTOK_SAFE: SafeLook = {
  */
 export const TIKTOK_ZONES = { top: 150, bottom: 350, right: 120 };
 
+/**
+ * Where on-screen text may sit in every render (not just the safe style): the
+ * title's first line no higher than `top`, the counter no lower than `bottom`,
+ * wrapped text at most `width` wide (centered, clear of the button column).
+ * TikTok's top bar, caption and buttons otherwise cover it.
+ */
+export const TEXT_BAND = { top: 320, bottom: 1540, width: 840 };
+
+/** Trails are drawn at this share of their old opacity (fainter, so the ball reads first). */
+export const TRAIL_ALPHA = 0.55;
+
 /** The area left for the action, in canvas px. */
 export const SAFE_RECT = {
   x0: 0,

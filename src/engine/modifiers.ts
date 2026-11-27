@@ -397,6 +397,90 @@ export const MODIFIERS: Record<string, ModifierDef> = {
       Object.assign(obj(s, 'camera'), { mode: 'chase', orient: 'down', zoom: Math.max(1.6, obj(s, 'camera').zoom ?? 1) });
     },
   },
+  // ---- weird: horror (something follows you) ----------------------------------------------
+  'lights-out': {
+    description: 'Lights out: pitch black but a pool of light around each ball, from a failing fluorescent tube that stutters and cuts out.',
+    params: { light: { default: 190, description: 'radius of the light (px)' }, flicker: { default: true, description: 'the light stutters and cuts out' } },
+    apply: (s, p) => Object.assign(obj(s, 'style'), { darkness: 0.97, light: p.light, flicker: p.flicker, vignette: true }),
+  },
+  stalker: {
+    description: 'Something wakes up in the middle and drifts toward the ball, through the walls, faster and faster. Touch it and you are caught; get out of every ring and you are safe.',
+    params: {
+      speed: { default: 40, description: 'starting speed (px/s)' },
+      accel: { default: 9, description: 'speed gained per second' },
+      start: { default: 2.5, description: 'seconds before it moves' },
+      outside: { default: false, description: 'it starts just outside the outermost wall and comes in, instead of waking in the middle' },
+      harmless: { default: false, description: 'touching it only scares (a flash, a shriek), so the scene keeps its own ending' },
+    },
+    apply: (s, p) => {
+      const ents: Raw[] = s.entities ?? [];
+      const c = ents.find((e: Raw) => e.type === 'ring' || e.type === 'polygon' || e.type === 'nested' || e.type === 'strata');
+      const x = c?.x ?? 540;
+      let y = c?.y ?? 960;
+      if (p.outside) {
+        // The outermost wall: ring and polygon radius, nested rings' outer.
+        const reach = Math.max(0, ...ents.map((e: Raw) => (e.type === 'ring' || e.type === 'polygon' ? (e.radius ?? 0) : e.type === 'nested' ? (e.outer ?? 0) : 0)));
+        y += Math.min(reach + 90, 900);
+      }
+      list(s, 'entities').push({ type: 'stalker', mode: 'chase', x, y, speed: p.speed, accel: p.accel, start: p.start, deadly: !p.harmless });
+      obj(s, 'style').chromatic = true;
+      obj(s, 'camera').shake = Math.max(0.6, obj(s, 'camera').shake ?? 0);
+    },
+  },
+  shadow: {
+    description: 'The ball’s own shadow retraces its path a few seconds behind and slowly closes the gap. Stop moving, or cross your own path, and it catches you.',
+    params: { delay: { default: 3, description: 'seconds behind at the start' }, catchUp: { default: 0.06, description: 'seconds it wins back each second' } },
+    apply: (s, p) => {
+      list(s, 'entities').push({ type: 'stalker', mode: 'shadow', delay: p.delay, catchUp: p.catchUp, start: p.delay, radius: 22 });
+      obj(s, 'style').chromatic = true;
+    },
+  },
+  heartbeat: {
+    description: 'A heartbeat under everything that races as the stalker closes in (or as the clock runs down).',
+    params: { volume: { default: 0.8, description: 'volume 0–1' } },
+    apply: (s, p) => Object.assign(obj(s, 'audio'), { drone: 'heartbeat', droneVolume: p.volume }),
+  },
+  backmask: {
+    description: 'Backmasked: each escape is a voice played backwards that restarts on the next one; a streak of escapes is a tape sucked into rewind.',
+    params: { at: { default: 4, description: 'escapes within 0.4 s that count as a streak' } },
+    apply: (s, p) => Object.assign(obj(s, 'audio'), { escapeStyle: 'reverse', burst: 'rewind', burstAt: p.at, escapeSound: true }),
+  },
+  'music-box': {
+    description: 'A worn-out music box: bounces ring high and glassy in a big room, escapes are a warbling tine that restarts each time.',
+    params: {},
+    apply: (s) => {
+      const audio = obj(s, 'audio');
+      Object.assign(audio, { instrument: 'bell', transpose: (audio.transpose ?? 0) + 12, escapeStyle: 'musicbox', escapeSound: true, reverb: Math.max(0.5, audio.reverb ?? 0) });
+    },
+  },
+  subliminal: {
+    description: 'Single frames of words flash by, easy to miss (and on every big moment).',
+    params: { set: { default: 0, description: 'which words (0–3)' } },
+    apply: (s, p) => {
+      const sets = [
+        ['wake up', 'behind you', 'it sees you', 'not real'],
+        ['look away', 'don’t blink', 'stay', 'it knows'],
+        ['help', 'let me out', 'again', 'why'],
+        ['run', 'closer', 'now', 'sorry'],
+      ];
+      obj(s, 'style').subliminal = sets[Math.abs(Math.round(p.set)) % sets.length];
+    },
+  },
+  droste: {
+    description: 'The room repeats: the frame shows inside itself, again and again, each copy smaller and turned a little.',
+    params: { levels: { default: 3, description: 'how many times (1–6)' } },
+    apply: (s, p) => (obj(s, 'style').droste = Math.max(1, Math.min(6, Math.round(p.levels)))),
+  },
+  liar: {
+    description: 'The countdown lies: for a split second it skips back, or flashes 0:00.',
+    params: {},
+    apply: (s) => (obj(s, 'overlay').clockLies = true),
+  },
+  unease: {
+    description: 'The camera is never quite level: it slowly tilts, drifts and breathes.',
+    params: { amount: { default: 0.6, description: '0–1' } },
+    apply: (s, p) => (obj(s, 'camera').unease = Math.max(0, Math.min(1, p.amount))),
+  },
   countdown: {
     description: 'A 3-2-1-GO intro with the run frozen.',
     params: { count: { default: 3, description: 'counts' } },

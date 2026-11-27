@@ -1,0 +1,68 @@
+{
+  "$schema": "../scene.schema.json",
+  "title": "The room repeats",
+  "category": "surreal",
+  "seed": 131,
+  "modifiers": [
+    "backrooms",
+    { "use": "droste", "levels": 4 },
+    "music-box",
+    { "use": "unease", "amount": 0.7 },
+    "liar",
+    { "use": "whisper", "line": 6 },
+    { "use": "breathe", "amount": 14, "rate": 0.3 }
+  ],
+  "duration": {
+    "endOn": "firstEscape",
+    "tail": 2.5
+  },
+  "clock": {
+    "seconds": 25,
+    "final": 5,
+    "rush": [
+      {
+        "do": "speedUp",
+        "factor": 1.05,
+        "max": 2600
+      }
+    ]
+  },
+  "world": {
+    "gravity": 700
+  },
+  "entities": [
+    {
+      "type": "polygon",
+      "sides": 4,
+      "radius": 400,
+      "thickness": 16,
+      "spin": 0.45,
+      "angle": 45,
+      "open": [0],
+      "gap": 70
+    },
+    {
+      "type": "ball",
+      "radius": 22,
+      "speed": 900,
+      "color": "#f4ecc2"
+    }
+  ],
+  "style": {
+    "trail": 0.86,
+    "trailStyle": "ribbon",
+    "scanlines": true
+  },
+  "audio": {
+    "volume": 0.6,
+    "drone": "hum",
+    "droneVolume": 0.4
+  },
+  "overlay": {
+    "title": "This room again.",
+    "titleSize": 72,
+    "font": "mono",
+    "counter": "bounces",
+    "counterSize": 46
+  }
+}

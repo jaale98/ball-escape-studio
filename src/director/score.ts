@@ -148,7 +148,7 @@ function snapDistance(a: number[], b: number[]): number {
 }
 
 /** Events that count as something happening (for lulls). */
-const ACTIVITY = new Set(['bounce', 'hit', 'escape', 'eliminate', 'capture', 'swing', 'break', 'merge', 'swallow', 'convert', 'teleport', 'finish']);
+const ACTIVITY = new Set(['bounce', 'hit', 'escape', 'eliminate', 'capture', 'swing', 'break', 'merge', 'swallow', 'convert', 'teleport', 'finish', 'caught']);
 
 const gauss = (x: number, sigma: number) => Math.exp(-0.5 * (x / sigma) ** 2);
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
@@ -223,6 +223,12 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
       if (e.type === 'finish') finishTimes.push(e.step / PHYSICS_HZ);
       if (e.type === 'break') breakTimes.push(e.step / PHYSICS_HZ);
       if (e.type === 'swallow' && startingBalls > 1) lastEliminationAt = e.step / PHYSICS_HZ;
+      // A stalker passing within a hair of its prey is a near miss too.
+      if (e.type === 'pulse' && e.n !== undefined && e.n >= 0 && e.n < 60) {
+        const at = e.step / PHYSICS_HZ;
+        if (at - (lastMiss.get(-1) ?? -1) > 0.9) nearMisses.push(at);
+        lastMiss.set(-1, at);
+      }
       if (e.type === 'bounce') {
         bounceTimes.push(e.step / PHYSICS_HZ);
         // Near miss: a ring bounce just beside a gap edge.
@@ -269,8 +275,10 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
   else if (w.climaxStep >= 0) climax = w.climaxStep / PHYSICS_HZ;
   // Running out the clock is a miss, unless the format always goes the distance.
   const timedOut = w.endReason === 'timeUp' && racesClock(scene);
-  const failed = (endsOnClimax && climax < 0) || timedOut;
-  const clockLeft = scene.clock && climax >= 0 && !timedOut ? scene.clock.seconds - climax : -1;
+  // Caught by a stalker: a fail video, not the escape the story wants.
+  const caught = w.endReason === 'caught';
+  const failed = (endsOnClimax && climax < 0) || timedOut || caught;
+  const clockLeft = scene.clock && climax >= 0 && !timedOut && !caught ? scene.clock.seconds - climax : -1;
 
   const timing = climax < 0 ? (endsOnClimax ? 0 : 0.5) : gauss(climax - T, 0.15 * T);
   const tightTiming = climax < 0 ? 0 : gauss(climax - T, 0.05 * T);
@@ -368,6 +376,7 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
   if (climax >= 0) facts.push(`climax ${climax.toFixed(1)}s`);
   else facts.push(endsOnClimax ? 'no climax' : `${w.time.toFixed(0)}s run`);
   if (timedOut) facts.push('time ran out');
+  else if (caught) facts.push('caught');
   else if (clockLeft >= 0) facts.push(`${clockLeft.toFixed(2)}s to spare`);
   if (nearMisses.length) facts.push(`${nearMisses.length} near-misses`);
   if (deadTime > 3) facts.push(`${deadTime.toFixed(1)}s lull`);
