@@ -633,6 +633,7 @@ export class World {
         } else this.spawnBall(spec, i, spec.x, spec.y, spec.spread ?? (spec.count > 1 ? 40 : 0));
       }
     }
+    this.liftOutOfHoles();
     this.startingBalls = this.balls.length;
     // Ring systems bigger than the frame (thousands of rings) widen the safety net to fit.
     for (const c of this.containers) {
@@ -800,6 +801,34 @@ export class World {
   }
 
   // ---------------------------------------------------------------------------
+
+  /**
+   * No ball starts inside a black hole (a ball at the center of a scene that
+   * gained one would be eaten on the first step): it moves just outside the
+   * event horizon, along its launch direction, and stays inside its container.
+   */
+  private liftOutOfHoles(): void {
+    for (const f of this.forces) {
+      if (f.kind !== 'attract' || f.swallow <= 0) continue;
+      for (const b of this.balls) {
+        const dx = b.x - f.x;
+        const dy = b.y - f.y;
+        const d = M.hypot(dx, dy);
+        if (d >= f.swallow + b.r) continue;
+        const s = M.hypot(b.vx, b.vy);
+        const [ux, uy] = d > 1e-6 ? [dx / d, dy / d] : s > 0 ? [b.vx / s, b.vy / s] : [0, -1];
+        let dist = f.swallow + b.r + 40;
+        const c = this.containers[0];
+        if (c && M.hypot(b.x - c.x, b.y - c.y) < c.radius) {
+          // Room left inside the first container along this direction (it sits on the hole, or close).
+          dist = Math.min(dist, c.radius - c.thickness / 2 - b.r - 2 - M.hypot(f.x - c.x, f.y - c.y));
+        }
+        if (dist <= f.swallow + b.r * 0.5) continue;
+        b.x = f.x + ux * dist;
+        b.y = f.y + uy * dist;
+      }
+    }
+  }
 
   private spawnBall(spec: BallSpec, index: number, x?: number, y?: number, spread = 0, speed?: number, direction?: number): Ball | null {
     if (this.aliveCount >= this.scene.world.maxBalls) return null;

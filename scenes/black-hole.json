@@ -2,7 +2,7 @@
   "$schema": "../scene.schema.json",
   "title": "Black hole",
   "category": "forces",
-  "seed": 54,
+  "seed": 25,
   "modifiers": [
     {
       "use": "black-hole",

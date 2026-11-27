@@ -95,7 +95,7 @@ export function weirdPick(merged: Raw, seed: number): WeirdPick {
 
   // Whether a modifier suits this scene (and isn't already doing its thing).
   const ok: Record<string, boolean> = {
-    'black-hole': container,
+    'black-hole': container && balls >= 3, // one ball would just be eaten: an empty, silent video
     portals: container && !many,
     'gap-jump': ringy && !many,
     'add-side': has('polygon'),
