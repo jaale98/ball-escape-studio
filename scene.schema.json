@@ -67,10 +67,21 @@
               "enum": [
                 "fixed",
                 "follow",
-                "zoomOut"
+                "zoomOut",
+                "chase"
               ],
               "default": "fixed",
-              "description": "follow: gently keep the action centered. zoomOut: frame the innermost ring the ball is still inside (for dozens of nested rings)."
+              "description": "follow: gently keep the action centered. zoomOut: frame the innermost ring the ball is still inside (for dozens of nested rings). chase: lock onto the lead ball up close (use zoom 2–4), so only the rings around it are in view (for hundreds or thousands of rings)."
+            },
+            "orient": {
+              "type": "string",
+              "enum": [
+                "none",
+                "down",
+                "up"
+              ],
+              "default": "none",
+              "description": "chase: turn the view so the way out (away from the rings’ center) points down (the ball falls through floor after floor) or up (it climbs)."
             },
             "aperture": {
               "type": "number",
@@ -88,7 +99,7 @@
               "minimum": 0,
               "maximum": 3,
               "default": 0,
-              "description": "Screen shake on breaks, knockouts and escapes (0 = off)."
+              "description": "Screen shake on breaks, knockouts and escapes, and on streaks of escapes (0 = off)."
             },
             "slowmo": {
               "type": "number",
@@ -2074,6 +2085,22 @@
               "default": false,
               "description": "Color fringing on big hits."
             },
+            "glitch": {
+              "type": "boolean",
+              "default": false,
+              "description": "Digital glitch: the frame tears into shifted slices with split colors on big moments (streaks of escapes, breaks, knockouts)."
+            },
+            "mirror": {
+              "type": "string",
+              "enum": [
+                "none",
+                "x",
+                "y",
+                "quad"
+              ],
+              "default": "none",
+              "description": "Mirror the playfield: x = left half reflected onto the right, y = top onto bottom, quad = a four-way kaleidoscope. Drawing only; text stays readable."
+            },
             "bloom": {
               "type": "boolean",
               "default": false
@@ -2267,6 +2294,60 @@
               "type": "boolean",
               "default": true
             },
+            "escapeStyle": {
+              "type": "string",
+              "enum": [
+                "classic",
+                "voice",
+                "glitch",
+                "static",
+                "tape"
+              ],
+              "default": "classic",
+              "description": "The escape sound. classic: thump, whoosh and chord (spaced out). voice / glitch / static / tape: one short clip that restarts on every escape, cutting itself off, so a streak of escapes stutters (a-a-a-a-ah)."
+            },
+            "burst": {
+              "type": "string",
+              "enum": [
+                "none",
+                "dive",
+                "drop",
+                "choir"
+              ],
+              "default": "none",
+              "description": "A sound on a streak of escapes (burstAt or more within 0.4 s): dive = a falling, endless-seeming swoop and sub; drop = a bass drop; choir = a dissonant choir swell."
+            },
+            "burstAt": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 100,
+              "default": 6,
+              "description": "Escapes within 0.4 s that count as a streak (burst sound, shake, glitch, streak counter)."
+            },
+            "drone": {
+              "type": "string",
+              "enum": [
+                "none",
+                "shepard",
+                "hum",
+                "choir"
+              ],
+              "default": "none",
+              "description": "A bed under everything. shepard: a tone that seems to fall forever; hum: mains hum and tape hiss (analog horror); choir: a low, slowly shifting vowel cluster. It swells as the clock runs down."
+            },
+            "droneVolume": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.5
+            },
+            "reverb": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0,
+              "description": "Room: 0 = dry, 1 = a huge, washed-out hall (slowed + reverb, dreamcore)."
+            },
             "hitSound": {
               "type": "boolean",
               "default": true,
@@ -2369,6 +2450,7 @@
                 "escaped",
                 "teams",
                 "rings",
+                "ringsLeft",
                 "bricks",
                 "hp",
                 "sides",
@@ -2378,7 +2460,18 @@
                 "level",
                 "swallowed"
               ],
-              "default": "bounces"
+              "default": "bounces",
+              "description": "ringsLeft: rings the lead ball still has to escape, counting down."
+            },
+            "streak": {
+              "type": "boolean",
+              "default": false,
+              "description": "Pop a running count (−47) next to the ball while it escapes ring after ring in one go."
+            },
+            "vhs": {
+              "type": "boolean",
+              "default": false,
+              "description": "A camcorder stamp: PLAY ▶ and a running tape timestamp in the corners (analog horror)."
             },
             "endCard": {
               "type": "string",
@@ -2479,6 +2572,18 @@
                   "shake",
                   "portals",
                   "clock",
+                  "vhs",
+                  "dreamcore",
+                  "stutter",
+                  "shepard",
+                  "glitch",
+                  "mirror",
+                  "eyes",
+                  "whisper",
+                  "breathe",
+                  "backrooms",
+                  "tunnel-vision",
+                  "descent",
                   "countdown"
                 ]
               },
@@ -2519,6 +2624,18 @@
                       "shake",
                       "portals",
                       "clock",
+                      "vhs",
+                      "dreamcore",
+                      "stutter",
+                      "shepard",
+                      "glitch",
+                      "mirror",
+                      "eyes",
+                      "whisper",
+                      "breathe",
+                      "backrooms",
+                      "tunnel-vision",
+                      "descent",
                       "countdown"
                     ]
                   }
@@ -2535,7 +2652,7 @@
               }
             ]
           },
-          "description": "grow-on-bounce: The ball grows a little with every wall bounce. Ends when it fills its ring.\nshrinking-gap: The exit gets narrower with every bounce.\nspeed-up: Every bounce makes the ball a little faster.\nspin-up: Every bounce spins the container faster.\nmultiply: Every escape spawns new balls back inside. Runs to the time limit.\nzero-g: No gravity: balls fly in straight lines.\ngravity-flip: Gravity reverses on a timer.\ngravity-spin: Gravity rotates a quarter turn on a timer.\npaint: Balls leave permanent paint instead of fading trails.\nbattle: Balls lose hp when they collide; the last one standing wins.\nrace: First ball out wins.\nbreak-rings: Rings are cut into segments that break when hit: the ball smashes its way out.\nhp-ring: Each ring has hit points and shatters when they run out.\nsplit: Every bounce splits the ball in two (until they get tiny).\nabsorb: Bigger eats smaller: on contact the bigger ball swallows the smaller one. Last one wins.\nmerge: Two balls of the same level merge into a bigger one.\ninfection: One zombie, everyone else human: a zombie hit turns a human. Ends when everyone has turned.\nrps: Rock, paper, scissors: every hit converts the loser. Ends when one side owns the arena.\nblack-hole: A black hole in the middle pulls everything in and swallows what gets too close.\nstorm: The arena shrinks steadily (battle royale storm).\nadd-side: Every bounce adds a side to the polygon: triangle to circle.\ngap-jump: The exit jumps to a new random spot on every bounce.\nclone-trail: Every bounce leaves a frozen clone behind; the ring slowly jams up.\nbutterfly: Butterfly effect: ghost copies of each ball launched a millionth of a degree apart. They never touch, and slowly drift apart.\nstring-art: Every bounce draws a line to the last bounce point: string art.\nslowmo: Slow motion around the climax.\nmeow: Every bounce meows (in tune).\nrainbow: Colors drift through the rainbow, with rainbow trails.\nshake: Screen shake on breaks, escapes and knockouts.\nportals: A pair of linked portals inside the arena.\nclock: A countdown: beat it or \"Time’s up\". The final stretch turns red, ticks, and escalates (the exit widens, or balls speed up) so the climax tends to land just before zero.\ncountdown: A 3-2-1-GO intro with the run frozen."
+          "description": "grow-on-bounce: The ball grows a little with every wall bounce. Ends when it fills its ring.\nshrinking-gap: The exit gets narrower with every bounce.\nspeed-up: Every bounce makes the ball a little faster.\nspin-up: Every bounce spins the container faster.\nmultiply: Every escape spawns new balls back inside. Runs to the time limit.\nzero-g: No gravity: balls fly in straight lines.\ngravity-flip: Gravity reverses on a timer.\ngravity-spin: Gravity rotates a quarter turn on a timer.\npaint: Balls leave permanent paint instead of fading trails.\nbattle: Balls lose hp when they collide; the last one standing wins.\nrace: First ball out wins.\nbreak-rings: Rings are cut into segments that break when hit: the ball smashes its way out.\nhp-ring: Each ring has hit points and shatters when they run out.\nsplit: Every bounce splits the ball in two (until they get tiny).\nabsorb: Bigger eats smaller: on contact the bigger ball swallows the smaller one. Last one wins.\nmerge: Two balls of the same level merge into a bigger one.\ninfection: One zombie, everyone else human: a zombie hit turns a human. Ends when everyone has turned.\nrps: Rock, paper, scissors: every hit converts the loser. Ends when one side owns the arena.\nblack-hole: A black hole in the middle pulls everything in and swallows what gets too close.\nstorm: The arena shrinks steadily (battle royale storm).\nadd-side: Every bounce adds a side to the polygon: triangle to circle.\ngap-jump: The exit jumps to a new random spot on every bounce.\nclone-trail: Every bounce leaves a frozen clone behind; the ring slowly jams up.\nbutterfly: Butterfly effect: ghost copies of each ball launched a millionth of a degree apart. They never touch, and slowly drift apart.\nstring-art: Every bounce draws a line to the last bounce point: string art.\nslowmo: Slow motion around the climax.\nmeow: Every bounce meows (in tune).\nrainbow: Colors drift through the rainbow, with rainbow trails.\nshake: Screen shake on breaks, escapes and knockouts.\nportals: A pair of linked portals inside the arena.\nclock: A countdown: beat it or \"Time’s up\". The final stretch turns red, ticks, and escalates (the exit widens, or balls speed up) so the climax tends to land just before zero.\nvhs: Analog horror: a camcorder tape at 3 a.m. Scanlines, grain, color fringing, glitch tears on big moments, a PLAY ▶ stamp and a mains-hum drone.\ndreamcore: Slowed + reverb: everything a few semitones down in a huge, washed-out hall, soft bloom, long hazy trails and pastel colors.\nstutter: Every escape restarts one short clip of a voice, cutting itself off, so a run of escapes stutters (a-a-a-a-ah); a streak of them drops into an endless falling swoop.\nshepard: A Shepard tone under everything: a pitch that seems to fall forever and never lands, swelling as the clock runs down.\nglitch: Digital glitch: the frame tears into shifted, color-split slices on every big moment, with a bass drop on streaks.\nmirror: The playfield is mirrored: the left half reflected onto the right (or a four-way kaleidoscope). Text stays readable.\neyes: Every ball becomes an eye.\nwhisper: An out-of-place sentence appears one word per bounce (weirdcore text).\nbreathe: The walls breathe: every ring and polygon slowly swells and shrinks.\nbackrooms: The backrooms: damp yellow wallpaper, buzzing fluorescent hum, a camcorder grain.\ntunnel-vision: The camera locks onto the ball up close, so you never see the whole arena.\ndescent: The ring falls away: gravity points outward from the center (balls fall out through the walls) and the camera follows the ball down.\ncountdown: A 3-2-1-GO intro with the run frozen."
         },
         "entities": {
           "type": "array",
@@ -2606,6 +2723,13 @@
                         ],
                         "description": "Openings in the ring. [] = closed ring."
                       },
+                      "repeat": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20000,
+                        "default": 1,
+                        "description": "The gaps repeat this many times, evenly, around the ring (so a huge ring can have hundreds of gaps). Give gap angles within the first 360/repeat degrees."
+                      },
                       "color": {
                         "type": "string"
                       },
@@ -2630,6 +2754,11 @@
                         "type": "boolean",
                         "default": false,
                         "description": "Touching the ring eliminates the ball."
+                      },
+                      "oneWay": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Once a ball is out it stays out: from outside, the gaps are solid (no falling back in)."
                       }
                     },
                     "required": [
@@ -3272,7 +3401,8 @@
                           "attract",
                           "repel",
                           "vortex",
-                          "wind"
+                          "wind",
+                          "radial"
                         ],
                         "default": "attract"
                       },
@@ -3287,7 +3417,7 @@
                       "strength": {
                         "type": "number",
                         "default": 900,
-                        "description": "attract/repel/vortex: acceleration (px/s²) at 100 px away, falling with distance. wind: acceleration everywhere."
+                        "description": "attract/repel/vortex: acceleration (px/s²) at 100 px away, falling with distance. wind: acceleration everywhere. radial: the same push away from (x, y) at every distance, like gravity pointing outward (negative pulls inward)."
                       },
                       "direction": {
                         "type": "number",
@@ -3323,7 +3453,7 @@
                       "type"
                     ],
                     "additionalProperties": false,
-                    "description": "A force field: a black hole / sun (attract), repeller, whirlpool (vortex) or wind."
+                    "description": "A force field: a black hole / sun (attract), repeller, whirlpool (vortex), wind, or radial (gravity that points away from a center: balls \"fall\" outward through rings)."
                   },
                   {
                     "type": "object",
@@ -3722,6 +3852,138 @@
                     ],
                     "additionalProperties": false,
                     "description": "Prefab: concentric rings with staggered gaps."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "strata"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": 2,
+                        "maximum": 20000,
+                        "default": 1000,
+                        "description": "How many rings."
+                      },
+                      "x": {
+                        "type": "number",
+                        "default": 540
+                      },
+                      "y": {
+                        "type": "number",
+                        "default": 960
+                      },
+                      "inner": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 160,
+                        "description": "Radius of the innermost ring."
+                      },
+                      "spacing": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 22,
+                        "description": "px between rings. Leave room for the ball: spacing − thickness > its diameter."
+                      },
+                      "thickness": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 3
+                      },
+                      "gapArc": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 40,
+                        "description": "Width of every gap in px along the ring (the same on every ring, so a lined-up stack of gaps is a straight shaft)."
+                      },
+                      "gapEvery": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 700,
+                        "description": "px of ring between neighbouring gaps (big rings get more gaps)."
+                      },
+                      "layerMin": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": 4,
+                        "description": "Rings per stratum near the center."
+                      },
+                      "layerMax": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": 120,
+                        "description": "Rings per stratum at the outside."
+                      },
+                      "layerCurve": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "default": 1.6,
+                        "description": "How late the strata thicken (1 = steadily, 2+ = the deep drops come at the end)."
+                      },
+                      "drift": {
+                        "type": "number",
+                        "minimum": 0,
+                        "default": 5,
+                        "description": "px of random misalignment between the gaps of neighbouring rings in a stratum (0 = a perfectly straight shaft)."
+                      },
+                      "speed": {
+                        "type": "number",
+                        "default": 140,
+                        "description": "px/s each stratum turns at its own radius (each stratum is one rigid piece, so its shafts stay lined up)."
+                      },
+                      "fall": {
+                        "type": "number",
+                        "minimum": 0,
+                        "default": 0,
+                        "description": "Lean the shafts for a ball falling outward with this gravity (px/s², a radial force’s strength): each hole is set back by how far its ring turns while the ball falls to it, so a ball dropping from rest stays in the shaft. 0 = straight shafts."
+                      },
+                      "fallDrag": {
+                        "type": "number",
+                        "minimum": 0,
+                        "default": 0,
+                        "description": "With fall: the world damping, so the lean matches the ball’s real fall."
+                      },
+                      "speedJitter": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "default": 0.4,
+                        "description": "Random ± share of speed per stratum."
+                      },
+                      "alternate": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Neighbouring strata turn opposite ways."
+                      },
+                      "colors": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Colors per stratum, cycled. Default: the ring color."
+                      },
+                      "fadeTo": {
+                        "type": "string",
+                        "description": "A #rrggbb color the rings shade toward with depth (with #rrggbb colors)."
+                      },
+                      "oneWay": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Rings close behind the ball: no falling back up a shaft."
+                      },
+                      "seed": {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Layout seed (where the strata break and their shafts sit). Separate from the scene seed."
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Prefab: hundreds or thousands of rings in strata. Inside a stratum the gaps line up into shafts, so a ball that finds one drops through the whole stratum at once; the strata get thicker toward the outside."
                   },
                   {
                     "type": "object",

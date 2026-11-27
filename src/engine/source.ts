@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { ipow } from './dmath';
+import { ipow, pow } from './dmath';
+import { Rng } from './rng';
 import { applyModifiers, MODIFIERS } from './modifiers';
 import { EntitySchema, HEIGHT, parseScene, type Scene, SceneSchema, WIDTH } from './scene';
 
@@ -47,6 +48,34 @@ export const NestedSchema = z
   })
   .strict()
   .describe('Prefab: concentric rings with staggered gaps.');
+
+export const StrataSchema = z
+  .object({
+    type: z.literal('strata'),
+    count: z.number().int().min(2).max(20000).default(1000).describe('How many rings.'),
+    x: z.number().default(WIDTH / 2),
+    y: z.number().default(HEIGHT / 2),
+    inner: z.number().positive().default(160).describe('Radius of the innermost ring.'),
+    spacing: z.number().positive().default(22).describe('px between rings. Leave room for the ball: spacing − thickness > its diameter.'),
+    thickness: z.number().positive().default(3),
+    gapArc: z.number().positive().default(40).describe('Width of every gap in px along the ring (the same on every ring, so a lined-up stack of gaps is a straight shaft).'),
+    gapEvery: z.number().positive().default(700).describe('px of ring between neighbouring gaps (big rings get more gaps).'),
+    layerMin: z.number().int().min(1).default(4).describe('Rings per stratum near the center.'),
+    layerMax: z.number().int().min(1).default(120).describe('Rings per stratum at the outside.'),
+    layerCurve: z.number().positive().default(1.6).describe('How late the strata thicken (1 = steadily, 2+ = the deep drops come at the end).'),
+    drift: z.number().min(0).default(5).describe('px of random misalignment between the gaps of neighbouring rings in a stratum (0 = a perfectly straight shaft).'),
+    speed: z.number().default(140).describe('px/s each stratum turns at its own radius (each stratum is one rigid piece, so its shafts stay lined up).'),
+    fall: z.number().min(0).default(0).describe('Lean the shafts for a ball falling outward with this gravity (px/s², a radial force’s strength): each hole is set back by how far its ring turns while the ball falls to it, so a ball dropping from rest stays in the shaft. 0 = straight shafts.'),
+    fallDrag: z.number().min(0).default(0).describe('With fall: the world damping, so the lean matches the ball’s real fall.'),
+    speedJitter: z.number().min(0).max(1).default(0.4).describe('Random ± share of speed per stratum.'),
+    alternate: z.boolean().default(true).describe('Neighbouring strata turn opposite ways.'),
+    colors: z.array(z.string()).optional().describe('Colors per stratum, cycled. Default: the ring color.'),
+    fadeTo: z.string().optional().describe('A #rrggbb color the rings shade toward with depth (with #rrggbb colors).'),
+    oneWay: z.boolean().default(true).describe('Rings close behind the ball: no falling back up a shaft.'),
+    seed: z.number().int().default(1).describe('Layout seed (where the strata break and their shafts sit). Separate from the scene seed.'),
+  })
+  .strict()
+  .describe('Prefab: hundreds or thousands of rings in strata. Inside a stratum the gaps line up into shafts, so a ball that finds one drops through the whole stratum at once; the strata get thicker toward the outside.');
 
 export const BrickwallSchema = z
   .object({
@@ -129,8 +158,72 @@ export const BinsSchema = z
   .strict()
   .describe('Prefab: a row of bins with a floor, dividers, and a counting zone in each.');
 
-const PrefabSchema = z.discriminatedUnion('type', [NestedSchema, PegboardSchema, BinsSchema, BrickwallSchema, FunnelSchema, CourseSchema]);
-const PREFABS = new Set(['nested', 'pegboard', 'bins', 'brickwall', 'funnel', 'course']);
+const PrefabSchema = z.discriminatedUnion('type', [NestedSchema, StrataSchema, PegboardSchema, BinsSchema, BrickwallSchema, FunnelSchema, CourseSchema]);
+const PREFABS = new Set(['nested', 'strata', 'pegboard', 'bins', 'brickwall', 'funnel', 'course']);
+
+const hexRgb = (c: string): [number, number, number] | null => (/^#[0-9a-f]{6}$/i.test(c) ? [0, 2, 4].map((k) => parseInt(c.slice(1 + k, 3 + k), 16)) as [number, number, number] : null);
+const mixHex = (a: [number, number, number], b: [number, number, number], t: number) => '#' + a.map((v, k) => Math.round(v + (b[k] - v) * t).toString(16).padStart(2, '0')).join('');
+
+/** The rings of a strata prefab (see StrataSchema). Deterministic from its own seed. */
+function expandStrata(p: z.output<typeof StrataSchema>): Raw[] {
+  const rng = new Rng(p.seed, 'strata');
+  const out: Raw[] = [];
+  const fade = p.fadeTo ? hexRgb(p.fadeTo) : null;
+  let i = 0;
+  let layer = 0;
+  while (i < p.count) {
+    const t = i / p.count;
+    const size = Math.max(1, Math.round((p.layerMin + (p.layerMax - p.layerMin) * pow(t, p.layerCurve)) * rng.range(0.55, 1.45)));
+    const n = Math.min(size, p.count - i);
+    const midR = p.inner + (i + n / 2) * p.spacing;
+    // One rigid stratum: the same number of gaps on each ring, at the same angles, turning together.
+    const gaps = Math.max(1, Math.round((2 * Math.PI * midR) / p.gapEvery));
+    const period = 360 / gaps;
+    const phase = rng.range(0, period);
+    const dir = p.alternate && layer % 2 ? -1 : 1;
+    const spin = (dir * p.speed * (1 + rng.range(-p.speedJitter, p.speedJitter))) / midR;
+    const base = p.colors?.length ? p.colors[layer % p.colors.length] : undefined;
+    // When does a ball dropping from rest at the top of this stratum reach ring k? (Euler, physics rate.)
+    const arrive: number[] = [0];
+    if (p.fall > 0) {
+      let v = 0;
+      let h = 0;
+      let t = 0;
+      const dt = 1 / 240;
+      for (let k = 1; k < n; k++) {
+        while (h < k * p.spacing && t < 60) {
+          v += (p.fall - p.fallDrag * v) * dt;
+          h += v * dt;
+          t += dt;
+        }
+        arrive.push(t);
+      }
+    }
+    for (let k = 0; k < n; k++, i++) {
+      const radius = p.inner + i * p.spacing;
+      const width = Math.min(170, (p.gapArc / radius) * (180 / Math.PI));
+      const jitter = p.drift > 0 && k > 0 ? (rng.range(-p.drift, p.drift) / radius) * (180 / Math.PI) : 0;
+      // Set the hole back by how far this ring turns before the falling ball gets there.
+      const lean = p.fall > 0 ? -spin * arrive[k] * (180 / Math.PI) : 0;
+      const rgb = base && fade ? hexRgb(base) : null;
+      const color = rgb && fade ? mixHex(rgb, fade, Math.min(1, pow(i / p.count, 0.8))) : base;
+      out.push({
+        type: 'ring',
+        x: p.x,
+        y: p.y,
+        radius,
+        thickness: p.thickness,
+        spin,
+        gaps: [{ at: ((((phase + jitter + lean) % period) + period) % period), width }],
+        ...(gaps > 1 ? { repeat: gaps } : {}),
+        ...(color ? { color } : {}),
+        ...(p.oneWay ? { oneWay: true } : {}),
+      });
+    }
+    layer++;
+  }
+  return out;
+}
 
 function expandPrefab(raw: unknown, path: string): Raw[] {
   const parsed = PrefabSchema.safeParse(raw);
@@ -138,6 +231,7 @@ function expandPrefab(raw: unknown, path: string): Raw[] {
     throw new Error(`Invalid scene:\n${parsed.error.issues.map((i) => `${path}.${i.path.join('.')}: ${i.message}`).join('\n')}`);
   }
   const p = parsed.data;
+  if (p.type === 'strata') return expandStrata(p);
   const out: Raw[] = [];
   if (p.type === 'nested') {
     for (let i = 0; i < p.count; i++) {

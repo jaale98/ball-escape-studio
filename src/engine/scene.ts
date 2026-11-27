@@ -27,11 +27,13 @@ export const RingSchema = z
     spin: z.number().default(0.8).describe('Rotation speed in radians per second. Positive = clockwise.'),
     angle: z.number().default(0).describe('Starting rotation in degrees.'),
     gaps: z.array(GapSchema).default([{ at: 0, width: 30 }]).describe('Openings in the ring. [] = closed ring.'),
+    repeat: z.number().int().min(1).max(20000).default(1).describe('The gaps repeat this many times, evenly, around the ring (so a huge ring can have hundreds of gaps). Give gap angles within the first 360/repeat degrees.'),
     color: z.string().optional(),
     hp: z.number().int().positive().optional().describe('Breakable: the ring shatters after this many bounces (every ball inside escapes).'),
     segments: z.number().int().min(2).max(360).optional().describe('Cut the ring into this many segments that break one by one (each after segmentHp bounces).'),
     segmentHp: z.number().int().min(1).default(1).describe('With segments: bounces each segment takes before it breaks.'),
     deadly: z.boolean().default(false).describe('Touching the ring eliminates the ball.'),
+    oneWay: z.boolean().default(false).describe('Once a ball is out it stays out: from outside, the gaps are solid (no falling back in).'),
   })
   .strict()
   .describe('A circular wall the balls start inside. Escaping = leaving through a gap.');
@@ -143,10 +145,10 @@ export const PortalSchema = z
 export const ForceSchema = z
   .object({
     type: z.literal('force'),
-    kind: z.enum(['attract', 'repel', 'vortex', 'wind']).default('attract'),
+    kind: z.enum(['attract', 'repel', 'vortex', 'wind', 'radial']).default('attract'),
     x: z.number().default(WIDTH / 2),
     y: z.number().default(HEIGHT / 2),
-    strength: z.number().default(900).describe('attract/repel/vortex: acceleration (px/s²) at 100 px away, falling with distance. wind: acceleration everywhere.'),
+    strength: z.number().default(900).describe('attract/repel/vortex: acceleration (px/s²) at 100 px away, falling with distance. wind: acceleration everywhere. radial: the same push away from (x, y) at every distance, like gravity pointing outward (negative pulls inward).'),
     direction: z.number().default(0).describe('wind: direction in degrees.'),
     radius: z.number().nonnegative().default(0).describe('Only acts within this distance (0 = everywhere).'),
     swallow: z.number().nonnegative().default(0).describe('attract: balls closer than this are swallowed (a black hole). 0 = none.'),
@@ -155,7 +157,7 @@ export const ForceSchema = z
     color: z.string().optional(),
   })
   .strict()
-  .describe('A force field: a black hole / sun (attract), repeller, whirlpool (vortex) or wind.');
+  .describe('A force field: a black hole / sun (attract), repeller, whirlpool (vortex), wind, or radial (gravity that points away from a center: balls "fall" outward through rings).');
 
 export const EmitterSchema = z
   .object({
@@ -400,10 +402,17 @@ export const SceneSchema = z
       .describe('Teams for territory, conversion and team battles.'),
     camera: z
       .object({
-        mode: z.enum(['fixed', 'follow', 'zoomOut']).default('fixed').describe('follow: gently keep the action centered. zoomOut: frame the innermost ring the ball is still inside (for dozens of nested rings).'),
+        mode: z
+          .enum(['fixed', 'follow', 'zoomOut', 'chase'])
+          .default('fixed')
+          .describe('follow: gently keep the action centered. zoomOut: frame the innermost ring the ball is still inside (for dozens of nested rings). chase: lock onto the lead ball up close (use zoom 2–4), so only the rings around it are in view (for hundreds or thousands of rings).'),
+        orient: z
+          .enum(['none', 'down', 'up'])
+          .default('none')
+          .describe('chase: turn the view so the way out (away from the rings’ center) points down (the ball falls through floor after floor) or up (it climbs).'),
         aperture: z.number().positive().optional().describe('Clip the playfield to a circular window of this radius in screen pixels, keeping text clear during zooms.'),
         zoom: z.number().min(0.2).max(4).default(1),
-        shake: z.number().min(0).max(3).default(0).describe('Screen shake on breaks, knockouts and escapes (0 = off).'),
+        shake: z.number().min(0).max(3).default(0).describe('Screen shake on breaks, knockouts and escapes, and on streaks of escapes (0 = off).'),
         slowmo: z.number().min(0).max(10).default(0).describe('Seconds of slow motion starting just before the climax (0 = off).'),
         slowmoFactor: z.number().min(0.05).max(1).default(0.25),
         slowmoLead: z.number().min(0).max(3).default(0.6).describe('Seconds of the run before the climax that are already slowed.'),
@@ -479,6 +488,8 @@ export const SceneSchema = z
         grain: z.boolean().default(false),
         scanlines: z.boolean().default(false),
         chromatic: z.boolean().default(false).describe('Color fringing on big hits.'),
+        glitch: z.boolean().default(false).describe('Digital glitch: the frame tears into shifted slices with split colors on big moments (streaks of escapes, breaks, knockouts).'),
+        mirror: z.enum(['none', 'x', 'y', 'quad']).default('none').describe('Mirror the playfield: x = left half reflected onto the right, y = top onto bottom, quad = a four-way kaleidoscope. Drawing only; text stays readable.'),
         bloom: z.boolean().default(false),
         confetti: z.boolean().default(false).describe('Confetti on escapes and wins.'),
         reveal: z
@@ -520,6 +531,21 @@ export const SceneSchema = z
         volume: z.number().min(0).max(1).default(0.7),
         bounceSpacing: z.number().min(0).default(0).describe('Minimum seconds between audible bounce notes. Useful for dense pours.'),
         escapeSound: z.boolean().default(true),
+        escapeStyle: z
+          .enum(['classic', 'voice', 'glitch', 'static', 'tape'])
+          .default('classic')
+          .describe('The escape sound. classic: thump, whoosh and chord (spaced out). voice / glitch / static / tape: one short clip that restarts on every escape, cutting itself off, so a streak of escapes stutters (a-a-a-a-ah).'),
+        burst: z
+          .enum(['none', 'dive', 'drop', 'choir'])
+          .default('none')
+          .describe('A sound on a streak of escapes (burstAt or more within 0.4 s): dive = a falling, endless-seeming swoop and sub; drop = a bass drop; choir = a dissonant choir swell.'),
+        burstAt: z.number().int().min(2).max(100).default(6).describe('Escapes within 0.4 s that count as a streak (burst sound, shake, glitch, streak counter).'),
+        drone: z
+          .enum(['none', 'shepard', 'hum', 'choir'])
+          .default('none')
+          .describe('A bed under everything. shepard: a tone that seems to fall forever; hum: mains hum and tape hiss (analog horror); choir: a low, slowly shifting vowel cluster. It swells as the clock runs down.'),
+        droneVolume: z.number().min(0).max(1).default(0.5),
+        reverb: z.number().min(0).max(1).default(0).describe('Room: 0 = dry, 1 = a huge, washed-out hall (slowed + reverb, dreamcore).'),
         hitSound: z.boolean().default(true).describe('Click when balls hit each other.'),
       })
       .strict()
@@ -540,7 +566,12 @@ export const SceneSchema = z
         clock: z.boolean().default(true).describe('Show the clock’s countdown (big digits and a draining bar under the title). Needs a scene clock.'),
         clockY: z.number().min(100).max(1900).optional().describe('Where the countdown digits sit. Default: just under the title.'),
         clockSize: z.number().min(30).max(240).default(96),
-        counter: z.enum(['none', 'bounces', 'balls', 'escaped', 'teams', 'rings', 'bricks', 'hp', 'sides', 'gap', 'gravity', 'diameter', 'level', 'swallowed']).default('bounces'),
+        counter: z
+          .enum(['none', 'bounces', 'balls', 'escaped', 'teams', 'rings', 'ringsLeft', 'bricks', 'hp', 'sides', 'gap', 'gravity', 'diameter', 'level', 'swallowed'])
+          .default('bounces')
+          .describe('ringsLeft: rings the lead ball still has to escape, counting down.'),
+        streak: z.boolean().default(false).describe('Pop a running count (−47) next to the ball while it escapes ring after ring in one go.'),
+        vhs: z.boolean().default(false).describe('A camcorder stamp: PLAY ▶ and a running tape timestamp in the corners (analog horror).'),
         endCard: z.string().optional().describe('Text shown over the tail after the climax ("Follow for part 2").'),
         reveal: z.string().optional().describe('A message revealed one word (or letter) per bounce.'),
         revealBy: z.enum(['words', 'letters']).default('words'),

@@ -1,9 +1,9 @@
 import { applySong } from './audio/midi';
-import { createMaster, playVoice, SoundMapper } from './audio/sound';
+import { createMaster, playVoice, setReverb, SoundMapper } from './audio/sound';
 import { caption, captionText } from './director/caption';
 import { hasScripts, preflight } from './director/check';
 import { critique } from './director/critic';
-import { weirdModifiers } from './director/remix';
+import { weirdPick } from './director/remix';
 import { revealColors } from './director/reveal';
 import { direct, landingSpots, scoreOne } from './director/pool';
 import { defaultTarget, defaultTemplate, type RunScore } from './director/score';
@@ -448,7 +448,7 @@ function ensureAudio(): void {
   if (!soundOn) return;
   if (!audio) {
     const ctx = new AudioContext({ latencyHint: 'interactive' });
-    audio = { ctx, master: createMaster(ctx, scene?.audio.volume ?? 0.7) };
+    audio = { ctx, master: createMaster(ctx, scene?.audio.volume ?? 0.7, scene?.audio.reverb ?? 0) };
     ctx.onstatechange = () => syncSound();
   }
   if (audio.ctx.state !== 'running') void audio.ctx.resume().then(syncSound, syncSound);
@@ -457,7 +457,10 @@ function ensureAudio(): void {
 
 /** Each scene has its own volume. */
 function applyVolume(): void {
-  if (audio && scene) (audio.master as GainNode).gain.value = scene.audio.volume;
+  if (audio && scene) {
+    (audio.master as GainNode).gain.value = scene.audio.volume;
+    setReverb(audio.master, scene.audio.reverb);
+  }
 }
 
 /** Audio-clock watchdog: if the context says it's running but its clock stops, rebuild it. */
@@ -817,16 +820,27 @@ function mergedSource(): Record<string, unknown> {
   return merged;
 }
 
-// Make it weird: stack a few surreal modifiers as an unsaved change (Discard undoes it).
+// Make it weird: a vibe's worth of surreal modifiers as an unsaved change (Discard undoes it).
+// Clicking again re-rolls (it replaces its own last picks); shift-click stacks another vibe on top.
 let weirdCount = 0;
-$('b-weird').addEventListener('click', () => {
+/** The modifier list before the last weird click, and the list that click made (to tell a re-roll from other edits). */
+let weirdLast: { scene: string; before: unknown[]; after: unknown[] } | null = null;
+$('b-weird').addEventListener('click', (ev) => {
+  const name = currentEntry()?.name ?? '';
   const merged = mergedSource();
-  const picks = weirdModifiers(merged, (scene?.seed ?? 1) * 31 + ++weirdCount);
-  if (!picks.length) return;
-  const before = Array.isArray(merged.modifiers) ? merged.modifiers : [];
-  setTweak('modifiers', [...before, ...picks]);
-  const names = picks.map((m) => (typeof m === 'string' ? m : (m as { use: string }).use));
-  $('export-msg').textContent = `Weird: added ${names.join(' + ')}. Discard undoes it; Save keeps it.`;
+  const now = Array.isArray(merged.modifiers) ? merged.modifiers : [];
+  const reroll = !ev.shiftKey && weirdLast?.scene === name && JSON.stringify(weirdLast.after) === JSON.stringify(now);
+  const before = reroll ? weirdLast!.before : now;
+  const { vibe, mods } = weirdPick({ ...merged, modifiers: before }, (scene?.seed ?? 1) * 31 + ++weirdCount);
+  if (!mods.length) {
+    $('export-msg').textContent = 'Weird: nothing left that suits this scene.';
+    return;
+  }
+  const after = [...before, ...mods];
+  weirdLast = { scene: name, before, after };
+  setTweak('modifiers', after);
+  const names = mods.map((m) => (typeof m === 'string' ? m : (m as { use: string }).use));
+  $('export-msg').textContent = `Weird: ${vibe} (${names.join(' + ')}). Click again to re-roll, shift-click to stack. Discard undoes it; Save keeps it.`;
 });
 
 // Rhythm lock: one click to find a seed whose bounces stay on the beat.

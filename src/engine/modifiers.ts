@@ -270,12 +270,141 @@ export const MODIFIERS: Record<string, ModifierDef> = {
       s.clock = clock;
     },
   },
+  // ---- weird: looks and sounds from analog horror, dreamcore and weirdcore ------------------
+  vhs: {
+    description: 'Analog horror: a camcorder tape at 3 a.m. Scanlines, grain, color fringing, glitch tears on big moments, a PLAY ▶ stamp and a mains-hum drone.',
+    params: {},
+    apply: (s) => {
+      Object.assign(obj(s, 'style'), { scanlines: true, grain: true, vignette: true, chromatic: true, glitch: true });
+      Object.assign(obj(s, 'overlay'), { vhs: true, font: 'mono' });
+      Object.assign(obj(s, 'audio'), { drone: 'hum' });
+    },
+  },
+  dreamcore: {
+    description: 'Slowed + reverb: everything a few semitones down in a huge, washed-out hall, soft bloom, long hazy trails and pastel colors.',
+    params: { semitones: { default: 5, description: 'how far down the sound goes' } },
+    apply: (s, p) => {
+      Object.assign(obj(s, 'style'), {
+        bloom: true,
+        trail: 0.9,
+        trailStyle: 'ribbon',
+        palette: ['#ffc6ff', '#bde0fe', '#caffbf', '#fdffb6', '#ffd6a5'],
+        background: '#1b1530',
+        ringColor: '#f5e6ff',
+      });
+      const audio = obj(s, 'audio');
+      Object.assign(audio, { reverb: 0.8, instrument: 'glass', transpose: (audio.transpose ?? 0) - p.semitones });
+    },
+  },
+  stutter: {
+    description: 'Every escape restarts one short clip of a voice, cutting itself off, so a run of escapes stutters (a-a-a-a-ah); a streak of them drops into an endless falling swoop.',
+    params: { at: { default: 4, description: 'escapes within 0.4 s that count as a streak' } },
+    apply: (s, p) => Object.assign(obj(s, 'audio'), { escapeStyle: 'voice', burst: 'dive', burstAt: p.at, escapeSound: true }),
+  },
+  shepard: {
+    description: 'A Shepard tone under everything: a pitch that seems to fall forever and never lands, swelling as the clock runs down.',
+    params: { volume: { default: 0.5, description: 'drone volume 0–1' } },
+    apply: (s, p) => Object.assign(obj(s, 'audio'), { drone: 'shepard', droneVolume: p.volume }),
+  },
+  glitch: {
+    description: 'Digital glitch: the frame tears into shifted, color-split slices on every big moment, with a bass drop on streaks.',
+    params: {},
+    apply: (s) => {
+      Object.assign(obj(s, 'style'), { glitch: true, chromatic: true });
+      obj(s, 'camera').shake = Math.max(1, obj(s, 'camera').shake ?? 0);
+      Object.assign(obj(s, 'audio'), { burst: 'drop', burstAt: 3 });
+    },
+  },
+  mirror: {
+    description: 'The playfield is mirrored: the left half reflected onto the right (or a four-way kaleidoscope). Text stays readable.',
+    params: { quad: { default: false, description: 'four-way kaleidoscope instead of left-right' } },
+    apply: (s, p) => (obj(s, 'style').mirror = p.quad ? 'quad' : 'x'),
+  },
+  eyes: {
+    description: 'Every ball becomes an eye.',
+    params: {},
+    apply: (s) => {
+      for (const b of balls(s)) {
+        if (b.image || b.images || b.emoji || b.emojis || b.team || b.teams) continue;
+        b.emoji = '👁️';
+        b.radius = Math.max(b.radius ?? 22, 16);
+      }
+    },
+  },
+  whisper: {
+    description: 'An out-of-place sentence appears one word per bounce (weirdcore text).',
+    params: { line: { default: 0, description: 'which sentence (0–7)' } },
+    apply: (s, p) => {
+      const lines = [
+        'you have been here before',
+        'it is not a ring it is a door',
+        'do not count the rings',
+        'the ball remembers you',
+        'nobody is coming to let it out',
+        'this is the last time it escapes',
+        'the room is bigger on the inside',
+        'it was always this way',
+      ];
+      Object.assign(obj(s, 'overlay'), { reveal: lines[Math.abs(Math.round(p.line)) % lines.length], revealBy: 'words' });
+    },
+  },
+  breathe: {
+    description: 'The walls breathe: every ring and polygon slowly swells and shrinks.',
+    params: { amount: { default: 18, description: 'px in and out' }, rate: { default: 0.4, description: 'breaths per second' } },
+    apply: (s, p) => {
+      // A sine wave of radius changes: each firing moves the walls by the slope, so the radius traces amount × cos.
+      const w = 2 * Math.PI * p.rate;
+      const step = 0.05;
+      list(s, 'timeline').push({
+        every: step,
+        start: step,
+        script: `ctx.world.do({ do: 'shrinkContainer', amount: ${round4(p.amount * w * step)} * Math.sin(${round4(w)} * ctx.time), min: 40 })`,
+      });
+    },
+  },
+  backrooms: {
+    description: 'The backrooms: damp yellow wallpaper, buzzing fluorescent hum, a camcorder grain.',
+    params: {},
+    apply: (s) => {
+      Object.assign(obj(s, 'style'), {
+        background: '#b9a95a',
+        ringColor: '#4a3f1c',
+        palette: ['#f4ecc2', '#6b5a24', '#2b2410', '#e6d58a'],
+        grain: true,
+        vignette: true,
+        backdrop: 'none',
+        glow: false,
+      });
+      Object.assign(obj(s, 'overlay'), { textColor: '#2b2410' });
+      Object.assign(obj(s, 'audio'), { drone: 'hum', reverb: Math.max(0.45, obj(s, 'audio').reverb ?? 0) });
+    },
+  },
+  'tunnel-vision': {
+    description: 'The camera locks onto the ball up close, so you never see the whole arena.',
+    params: { zoom: { default: 2.4, description: 'how close' } },
+    apply: (s, p) => {
+      Object.assign(obj(s, 'camera'), { mode: 'chase', zoom: p.zoom });
+      obj(s, 'style').vignette = true;
+    },
+  },
+  descent: {
+    description: 'The ring falls away: gravity points outward from the center (balls fall out through the walls) and the camera follows the ball down.',
+    params: { gravity: { default: 2200, description: 'outward pull (px/s²)' } },
+    apply: (s, p) => {
+      const c = (s.entities ?? []).find((e: Raw) => e.type === 'ring' || e.type === 'polygon' || e.type === 'nested' || e.type === 'strata');
+      list(s, 'entities').push({ type: 'force', kind: 'radial', x: c?.x ?? 540, y: c?.y ?? 960, strength: p.gravity, visible: false });
+      obj(s, 'world').gravity = 0;
+      Object.assign(obj(s, 'camera'), { mode: 'chase', orient: 'down', zoom: Math.max(1.6, obj(s, 'camera').zoom ?? 1) });
+    },
+  },
   countdown: {
     description: 'A 3-2-1-GO intro with the run frozen.',
     params: { count: { default: 3, description: 'counts' } },
     apply: (s, p) => (obj(s, 'camera').countdown = p.count),
   },
 };
+
+const round4 = (x: number) => Math.round(x * 1e4) / 1e4;
 
 /** Apply a "modifiers" list to a raw scene, in order. */
 export function applyModifiers(scene: Raw, mods: unknown): void {
