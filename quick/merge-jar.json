@@ -1,0 +1,64 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Pastel jar",
+      "emoji": "🎀",
+      "kind": "look",
+      "note": "Soft pastel fruit in a jar.",
+      "seed": 398,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "pastel"
+        }
+      ]
+    },
+    {
+      "name": "ASMR",
+      "emoji": "🎧",
+      "kind": "vibe",
+      "note": "Soft pops as they merge. Headphones on.",
+      "seed": 444,
+      "modifiers": [
+        {
+          "use": "asmr",
+          "instrument": "pop"
+        }
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 11,
+      "modifiers": [
+        "lofi"
+      ]
+    },
+    {
+      "name": "Neon jar",
+      "emoji": "🌃",
+      "kind": "look",
+      "note": "Neon fruit and bloom.",
+      "seed": 320,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "neon"
+        }
+      ]
+    },
+    {
+      "name": "Rainbow",
+      "emoji": "🌈",
+      "kind": "vibe",
+      "note": "Every ball drifts through the rainbow.",
+      "seed": 281,
+      "modifiers": [
+        "rainbow"
+      ]
+    }
+  ]
+}

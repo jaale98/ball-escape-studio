@@ -1,0 +1,80 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 321,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Growth spurt",
+      "emoji": "🎈",
+      "kind": "twist",
+      "note": "Grows half again as fast on a 20 s clock: a race against its own size.",
+      "seed": 256,
+      "set": {
+        "modifiers.0.amount": 3.4
+      },
+      "patch": {
+        "clock": {
+          "seconds": 20,
+          "final": 4
+        },
+        "overlay": {
+          "title": "Grows every hit. 20 seconds."
+        }
+      }
+    },
+    {
+      "name": "Candy",
+      "emoji": "🍬",
+      "kind": "look",
+      "note": "Candy colors, glossy ball, pop sounds.",
+      "seed": 515,
+      "patch": {
+        "audio": {
+          "instrument": "pop"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "candy"
+        }
+      ]
+    },
+    {
+      "name": "Twin balloons",
+      "emoji": "🆚",
+      "kind": "twist",
+      "note": "Two growing balls crowd the same ring. First one out wins.",
+      "seed": 233,
+      "modifiers": [
+        {
+          "use": "versus",
+          "count": 2,
+          "set": 0
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "Which one still fits?"
+        }
+      }
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 566,
+      "modifiers": [
+        "lofi"
+      ]
+    }
+  ]
+}

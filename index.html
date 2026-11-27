@@ -157,8 +157,30 @@
         <p id="look-msg" class="muted"></p>
       </section>
 
-      <!-- Tune: seed and every number in the scene -->
+      <!-- Tune: quick settings, seed and every number in the scene -->
       <section class="tab" data-tab="tune" hidden>
+        <section class="quick" aria-label="Quick settings">
+          <div class="quick-head">
+            <b>Quick settings</b>
+            <span class="muted" title="Number keys pick a quick setting; 0 is the scene as saved">keys 0–9</span>
+          </div>
+          <p class="muted quick-intro">Ready-made variations, each with a run the Director picked. Trying one never changes the scene file.</p>
+          <div id="quick-grid" class="quick-grid"></div>
+          <button id="quick-suggest" class="primary" hidden title="Build about five variations that suit this scene and let the Director pick a run for each">✨ Suggest quick settings</button>
+          <div id="quick-active" class="quick-active" hidden>
+            <div><b id="quick-active-name"></b> <span id="quick-active-note" class="muted"></span></div>
+            <div class="row buttons">
+              <button id="quick-original" title="Back to the scene as saved (0)">Original</button>
+              <button id="quick-retune" title="Search 300 seeds for this quick setting's story and keep the best run">Find a better seed</button>
+              <button id="quick-delete" class="link danger-text" title="Remove this quick setting from the scene's quick file">Delete</button>
+            </div>
+          </div>
+          <div class="row buttons">
+            <button id="quick-export-all" title="Queue the original and every quick setting as MP4s (with the export settings on the Create tab)">Export all</button>
+            <button id="quick-save-new" title="Keep your unsaved changes as a new quick setting (the scene file is not changed)">＋ Save as quick setting</button>
+          </div>
+          <p id="quick-msg" class="muted quick-msg"></p>
+        </section>
         <div class="field">
           <span>Seed</span>
           <div class="row">
@@ -314,9 +336,9 @@
         <div class="welcome-card">
           <h2>Make a satisfying physics short</h2>
           <ol>
-            <li><b>Pick a format.</b> Browse 50 scenes by family: escapes, destruction, battles, teams, black holes and portals, surreal twists, chaos pendulums, picture reveals, music… (B)</li>
+            <li><b>Pick a format.</b> Browse 69 scenes by family: escapes, destruction, battles, teams, black holes and portals, surreal and horror, chaos pendulums, picture reveals, music… (B)</li>
             <li><b>Watch it.</b> Space plays and pauses; the timeline jumps to the climax. Turn sound on: bounces play music.</li>
-            <li><b>Change it.</b> Ask Claude in plain words, restyle it in Look, drag sliders in Tune, pick a song in Music, or press <b>Make it weird</b>.</li>
+            <li><b>Change it.</b> Try a <b>quick setting</b> on the Tune tab (keys 1–9: ready-made variations with runs the Director picked), ask Claude in plain words, restyle it in Look, pick a song in Music, or press <b>Make it weird</b>.</li>
             <li><b>Make it great.</b> The Director tries hundreds of runs and finds the most dramatic one.</li>
             <li><b>Export.</b> 1080×1920, 60 fps MP4, with a caption, ready to post.</li>
           </ol>
@@ -337,6 +359,7 @@
             <dt>J</dt><dd>Jump to the climax</dd>
             <dt>M</dt><dd>Sound on / off</dd>
             <dt>R</dt><dd>New random seed</dd>
+            <dt>1–9 / 0</dt><dd>Pick a quick setting / back to the original</dd>
             <dt>B</dt><dd>Browse scenes</dd>
             <dt>D</dt><dd>Director</dd>
             <dt>E</dt><dd>Export MP4</dd>

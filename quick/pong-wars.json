@@ -1,0 +1,76 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Speed war",
+      "emoji": "⚡",
+      "kind": "pace",
+      "note": "Every ball half again as fast.",
+      "seed": 1,
+      "patch": {
+        "world": {
+          "speedScale": 1.5
+        }
+      }
+    },
+    {
+      "name": "Fire vs ice",
+      "emoji": "🔥",
+      "kind": "twist",
+      "note": "Fire against ice instead of day against night.",
+      "seed": 10,
+      "set": {
+        "entities.1.team": "Fire",
+        "entities.2.team": "Ice"
+      },
+      "patch": {
+        "teams": [
+          {
+            "name": "Fire",
+            "color": "#ff5a1f",
+            "emoji": "🔥"
+          },
+          {
+            "name": "Ice",
+            "color": "#a9def9",
+            "emoji": "🧊"
+          }
+        ],
+        "overlay": {
+          "title": "Fire vs ice"
+        }
+      }
+    },
+    {
+      "name": "Five a side",
+      "emoji": "👥",
+      "kind": "twist",
+      "note": "Five balls a side instead of three.",
+      "seed": 3,
+      "set": {
+        "entities.1.count": 5,
+        "entities.2.count": 5
+      }
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 13,
+      "modifiers": [
+        "hype"
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 18,
+      "modifiers": [
+        "lofi"
+      ]
+    }
+  ]
+}

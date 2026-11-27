@@ -1,0 +1,60 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "The last smiley makes it with a split second left.",
+      "seed": 537,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Twelve smileys",
+      "emoji": "🙂",
+      "kind": "twist",
+      "note": "Twelve smileys. One of them still isn’t a ball.",
+      "seed": 25,
+      "set": {
+        "entities.2.count": 12,
+        "entities.2.radius": 30
+      }
+    },
+    {
+      "name": "Night light",
+      "emoji": "🌙",
+      "kind": "vibe",
+      "note": "Lights out, a pool of light around each one. Which one has eyes?",
+      "seed": 12,
+      "modifiers": [
+        {
+          "use": "lights-out",
+          "light": 170
+        }
+      ]
+    },
+    {
+      "name": "Row your boat",
+      "emoji": "🚣",
+      "kind": "sound",
+      "note": "A music-box Row, Row, Row Your Boat.",
+      "seed": 279,
+      "patch": {
+        "audio": {
+          "melody": "midi:row-your-boat"
+        }
+      }
+    },
+    {
+      "name": "Daycare tape",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "Recorded on a camcorder in a nursery at 3 a.m.",
+      "seed": 98,
+      "modifiers": [
+        "vhs"
+      ]
+    }
+  ]
+}

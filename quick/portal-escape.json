@@ -1,0 +1,77 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 73,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "More portals",
+      "emoji": "🌀",
+      "kind": "twist",
+      "note": "A second pair of portals in the arena.",
+      "seed": 338,
+      "modifiers": [
+        {
+          "use": "portals",
+          "radius": 38
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "Four portals. One way out."
+        }
+      }
+    },
+    {
+      "name": "Vaporwave",
+      "emoji": "🌴",
+      "kind": "look",
+      "note": "Pink and cyan on a retro grid.",
+      "seed": 36,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "vaporwave"
+        }
+      ]
+    },
+    {
+      "name": "Red vs blue",
+      "emoji": "🆚",
+      "kind": "twist",
+      "note": "Two balls, two portals, one exit, a 22 s clock. First one out wins.",
+      "seed": 584,
+      "patch": {
+        "overlay": {
+          "title": "Which one finds the way out?"
+        },
+        "clock": {
+          "seconds": 22
+        }
+      },
+      "modifiers": [
+        {
+          "use": "versus",
+          "count": 2,
+          "set": 0
+        }
+      ]
+    },
+    {
+      "name": "Arcade",
+      "emoji": "🕹️",
+      "kind": "vibe",
+      "note": "Chiptune bleeps, green-screen colors and scanlines.",
+      "seed": 530,
+      "modifiers": [
+        "arcade"
+      ]
+    }
+  ]
+}

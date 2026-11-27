@@ -1,0 +1,85 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Speed paint",
+      "emoji": "⚡",
+      "kind": "pace",
+      "note": "Faster painters: the lead swings back and forth more.",
+      "seed": 2,
+      "patch": {
+        "world": {
+          "speedScale": 1.4
+        }
+      }
+    },
+    {
+      "name": "Five painters",
+      "emoji": "🎨",
+      "kind": "twist",
+      "note": "Five painters in the ring instead of three.",
+      "seed": 1,
+      "set": {
+        "entities.2.count": 5,
+        "entities.2.radius": 26
+      },
+      "patch": {
+        "teams": [
+          {
+            "name": "Coral",
+            "color": "#ff6d77"
+          },
+          {
+            "name": "Aqua",
+            "color": "#53cbe0"
+          },
+          {
+            "name": "Gold",
+            "color": "#ffcf60"
+          },
+          {
+            "name": "Mint",
+            "color": "#7be0a5"
+          },
+          {
+            "name": "Plum",
+            "color": "#b48cff"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ASMR",
+      "emoji": "🎧",
+      "kind": "vibe",
+      "note": "Soft marimba taps as the paint spreads.",
+      "seed": 8,
+      "modifiers": [
+        {
+          "use": "asmr",
+          "instrument": "marimba"
+        }
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 12,
+      "modifiers": [
+        "hype"
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 14,
+      "modifiers": [
+        "lofi"
+      ]
+    }
+  ]
+}

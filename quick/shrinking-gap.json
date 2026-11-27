@@ -1,0 +1,76 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 451,
+      "story": "last-second",
+      "target": 24.75
+    },
+    {
+      "name": "Hard mode",
+      "emoji": "😈",
+      "kind": "twist",
+      "note": "The gap loses 2.2° a hit instead of 1.5°. Fewer chances.",
+      "seed": 338,
+      "set": {
+        "modifiers.1.amount": 2.2
+      },
+      "patch": {
+        "overlay": {
+          "title": "The gap loses 2.2° per hit"
+        }
+      }
+    },
+    {
+      "name": "Deep blue",
+      "emoji": "🌊",
+      "kind": "look",
+      "note": "Ocean blues and a marimba.",
+      "seed": 262,
+      "patch": {
+        "audio": {
+          "instrument": "marimba"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "ocean"
+        }
+      ]
+    },
+    {
+      "name": "Red vs blue",
+      "emoji": "🆚",
+      "kind": "twist",
+      "note": "Two balls, one closing gap. First one out wins.",
+      "seed": 143,
+      "modifiers": [
+        {
+          "use": "versus",
+          "count": 2,
+          "set": 0
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "Who slips out first?"
+        }
+      }
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 288,
+      "modifiers": [
+        "hype"
+      ]
+    }
+  ]
+}

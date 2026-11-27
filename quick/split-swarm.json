@@ -1,0 +1,71 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Neon swarm",
+      "emoji": "🌃",
+      "kind": "look",
+      "note": "A neon swarm with bloom.",
+      "seed": 441,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "neon"
+        }
+      ]
+    },
+    {
+      "name": "ASMR",
+      "emoji": "🎧",
+      "kind": "vibe",
+      "note": "Soft pops as every ball splits.",
+      "seed": 534,
+      "modifiers": [
+        {
+          "use": "asmr",
+          "instrument": "pop"
+        }
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 541,
+      "modifiers": [
+        "lofi"
+      ]
+    },
+    {
+      "name": "Gold swarm",
+      "emoji": "🥇",
+      "kind": "look",
+      "note": "Gold beads splitting, with bells.",
+      "seed": 130,
+      "patch": {
+        "audio": {
+          "instrument": "bell"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "gold"
+        }
+      ]
+    },
+    {
+      "name": "Fast split",
+      "emoji": "⚡",
+      "kind": "pace",
+      "note": "Splits come faster: one becomes hundreds sooner.",
+      "seed": 32,
+      "patch": {
+        "world": {
+          "speedScale": 1.4
+        }
+      }
+    }
+  ]
+}

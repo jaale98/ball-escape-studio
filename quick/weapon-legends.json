@@ -1,0 +1,66 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "The last legend standing wins with a split second left.",
+      "seed": 285,
+      "story": "last-second",
+      "target": 24.75
+    },
+    {
+      "name": "Midnight duel",
+      "emoji": "🌌",
+      "kind": "look",
+      "note": "A starry arena and glass chimes.",
+      "seed": 78,
+      "patch": {
+        "audio": {
+          "instrument": "glass"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "midnight"
+        }
+      ]
+    },
+    {
+      "name": "Storm",
+      "emoji": "🌪️",
+      "kind": "twist",
+      "note": "The arena shrinks, so the fighters have to meet.",
+      "seed": 7,
+      "modifiers": [
+        {
+          "use": "storm",
+          "rate": 6,
+          "min": 200
+        }
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion on the final strike, a bass drop and confetti.",
+      "seed": 92,
+      "modifiers": [
+        "hype"
+      ]
+    },
+    {
+      "name": "Arcade",
+      "emoji": "🕹️",
+      "kind": "vibe",
+      "note": "Chiptune bleeps, green-screen colors and scanlines.",
+      "seed": 133,
+      "modifiers": [
+        "arcade"
+      ]
+    }
+  ]
+}

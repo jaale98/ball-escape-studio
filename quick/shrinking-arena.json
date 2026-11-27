@@ -1,0 +1,71 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "The last one standing wins with a split second left.",
+      "seed": 42,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Neon cage",
+      "emoji": "🌃",
+      "kind": "look",
+      "note": "Neon walls closing in, with bloom and a synth.",
+      "seed": 4,
+      "patch": {
+        "audio": {
+          "instrument": "synth"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "neon"
+        }
+      ]
+    },
+    {
+      "name": "Sunset",
+      "emoji": "🌅",
+      "kind": "look",
+      "note": "Warm sunset colors as the walls close in.",
+      "seed": 31,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "sunset"
+        }
+      ]
+    },
+    {
+      "name": "Twelve fighters",
+      "emoji": "👥",
+      "kind": "twist",
+      "note": "Twelve fighters instead of eight.",
+      "seed": 6,
+      "set": {
+        "entities.1.count": 12,
+        "entities.1.radius": 19
+      },
+      "patch": {
+        "overlay": {
+          "title": "12 enter. The walls close."
+        }
+      }
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 40,
+      "modifiers": [
+        "hype"
+      ]
+    }
+  ]
+}

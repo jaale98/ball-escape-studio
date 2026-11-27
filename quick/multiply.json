@@ -1,0 +1,65 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "It hits the target with a split second left.",
+      "seed": 233,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Triple",
+      "emoji": "✖️",
+      "kind": "twist",
+      "note": "Every escape spawns three, not two.",
+      "seed": 67,
+      "set": {
+        "modifiers.0": {
+          "use": "multiply",
+          "count": 3
+        }
+      },
+      "patch": {
+        "overlay": {
+          "title": "Every escape makes three"
+        }
+      }
+    },
+    {
+      "name": "Neon",
+      "emoji": "🌃",
+      "kind": "look",
+      "note": "Neon swarm with bloom.",
+      "seed": 10,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "neon"
+        }
+      ]
+    },
+    {
+      "name": "Rainbow",
+      "emoji": "🌈",
+      "kind": "vibe",
+      "note": "Every ball drifts through the rainbow.",
+      "seed": 25,
+      "modifiers": [
+        "rainbow"
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 31,
+      "modifiers": [
+        "hype"
+      ]
+    }
+  ]
+}

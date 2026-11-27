@@ -124,15 +124,7 @@ function niceStep(raw: number): number {
 }
 
 /** Set a dotted path ("entities.0.spin") on an object. */
-export function setPath(obj: Raw, path: string, value: unknown): void {
-  const parts = path.split('.');
-  let cur: Raw = obj;
-  for (const p of parts.slice(0, -1)) {
-    if (cur[p] === undefined || cur[p] === null) cur[p] = {};
-    cur = cur[p];
-  }
-  cur[parts[parts.length - 1]] = value;
-}
+export { setPath } from '../engine/source';
 
 /** Format a slider value for display. */
 export function fmt(v: number, step: number): string {

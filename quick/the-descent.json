@@ -1,0 +1,75 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 30,
+      "story": "last-second",
+      "target": 39.75
+    },
+    {
+      "name": "Race to the bottom",
+      "emoji": "🆚",
+      "kind": "twist",
+      "note": "Two balls fall through 1000 rings. First one out wins; the camera follows the leader.",
+      "seed": 47,
+      "modifiers": [
+        {
+          "use": "versus",
+          "count": 2,
+          "set": 0
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "Two fall. One lands first."
+        }
+      }
+    },
+    {
+      "name": "The abyss",
+      "emoji": "🌊",
+      "kind": "look",
+      "note": "A dive through deep-sea blues.",
+      "seed": 10,
+      "patch": {
+        "overlay": {
+          "title": "1000 rings to the bottom of the sea."
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "ocean"
+        }
+      ]
+    },
+    {
+      "name": "VHS tape",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "Found on a tape: scanlines, hum, a PLAY stamp and glitches.",
+      "seed": 14,
+      "modifiers": [
+        "vhs",
+        {
+          "use": "unease",
+          "amount": 0.3
+        }
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 176,
+      "modifiers": [
+        "hype"
+      ]
+    }
+  ]
+}

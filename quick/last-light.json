@@ -1,0 +1,68 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "It gets out as the light dies, with a split second left.",
+      "seed": 382,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Prelude in C",
+      "emoji": "🎹",
+      "kind": "sound",
+      "note": "Bach’s Prelude in C instead of the Moonlight Sonata.",
+      "seed": 31,
+      "patch": {
+        "audio": {
+          "melody": "midi:prelude-in-c"
+        }
+      }
+    },
+    {
+      "name": "Dying faster",
+      "emoji": "🕯️",
+      "kind": "twist",
+      "note": "The light shrinks to almost nothing.",
+      "seed": 326,
+      "patch": {
+        "style": {
+          "lightEnd": 40
+        },
+        "overlay": {
+          "title": "The light is almost gone."
+        }
+      }
+    },
+    {
+      "name": "VHS tape",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "Found on a tape: scanlines, hum, a PLAY stamp and glitches.",
+      "seed": 52,
+      "modifiers": [
+        "vhs",
+        {
+          "use": "unease",
+          "amount": 0.3
+        }
+      ]
+    },
+    {
+      "name": "Candlelight",
+      "emoji": "🕯️",
+      "kind": "look",
+      "note": "Warm gold rings, like candlelight.",
+      "seed": 445,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "gold"
+        }
+      ]
+    }
+  ]
+}

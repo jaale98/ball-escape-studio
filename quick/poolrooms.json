@@ -1,0 +1,65 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 368,
+      "story": "last-second",
+      "target": 24.75
+    },
+    {
+      "name": "Pool tape",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "Recorded underwater on a camcorder.",
+      "seed": 157,
+      "modifiers": [
+        "vhs"
+      ]
+    },
+    {
+      "name": "Pool in a pool",
+      "emoji": "🔁",
+      "kind": "vibe",
+      "note": "The pool repeats inside itself.",
+      "seed": 228,
+      "modifiers": [
+        {
+          "use": "droste",
+          "levels": 3
+        }
+      ]
+    },
+    {
+      "name": "Night swim",
+      "emoji": "🌙",
+      "kind": "look",
+      "note": "The pool after dark.",
+      "seed": 253,
+      "patch": {
+        "overlay": {
+          "title": "Nobody swims here at night."
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "midnight"
+        }
+      ]
+    },
+    {
+      "name": "Dreamcore",
+      "emoji": "☁️",
+      "kind": "vibe",
+      "note": "Slowed and reverbed: pastel haze, long trails, a huge washed-out room.",
+      "seed": 328,
+      "modifiers": [
+        "dreamcore"
+      ]
+    }
+  ]
+}

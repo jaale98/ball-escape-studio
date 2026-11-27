@@ -1,0 +1,79 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 573,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Three-way break",
+      "emoji": "🏁",
+      "kind": "twist",
+      "note": "Three balls punch through the same 12 shells. First out wins.",
+      "seed": 201,
+      "modifiers": [
+        {
+          "use": "versus",
+          "count": 3,
+          "set": 0
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "Three balls. 12 shells."
+        }
+      }
+    },
+    {
+      "name": "Gold shells",
+      "emoji": "🥇",
+      "kind": "look",
+      "note": "Twelve gold shells, a 3D ball and bells.",
+      "seed": 8,
+      "patch": {
+        "audio": {
+          "instrument": "bell"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "gold"
+        }
+      ]
+    },
+    {
+      "name": "Paper shells",
+      "emoji": "📄",
+      "kind": "look",
+      "note": "Ink-drawn shells on paper, with a piano.",
+      "seed": 114,
+      "patch": {
+        "audio": {
+          "instrument": "piano"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "paper"
+        }
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 116,
+      "modifiers": [
+        "hype"
+      ]
+    }
+  ]
+}

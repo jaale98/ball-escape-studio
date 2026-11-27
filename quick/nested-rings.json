@@ -1,0 +1,87 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Animal race",
+      "emoji": "🐾",
+      "kind": "twist",
+      "note": "Cat, dog, frog and fox race through all 14 rings. First out wins.",
+      "seed": 192,
+      "modifiers": [
+        {
+          "use": "versus",
+          "count": 4,
+          "set": 1
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "Which animal gets out?"
+        }
+      }
+    },
+    {
+      "name": "Ice palace",
+      "emoji": "🧊",
+      "kind": "look",
+      "note": "Frosted glass rings, glassy chimes in a big room.",
+      "seed": 291,
+      "patch": {
+        "audio": {
+          "instrument": "glass",
+          "reverb": 0.45
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "ice"
+        }
+      ]
+    },
+    {
+      "name": "Lava core",
+      "emoji": "🌋",
+      "kind": "vibe",
+      "note": "Molten rings, a 3-2-1 start and a bass drop when it breaks out.",
+      "seed": 589,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "lava"
+        },
+        "hype"
+      ]
+    },
+    {
+      "name": "Arcade",
+      "emoji": "🕹️",
+      "kind": "vibe",
+      "note": "Chiptune bleeps, green-screen colors and scanlines.",
+      "seed": 186,
+      "modifiers": [
+        "arcade"
+      ]
+    },
+    {
+      "name": "20-second sprint",
+      "emoji": "⚡",
+      "kind": "pace",
+      "note": "Faster ball, faster rings, a 20 s clock.",
+      "seed": 72,
+      "patch": {
+        "clock": {
+          "seconds": 20,
+          "final": 4
+        },
+        "world": {
+          "speedScale": 1.3,
+          "spinScale": 1.4
+        },
+        "overlay": {
+          "title": "14 rings. 20 seconds."
+        }
+      }
+    }
+  ]
+}

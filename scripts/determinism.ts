@@ -1,7 +1,8 @@
 /** Every scene must resolve, and replay identically: same seed, same final state hash and event log. */
 import { World } from '../src/engine/world';
 import { checkPaintFinish } from './territory-test';
-import { loadSources, resolveWithSongs } from './scenes';
+import { quickId } from '../src/director/quick';
+import { loadQuick, loadSources, resolveWithSongs } from './scenes';
 
 checkPaintFinish();
 const sources = loadSources();
@@ -22,8 +23,33 @@ for (const name of Object.keys(sources)) {
     console.log(`FAIL  ${name.padEnd(20)} ${(err as Error).message.replace(/\n/g, ' | ')}`);
   }
 }
+// Quick settings (quick/<scene>.json): each must name a real scene and resolve cleanly.
+let quickCount = 0;
+try {
+  const quick = loadQuick();
+  for (const [name, list] of Object.entries(quick)) {
+    if (!sources[name]) {
+      failed++;
+      console.log(`FAIL  quick/${name}.json: no scene named ${name}`);
+      continue;
+    }
+    for (const q of list) {
+      quickCount++;
+      try {
+        resolveWithSongs(name, sources, q);
+      } catch (err) {
+        failed++;
+        console.log(`FAIL  quick/${name}.json "${quickId(q)}": ${(err as Error).message.replace(/\n/g, ' | ')}`);
+      }
+    }
+  }
+} catch (err) {
+  failed++;
+  console.log(`FAIL  ${(err as Error).message.replace(/\n/g, ' | ')}`);
+}
+if (quickCount) console.log(`\n${quickCount} quick settings resolve (npm run quick scores them).`);
 if (failed) {
-  console.error(`\n${failed} scene(s) failed`);
+  console.error(`\n${failed} check(s) failed`);
   process.exit(1);
 }
 console.log(`\nAll ${Object.keys(sources).length} scenes resolve and replay deterministically.`);

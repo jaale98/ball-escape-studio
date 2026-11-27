@@ -1,0 +1,79 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Turkish march",
+      "emoji": "🥁",
+      "kind": "sound",
+      "note": "Every bounce on the beat of the Turkish March, with backing.",
+      "seed": 16,
+      "patch": {
+        "audio": {
+          "melody": "midi:turkish-march"
+        }
+      }
+    },
+    {
+      "name": "Für Elise",
+      "emoji": "🎹",
+      "kind": "sound",
+      "note": "Every bounce on the beat of Für Elise, with backing.",
+      "seed": 174,
+      "patch": {
+        "audio": {
+          "melody": "midi:fur-elise"
+        }
+      }
+    },
+    {
+      "name": "Can-can",
+      "emoji": "💃",
+      "kind": "sound",
+      "note": "Every bounce on the beat of the Can-can, with backing.",
+      "seed": 388,
+      "patch": {
+        "audio": {
+          "melody": "midi:can-can"
+        }
+      }
+    },
+    {
+      "name": "Ode to joy",
+      "emoji": "🎼",
+      "kind": "sound",
+      "note": "Every bounce on the beat of Ode to Joy, on bells.",
+      "seed": 232,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "gold"
+        }
+      ],
+      "patch": {
+        "audio": {
+          "melody": "midi:ode-to-joy",
+          "instrument": "bell"
+        }
+      }
+    },
+    {
+      "name": "Greensleeves",
+      "emoji": "🍀",
+      "kind": "sound",
+      "note": "Greensleeves on a kalimba, in forest colors.",
+      "seed": 464,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "forest"
+        }
+      ],
+      "patch": {
+        "audio": {
+          "melody": "midi:greensleeves",
+          "instrument": "kalimba"
+        }
+      }
+    }
+  ]
+}

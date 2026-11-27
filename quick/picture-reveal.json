@@ -1,0 +1,76 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "WOW",
+      "emoji": "😮",
+      "kind": "twist",
+      "note": "The marbles spell WOW.",
+      "seed": 2,
+      "patch": {
+        "style": {
+          "reveal": {
+            "text": "WOW"
+          }
+        },
+        "overlay": {
+          "title": "Wait for it…"
+        }
+      }
+    },
+    {
+      "name": "Hi mom",
+      "emoji": "👋",
+      "kind": "twist",
+      "note": "The marbles spell HI MOM.",
+      "seed": 3,
+      "patch": {
+        "style": {
+          "reveal": {
+            "text": "HI MOM"
+          }
+        },
+        "overlay": {
+          "title": "Can you read it?"
+        }
+      }
+    },
+    {
+      "name": "Love",
+      "emoji": "❤️",
+      "kind": "twist",
+      "note": "The marbles spell LOVE.",
+      "seed": 4,
+      "patch": {
+        "style": {
+          "reveal": {
+            "text": "LOVE"
+          }
+        }
+      }
+    },
+    {
+      "name": "ASMR",
+      "emoji": "🎧",
+      "kind": "vibe",
+      "note": "Soft pops as the marbles settle.",
+      "seed": 5,
+      "modifiers": [
+        {
+          "use": "asmr",
+          "instrument": "pop"
+        }
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 6,
+      "modifiers": [
+        "lofi"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Photo finish",
+      "emoji": "📸",
+      "kind": "pace",
+      "note": "A run decided by a hair at the line.",
+      "seed": 230,
+      "story": "photo-finish"
+    },
+    {
+      "name": "Animal race",
+      "emoji": "🐾",
+      "kind": "twist",
+      "note": "Eight animals instead of marbles.",
+      "seed": 534,
+      "set": {
+        "entities.3.emojis": [
+          "🐱",
+          "🐶",
+          "🐸",
+          "🦊",
+          "🐼",
+          "🐯",
+          "🐷",
+          "🐵"
+        ],
+        "entities.3.labels": [
+          "Cat",
+          "Dog",
+          "Frog",
+          "Fox",
+          "Panda",
+          "Tiger",
+          "Pig",
+          "Monkey"
+        ]
+      },
+      "patch": {
+        "overlay": {
+          "title": "Pick an animal"
+        }
+      }
+    },
+    {
+      "name": "Candy",
+      "emoji": "🍬",
+      "kind": "look",
+      "note": "Candy marbles and pops.",
+      "seed": 539,
+      "patch": {
+        "audio": {
+          "instrument": "pop"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "candy"
+        }
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 start, slow motion at the line, a bass drop and confetti.",
+      "seed": 226,
+      "modifiers": [
+        "hype"
+      ]
+    },
+    {
+      "name": "ASMR",
+      "emoji": "🎧",
+      "kind": "vibe",
+      "note": "Soft wooden clacks down the course.",
+      "seed": 140,
+      "modifiers": [
+        {
+          "use": "asmr",
+          "instrument": "marimba"
+        }
+      ]
+    }
+  ]
+}

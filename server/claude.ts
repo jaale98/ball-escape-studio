@@ -40,8 +40,12 @@ export const ALLOWED_TOOLS = [
   'Grep',
   'Edit(scenes/**)',
   'Write(scenes/**)',
+  'Edit(quick/**)',
+  'Write(quick/**)',
   'Bash(npm run sim:*)',
   'Bash(npm run -s sim:*)',
+  'Bash(npm run quick:*)',
+  'Bash(npm run -s quick:*)',
   'Bash(npm test)',
 ];
 
@@ -57,7 +61,8 @@ export function studioInstructions(scene?: string): string {
     'Only search seeds (`npm run -s sim -- <name> --seeds 1-150 --target <s>`) when the change affects how the run ends or the user asks; keep the search to one call.',
     'If no seed lands near the target, the scene is too easy or too hard: change difficulty (gap width, ball size, speed, shrink rate) and search once more. Report the climax time you actually got.',
     'If .studio/taste.md exists it holds the user\'s likes and dislikes from earlier videos; follow them.',
-    'You can only edit files in scenes/. Never touch engine code from here.',
+    'Quick settings (ready-made variations shown as cards on the Tune tab) live in quick/<scene>.json, never in the scene file. When the user asks for variations, presets or quick settings, edit that file (see quick/ring-escape.json for the shape: name, emoji, kind, note, patch, set, modifiers), then tune their seeds with `npm run -s quick -- <name> --tune` and report what it printed.',
+    'You can only edit files in scenes/ and quick/. Never touch engine code from here.',
     'Finish with one or two plain sentences saying what you changed (no headings, no lists).',
   ].join('\n');
 }

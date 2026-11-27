@@ -1,0 +1,77 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Happy birthday",
+      "emoji": "🎂",
+      "kind": "sound",
+      "note": "Every bounce on the beat of Happy Birthday, alone in the dark.",
+      "seed": 21,
+      "patch": {
+        "audio": {
+          "melody": "midi:happy-birthday"
+        },
+        "overlay": {
+          "title": "Happy birthday… to you."
+        }
+      }
+    },
+    {
+      "name": "Oh! Susanna",
+      "emoji": "🪕",
+      "kind": "sound",
+      "note": "Every bounce on the beat of Oh! Susanna. Don’t you cry.",
+      "seed": 185,
+      "patch": {
+        "audio": {
+          "melody": "midi:oh-susanna"
+        },
+        "overlay": {
+          "title": "Oh, don’t you cry for me."
+        }
+      }
+    },
+    {
+      "name": "Little lamb",
+      "emoji": "🐑",
+      "kind": "sound",
+      "note": "Every bounce on the beat of Mary Had a Little Lamb.",
+      "seed": 19,
+      "patch": {
+        "audio": {
+          "melody": "midi:mary-had-a-little-lamb"
+        },
+        "overlay": {
+          "title": "Mary had a little lamb"
+        }
+      }
+    },
+    {
+      "name": "Lights on",
+      "emoji": "💡",
+      "kind": "twist",
+      "note": "The same lullaby with the lights on.",
+      "seed": 26,
+      "patch": {
+        "style": {
+          "darkness": 0.5,
+          "flicker": false
+        }
+      }
+    },
+    {
+      "name": "VHS tape",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "A nursery camera tape: scanlines, hum and glitches.",
+      "seed": 447,
+      "modifiers": [
+        "vhs",
+        {
+          "use": "unease",
+          "amount": 0.3
+        }
+      ]
+    }
+  ]
+}

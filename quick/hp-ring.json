@@ -1,0 +1,78 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "The ring cracks with a split second left.",
+      "seed": 9,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Tougher ring",
+      "emoji": "💪",
+      "kind": "twist",
+      "note": "55 hits to break it instead of 45, on a 35 s clock.",
+      "seed": 2,
+      "set": {
+        "entities.0.hp": 55
+      },
+      "patch": {
+        "clock": {
+          "seconds": 35
+        },
+        "overlay": {
+          "title": "55 hits in 35 seconds?"
+        }
+      }
+    },
+    {
+      "name": "Meltdown",
+      "emoji": "🔥",
+      "kind": "vibe",
+      "note": "Molten colors, a 3-2-1 start and a bass drop when it breaks.",
+      "seed": 3,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "lava"
+        },
+        "hype"
+      ]
+    },
+    {
+      "name": "Tag team",
+      "emoji": "🆚",
+      "kind": "twist",
+      "note": "Two balls hammer a 90-hit ring, then race out. First one out wins.",
+      "seed": 25,
+      "set": {
+        "entities.0.hp": 90
+      },
+      "modifiers": [
+        {
+          "use": "versus",
+          "count": 2,
+          "set": 0
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "90 hits. Two balls."
+        }
+      }
+    },
+    {
+      "name": "Arcade",
+      "emoji": "🕹️",
+      "kind": "vibe",
+      "note": "Chiptune bleeps, green-screen colors and scanlines.",
+      "seed": 11,
+      "modifiers": [
+        "arcade"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "The last blade standing wins with a split second left.",
+      "seed": 4,
+      "story": "last-second",
+      "target": 24.75
+    },
+    {
+      "name": "Forge",
+      "emoji": "🔥",
+      "kind": "look",
+      "note": "Molten arena, glowing blades.",
+      "seed": 9,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "lava"
+        }
+      ]
+    },
+    {
+      "name": "Ink duel",
+      "emoji": "🖋️",
+      "kind": "look",
+      "note": "An ink-and-paper duel with a serif title.",
+      "seed": 64,
+      "patch": {
+        "overlay": {
+          "title": "Pick your blade"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "paper"
+        }
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion on the final strike, a bass drop and confetti.",
+      "seed": 69,
+      "modifiers": [
+        "hype"
+      ]
+    },
+    {
+      "name": "Storm",
+      "emoji": "🌪️",
+      "kind": "twist",
+      "note": "The arena shrinks, so the fighters have to meet.",
+      "seed": 14,
+      "modifiers": [
+        {
+          "use": "storm",
+          "rate": 6,
+          "min": 180
+        }
+      ]
+    }
+  ]
+}

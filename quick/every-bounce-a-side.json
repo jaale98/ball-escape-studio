@@ -1,0 +1,71 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 462,
+      "story": "last-second",
+      "target": 24.75
+    },
+    {
+      "name": "Red vs blue",
+      "emoji": "🆚",
+      "kind": "twist",
+      "note": "Two balls add sides twice as fast. First one out wins.",
+      "seed": 103,
+      "modifiers": [
+        {
+          "use": "versus",
+          "count": 2,
+          "set": 0
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "Two balls. More sides."
+        }
+      }
+    },
+    {
+      "name": "Gold",
+      "emoji": "🥇",
+      "kind": "look",
+      "note": "A gold polygon, a 3D ball and bells.",
+      "seed": 42,
+      "patch": {
+        "audio": {
+          "instrument": "bell"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "gold"
+        }
+      ]
+    },
+    {
+      "name": "Arcade",
+      "emoji": "🕹️",
+      "kind": "vibe",
+      "note": "Chiptune bleeps, green-screen colors and scanlines.",
+      "seed": 151,
+      "modifiers": [
+        "arcade"
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 425,
+      "modifiers": [
+        "lofi"
+      ]
+    }
+  ]
+}

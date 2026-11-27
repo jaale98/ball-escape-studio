@@ -1,0 +1,70 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "The last one turns with a split second left.",
+      "seed": 434,
+      "story": "last-second",
+      "target": 34.75
+    },
+    {
+      "name": "Fast spread",
+      "emoji": "🦠",
+      "kind": "twist",
+      "note": "Every touch spreads it more easily, on a 25 s clock.",
+      "seed": 253,
+      "set": {
+        "modifiers.0.chance": 0.35
+      },
+      "patch": {
+        "clock": {
+          "seconds": 25,
+          "final": 5
+        },
+        "overlay": {
+          "title": "Can one turn thirty in 25 s?"
+        }
+      }
+    },
+    {
+      "name": "Toxic",
+      "emoji": "☣️",
+      "kind": "look",
+      "note": "Radioactive greens.",
+      "seed": 465,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "toxic"
+        }
+      ]
+    },
+    {
+      "name": "VHS tape",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "Found on a tape: scanlines, hum, a PLAY stamp and glitches.",
+      "seed": 465,
+      "modifiers": [
+        "vhs",
+        {
+          "use": "unease",
+          "amount": 0.3
+        }
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 465,
+      "modifiers": [
+        "hype"
+      ]
+    }
+  ]
+}

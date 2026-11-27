@@ -1,0 +1,62 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "It gets out with a split second left.",
+      "seed": 84,
+      "story": "last-second",
+      "target": 39.75
+    },
+    {
+      "name": "Closer",
+      "emoji": "🫥",
+      "kind": "twist",
+      "note": "The shadow starts closer and catches up faster.",
+      "seed": 76,
+      "set": {
+        "entities.3.delay": 0.9,
+        "entities.3.catchUp": 0.02
+      }
+    },
+    {
+      "name": "VHS tape",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "Found on a tape: scanlines, hum, a PLAY stamp and glitches.",
+      "seed": 117,
+      "modifiers": [
+        "vhs",
+        {
+          "use": "unease",
+          "amount": 0.3
+        }
+      ]
+    },
+    {
+      "name": "Dusk",
+      "emoji": "🌇",
+      "kind": "look",
+      "note": "A long shadow at sunset.",
+      "seed": 131,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "sunset"
+        }
+      ]
+    },
+    {
+      "name": "Heartbeat",
+      "emoji": "💓",
+      "kind": "vibe",
+      "note": "A heartbeat that races as it closes in.",
+      "seed": 150,
+      "modifiers": [
+        "heartbeat"
+      ]
+    }
+  ]
+}

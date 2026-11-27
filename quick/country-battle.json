@@ -1,0 +1,74 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "The last flag standing wins with a split second left.",
+      "seed": 102,
+      "story": "last-second",
+      "target": 34.75
+    },
+    {
+      "name": "Storm",
+      "emoji": "🌪️",
+      "kind": "twist",
+      "note": "The arena closes in, battle-royale style.",
+      "seed": 9,
+      "modifiers": [
+        {
+          "use": "storm",
+          "rate": 7,
+          "min": 170
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "Flags in the storm"
+        }
+      }
+    },
+    {
+      "name": "World cup",
+      "emoji": "🏆",
+      "kind": "look",
+      "note": "Gold arena, serif title, bells.",
+      "seed": 2,
+      "patch": {
+        "audio": {
+          "instrument": "bell"
+        },
+        "overlay": {
+          "title": "Who lifts the cup?"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "gold"
+        }
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 86,
+      "modifiers": [
+        "hype"
+      ]
+    },
+    {
+      "name": "Arcade",
+      "emoji": "🕹️",
+      "kind": "vibe",
+      "note": "Chiptune bleeps, green-screen colors and scanlines.",
+      "seed": 106,
+      "modifiers": [
+        "arcade"
+      ]
+    }
+  ]
+}

@@ -2700,6 +2700,13 @@ export class World {
       else if (duration.endOn === 'firstEscape' && this.escapes > 0) reason = 'escaped';
       else if (duration.endOn === 'allEscaped' && this.escapes > 0 && this.balls.every((b) => !b.alive || b.escaped.every(Boolean)))
         reason = 'allEscaped';
+      else if (duration.endOn === 'firstOut' && this.escapes > 0) {
+        const out = this.balls.find((b) => b.alive && !b.projectile && b.escaped.length > 0 && b.escaped.every(Boolean));
+        if (out) {
+          reason = 'firstOut';
+          if (this.startingBalls > 1) this.winner = out.id;
+        }
+      }
       else if (duration.endOn === 'lastStanding' && this.startingBalls > 1 && this.aliveCount <= 1) {
         reason = 'lastStanding';
         this.winner = this.balls.find((b) => b.alive && !b.projectile)?.id ?? -1;

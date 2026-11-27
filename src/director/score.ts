@@ -271,7 +271,7 @@ export function scoreRun(base: Scene, v: Variation, opts: DirectorOptions): RunS
   let climax = -1;
   if (w.endReason === 'escaped') climax = w.firstEscapeStep / PHYSICS_HZ;
   else if (w.endReason === 'lastStanding') climax = lastEliminationAt >= 0 ? lastEliminationAt : w.climaxStep / PHYSICS_HZ;
-  else if (w.endReason === 'allEscaped' || w.endReason === 'filled' || w.endReason === 'script') climax = w.time - scene.duration.tail;
+  else if (w.endReason === 'allEscaped' || w.endReason === 'firstOut' || w.endReason === 'filled' || w.endReason === 'script') climax = w.time - scene.duration.tail;
   else if (w.climaxStep >= 0) climax = w.climaxStep / PHYSICS_HZ;
   // Running out the clock is a miss, unless the format always goes the distance.
   const timedOut = w.endReason === 'timeUp' && racesClock(scene);

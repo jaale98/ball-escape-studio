@@ -1,0 +1,64 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "The last holdout falls with a split second left.",
+      "seed": 589,
+      "story": "last-second",
+      "target": 21.75
+    },
+    {
+      "name": "Sixty players",
+      "emoji": "👥",
+      "kind": "twist",
+      "note": "Sixty instead of 36: a bigger war.",
+      "seed": 382,
+      "set": {
+        "entities.1.count": 60,
+        "entities.1.radius": 21
+      },
+      "patch": {
+        "clock": {
+          "seconds": 30,
+          "final": 5
+        }
+      }
+    },
+    {
+      "name": "Pastel",
+      "emoji": "🎀",
+      "kind": "look",
+      "note": "Soft pastel arena.",
+      "seed": 53,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "pastel"
+        }
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 448,
+      "modifiers": [
+        "hype"
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 445,
+      "modifiers": [
+        "lofi"
+      ]
+    }
+  ]
+}

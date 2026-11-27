@@ -39,6 +39,7 @@ Every run is **deterministic**: the same scene and seed always produce exactly t
   - **Event sounds:** breaks, portals, swallows, merges, captures and conversions each have their own.
   - **Climax impact:** a bass drop, cymbal swell or gong.
   - **Pitch modes:** notes can follow ball size, height or speed instead of the melody.
+- **Quick settings.** Every scene comes with about five ready-made variations on the Tune tab, each with a run the Director picked, so any of them makes a good video. They range from a buzzer-beater, a race between named balls, a new palette and a lo-fi, arcade, ASMR or hype edit to a song swap or a physics twist. Each card shows a thumbnail and the Director's verdict on its run. Press `1`–`9` to flip between them, then **Export all** to queue the whole set. Quick settings live in `quick/<scene>.json` and never touch the scene file.
 - **Make it weird.** One click gives any scene a weird *vibe*, an unsaved change built from a look, a sound and a twist that belong together. Click again to re-roll, or shift-click to stack another vibe. The vibes come from the internet aesthetics that do unease best:
   - **Analog horror:** a 3 a.m. camcorder tape, mains hum, and glitches that snap on and off.
   - **Dreamcore:** slowed + reverb, soft haze, pastel.
@@ -97,11 +98,11 @@ Open http://localhost:5173. A short welcome card walks through it: pick a format
 
 - **Scene switcher + Browse.** Pick a scene from the list, or **Browse** for a gallery with thumbnails, where you can open, build on (**New from this**), duplicate, rename or delete scenes. Remixes and tournament matches are grouped under the scene they came from. Deleted scenes go to `.studio/trash`.
 - **One save model.** Every change (sliders, seed, song, rhythm lock, a Director pick) is an *unsaved change* shown in a bar at the top. **Save** (⌘S) writes it into the scene file; **Discard** drops it. Switching scenes asks first.
-- **Tabs.** *Create* (ask Claude, the Critic, Director, export queue, Like/Dislike), *Look* (text, colors, background picture, and names, emoji and photos per ball), *Tune* (seed and every number in the scene), *Music* (song, rhythm lock, parts), *History* (every version of the scene, and every export with Show in Finder / Export again / Open as scene), *Info* (live stats and the raw scene).
+- **Tabs.** *Create* (ask Claude, the Critic, Director, export queue, Like/Dislike), *Look* (text, colors, background picture, and names, emoji and photos per ball), *Tune* (quick settings, the seed, and every number in the scene), *Music* (song, rhythm lock, parts), *History* (every version of the scene, and every export with Show in Finder / Export again / Open as scene), *Info* (live stats and the raw scene).
 - **Timeline.** Under the preview: progress with markers for near-misses, escapes, eliminations and the climax. Click or drag to jump (runs are deterministic, so it jumps to the exact frame); **Climax** (J) jumps to just before it.
 - **Export queue.** Exports render in the background, survive a page reload, and land in `exports/` with a caption and the exact scene.
 
-**Keyboard** (press `?` in the studio for the list): `Space` play/pause · `J` jump to climax · `M` sound · `R` new seed · `B` browse · `D` Director · `E` export · `⌘S` save · `Backspace` restart
+**Keyboard** (press `?` in the studio for the list): `Space` play/pause · `1`–`9` quick settings, `0` the original · `J` jump to climax · `M` sound · `R` new seed · `B` browse · `D` Director · `E` export · `⌘S` save · `Backspace` restart
 
 ## Scenes
 
@@ -160,6 +161,10 @@ Most formats are a base scene plus a twist. For example, this variation adds mul
 | `string-art` / `rainbow` / `meow` | Lines between bounces / rainbow colors and trails / every bounce meows |
 | `slowmo` / `shake` / `countdown` | Slow motion at the climax / screen shake / a 3-2-1 intro |
 | `clock` | A countdown to beat (`seconds`, `final`); the final stretch escalates (`rush`) so the climax tends to land just before zero |
+| `palette` | Repaint everything (background, rings, balls, text) in a named palette, over the scene's own colors (`name`: neon, pastel, sunset, ocean, mono, gold, toxic, sakura, ice, lava, vaporwave, candy, paper, midnight, forest, retro) |
+| `versus` | The scene's ball becomes a race between `count` named balls (`set`: 0 colors, 1 animals, 2 fruit, 3 numbers); the first one out of every ring wins |
+| `ball-size` | Every ball grows or shrinks by `factor` |
+| `hype` / `asmr` / `arcade` / `lofi` | Edits: a 3-2-1 intro, slow motion, bass drop and confetti / soft taps, no music bed (`instrument`) / chiptune, green screen, scanlines / soft piano, dusk colors, grain |
 
 ### Building blocks
 
@@ -169,7 +174,7 @@ Most formats are a base scene plus a twist. For example, this variation adds mul
 | `teams` | Team names, colors, emoji and who beats whom |
 | `rules` | On `bounce`, `escape`, `hit`, `eliminate`, `strike`, `wake`, `break`, `teleport`, `swallow`, `capture`, `merge`, `convert`, `corner` or `finish`: `grow`, `shrinkGap`, `speedUp`, `spawn`, `damage`, `spinUp`, `reverseSpin`, gravity changes, `split`, `absorb`, `merge`, `convert`, `clone`, `moveGap`, `addGap`, `addSide`, `shrinkContainer`, `recolor`, `growForce`, `end`, or a `script` |
 | `timeline` | Do the same actions `at` a time or `every` N seconds (spawners, gravity flips…) |
-| `duration` | Length cap and what ends the run: `firstEscape`, `allEscaped`, `lastStanding`, `oneTeam`, `finish`, `cleared`, `mostTerritory`, `never`; `trimStart` for loops |
+| `duration` | Length cap and what ends the run: `firstEscape`, `allEscaped`, `firstOut` (the first ball out of every ring wins), `lastStanding`, `oneTeam`, `finish`, `cleared`, `mostTerritory`, `never`; `trimStart` for loops |
 | `camera` | `mode` (fixed, follow, zoomOut), zoom, circular `aperture`, `shake`, `slowmo` (+ factor, lead), `countdown` |
 | `clock` | A countdown: `seconds`, the red ticking `final` stretch, `rush` actions fired every `rushEvery` s through it, `ticks`, `timeUpText`. Ends the run at zero (`endReason: timeUp`) and sets `duration.max`. Shown as a countdown under the title (`overlay.clock`, `clockY`, `clockSize`) |
 | `world` | Gravity (number or `[x, y]`), energy keeping, restitution, friction, ball cap |
@@ -361,6 +366,41 @@ In a scene file: `"parts": [2]` picks the bounce track (default: the detected me
 
 The songbook lives in [`scripts/songbook.ts`](scripts/songbook.ts) in a compact note notation; `npm run songs` regenerates `songs/*.mid` and `songs/songs.json`.
 
+### Quick settings
+
+Each scene's ready-made variations live in `quick/<scene>.json`, never in the scene file. A quick setting is a small layer applied on top of the scene before it resolves:
+
+```json
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Red vs blue",
+      "emoji": "🆚",
+      "kind": "twist",
+      "note": "Two balls race through all five rings. First one out wins.",
+      "seed": 239,
+      "modifiers": [{ "use": "versus", "count": 2 }],
+      "patch": { "overlay": { "title": "Red or blue?" } }
+    }
+  ]
+}
+```
+
+- `patch` deep-merges like `extends`.
+- `set` takes dotted paths for one item in a list (`"entities.1.count": 10`).
+- `modifiers` are added after the scene's own.
+- `seed` is the run the Director picked. `story` and `target` choose how it is judged; by default rhythm-locked scenes stay in time and clock scenes beat the clock.
+- `kind` colors the card's key: pace, look, sound, twist or vibe.
+
+In the studio, picking a card (or pressing its number) shows that variation without making it an unsaved change. Tweaks on top of a quick setting **Save to quick setting**, and **＋ Save as quick setting** turns your current changes into a new one. **Find a better seed** re-runs the Director for the active card. **Export all** queues the original and every quick setting with the Create tab's export settings, named `<scene>-<quick>-seed<N>`.
+
+```bash
+npm run quick                              # check every quick setting: resolve, run, score
+npm run quick -- ring-escape --tune        # tune each one's seed and write it back (each gets a different run)
+npm run quick -- --tune --shard 2/8        # split a full re-tune over several processes
+```
+
 ## Finding the perfect seed
 
 The engine runs a 30-second scene headless in a few milliseconds, so you can search seeds before you watch anything:
@@ -378,7 +418,7 @@ npm run sim -- ring-escape --resolved   # the scene after extends, modifiers and
 npm run sim -- ring-escape --director slow-burn --target 30 --vary 0.1   # the Director, headless
 npm test                                # every scene resolves and replays identically
 npm run fuzz                            # stress test: every scene × seeds, every modifier, random combos
-npm run schema                          # regenerate scene.schema.json
+npm run schema                          # regenerate scene.schema.json and quick.schema.json
 ```
 
 ## Ask Claude

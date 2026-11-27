@@ -1,0 +1,62 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 411,
+      "story": "last-second",
+      "target": 34.75
+    },
+    {
+      "name": "Neon",
+      "emoji": "🌃",
+      "kind": "look",
+      "note": "Neon paddle and ring, with bloom and a synth.",
+      "seed": 216,
+      "patch": {
+        "audio": {
+          "instrument": "synth"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "neon"
+        }
+      ]
+    },
+    {
+      "name": "Fast paddle",
+      "emoji": "🌪️",
+      "kind": "twist",
+      "note": "The paddle spins a third faster: more copies, more chaos.",
+      "seed": 6,
+      "set": {
+        "entities.1.spin": 3.2
+      }
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 248,
+      "modifiers": [
+        "lofi"
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 274,
+      "modifiers": [
+        "hype"
+      ]
+    }
+  ]
+}

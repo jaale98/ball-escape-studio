@@ -1,0 +1,71 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 207,
+      "story": "last-second",
+      "target": 34.75
+    },
+    {
+      "name": "Rainbow spiral",
+      "emoji": "🌈",
+      "kind": "vibe",
+      "note": "Every ring and trail drifts through the rainbow.",
+      "seed": 36,
+      "modifiers": [
+        "rainbow"
+      ]
+    },
+    {
+      "name": "Gold rush",
+      "emoji": "🥇",
+      "kind": "look",
+      "note": "A hundred gold rings, a 3D ball and bells.",
+      "seed": 58,
+      "patch": {
+        "audio": {
+          "instrument": "bell"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "gold"
+        }
+      ]
+    },
+    {
+      "name": "Three-way race",
+      "emoji": "🏁",
+      "kind": "twist",
+      "note": "Three balls race out through all 100 rings. First out wins.",
+      "seed": 312,
+      "modifiers": [
+        {
+          "use": "versus",
+          "count": 3,
+          "set": 0
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "Three balls. 100 rings."
+        }
+      }
+    },
+    {
+      "name": "Dreamcore",
+      "emoji": "☁️",
+      "kind": "vibe",
+      "note": "Slowed and reverbed: pastel haze, long trails, a huge washed-out room.",
+      "seed": 73,
+      "modifiers": [
+        "dreamcore"
+      ]
+    }
+  ]
+}

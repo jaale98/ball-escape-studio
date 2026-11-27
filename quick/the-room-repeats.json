@@ -1,0 +1,60 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 439,
+      "story": "last-second",
+      "target": 24.75
+    },
+    {
+      "name": "Deeper",
+      "emoji": "🔁",
+      "kind": "twist",
+      "note": "The room repeats six times instead of four.",
+      "seed": 236,
+      "set": {
+        "modifiers.1.levels": 6
+      }
+    },
+    {
+      "name": "Tape",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "Recorded on a tape someone found in the room.",
+      "seed": 280,
+      "modifiers": [
+        "vhs"
+      ]
+    },
+    {
+      "name": "Lights out",
+      "emoji": "🔦",
+      "kind": "vibe",
+      "note": "The fluorescent tube is failing.",
+      "seed": 440,
+      "modifiers": [
+        {
+          "use": "lights-out",
+          "light": 220
+        }
+      ]
+    },
+    {
+      "name": "Black and white",
+      "emoji": "⬛",
+      "kind": "look",
+      "note": "The same room drained of color.",
+      "seed": 463,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "mono"
+        }
+      ]
+    }
+  ]
+}

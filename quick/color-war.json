@@ -1,0 +1,65 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Speed war",
+      "emoji": "⚡",
+      "kind": "pace",
+      "note": "Every ball half again as fast: the board flips more often.",
+      "seed": 18,
+      "patch": {
+        "world": {
+          "speedScale": 1.5
+        }
+      }
+    },
+    {
+      "name": "Long war",
+      "emoji": "⏳",
+      "kind": "pace",
+      "note": "A 45-second war with more comebacks.",
+      "seed": 42,
+      "patch": {
+        "clock": {
+          "seconds": 45
+        },
+        "overlay": {
+          "title": "Who owns the board at 0?"
+        }
+      }
+    },
+    {
+      "name": "Pastel board",
+      "emoji": "🎀",
+      "kind": "look",
+      "note": "A soft pastel board and glossy balls.",
+      "seed": 59,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "pastel"
+        }
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 133,
+      "modifiers": [
+        "hype"
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 173,
+      "modifiers": [
+        "lofi"
+      ]
+    }
+  ]
+}

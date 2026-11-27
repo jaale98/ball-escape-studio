@@ -1,0 +1,70 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "It gets out with a split second left. It was right there.",
+      "seed": 334,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "It’s faster",
+      "emoji": "🏃",
+      "kind": "twist",
+      "note": "It moves a third faster. Still escapable?",
+      "seed": 406,
+      "set": {
+        "entities.1.speed": 40,
+        "entities.1.accel": 9
+      }
+    },
+    {
+      "name": "Two of you",
+      "emoji": "🆚",
+      "kind": "twist",
+      "note": "Two balls, one stalker. The first one out wins; it may catch the other.",
+      "seed": 366,
+      "modifiers": [
+        {
+          "use": "versus",
+          "count": 2,
+          "set": 0
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "It only needs one of you."
+        }
+      }
+    },
+    {
+      "name": "Lights on",
+      "emoji": "💡",
+      "kind": "twist",
+      "note": "The same chase with the lights on: you can see it coming.",
+      "seed": 280,
+      "patch": {
+        "style": {
+          "darkness": 0.55,
+          "flicker": false
+        }
+      }
+    },
+    {
+      "name": "Toxic",
+      "emoji": "☣️",
+      "kind": "look",
+      "note": "Sickly green rings in the dark.",
+      "seed": 373,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "toxic"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Desert",
+      "emoji": "🏜️",
+      "kind": "look",
+      "note": "Desert sand layers.",
+      "seed": 2,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "sunset"
+        }
+      ]
+    },
+    {
+      "name": "Sea glass",
+      "emoji": "🌊",
+      "kind": "look",
+      "note": "Layers of sea-glass blues.",
+      "seed": 3,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "ocean"
+        }
+      ]
+    },
+    {
+      "name": "ASMR",
+      "emoji": "🎧",
+      "kind": "vibe",
+      "note": "Soft patter as the sand pours.",
+      "seed": 4,
+      "modifiers": [
+        {
+          "use": "asmr",
+          "instrument": "marimba"
+        }
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 5,
+      "modifiers": [
+        "lofi"
+      ]
+    },
+    {
+      "name": "Candy sand",
+      "emoji": "🍬",
+      "kind": "look",
+      "note": "Candy-colored layers.",
+      "seed": 6,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "candy"
+        }
+      ]
+    }
+  ]
+}

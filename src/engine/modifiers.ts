@@ -11,13 +11,71 @@ type Params = Record<string, unknown>;
 
 interface ModifierDef {
   description: string;
-  params: Record<string, { default: number | boolean; description: string }>;
+  params: Record<string, { default: number | boolean | string; description: string }>;
   apply: (scene: Raw, p: Record<string, any>) => void; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 const obj = (scene: Raw, key: string): Raw => (scene[key] ??= {});
 const list = (scene: Raw, key: string): unknown[] => (scene[key] ??= []);
 const balls = (scene: Raw): Raw[] => (scene.entities ?? []).filter((e: Raw) => e.type === 'ball');
+
+/** Named palettes for the "palette" modifier: rings and balls get their own lists. */
+export const PALETTES: Record<string, { bg: string; ring: string; rings: string[]; balls: string[]; text: string; font?: string; style?: Raw }> = {
+  neon: { bg: '#05050a', ring: '#ffffff', rings: ['#00f0ff', '#ff00e5', '#39ff14', '#fff200', '#ff3d00'], balls: ['#ffffff', '#00f0ff', '#ff00e5', '#39ff14', '#fff200', '#ff3d00'], text: '#ffffff', style: { glow: true, bloom: true } },
+  pastel: { bg: '#fff4f8', ring: '#5c5470', rings: ['#ff8fab', '#a2d2ff', '#ffc971', '#8fe3a0', '#cdb4db'], balls: ['#ff5d8f', '#4ea8ff', '#f4a300', '#3fbf6e', '#9b6bd3', '#ff7b54'], text: '#3d3551', font: 'rounded', style: { glow: false, ballStyle: 'glossy' } },
+  sunset: { bg: '#1a0b1e', ring: '#ffb48f', rings: ['#ff6b6b', '#ff9e5e', '#ffd166', '#f78fb3', '#c56cf0'], balls: ['#fff3b0', '#ffd166', '#ff6b6b', '#f78fb3', '#c56cf0', '#ff9e5e'], text: '#ffe8d6', style: { backdrop: 'gradient' } },
+  ocean: { bg: '#031a2b', ring: '#9be7ff', rings: ['#00b4d8', '#48cae4', '#90e0ef', '#0077b6', '#ade8f4'], balls: ['#ffffff', '#ffd166', '#ff8fab', '#90e0ef', '#06d6a0', '#ffb703'], text: '#e0fbfc' },
+  mono: { bg: '#0a0a0a', ring: '#f2f2f2', rings: ['#f2f2f2', '#bdbdbd', '#8a8a8a', '#5e5e5e'], balls: ['#ffffff', '#d0d0d0', '#9a9a9a', '#ff2e55'], text: '#ffffff', style: { glow: false, grain: true } },
+  gold: { bg: '#0d0a05', ring: '#f5d27a', rings: ['#f5d27a', '#e0b250', '#c9973a', '#ffe9a8'], balls: ['#fff4d1', '#ffd75e', '#ffb300', '#e0b250', '#fff9e6', '#c9973a'], text: '#ffe9a8', font: 'serif', style: { ballStyle: '3d', glow: true } },
+  toxic: { bg: '#071006', ring: '#b6ff3b', rings: ['#b6ff3b', '#7cff6b', '#39ff14', '#d4ff00'], balls: ['#f4ff61', '#39ff14', '#ff2bd6', '#00ffd0', '#d4ff00', '#ffffff'], text: '#d4ff9a', style: { glow: true } },
+  sakura: { bg: '#fff0f5', ring: '#d16b8f', rings: ['#ffb7c5', '#ff8fab', '#f7a8c4', '#e5989b', '#ffcad4'], balls: ['#d6336c', '#f783ac', '#9c36b5', '#e8590c', '#5c7cfa', '#2b8a3e'], text: '#7a2048', font: 'rounded', style: { glow: false, ballStyle: 'glossy' } },
+  ice: { bg: '#06141f', ring: '#dff6ff', rings: ['#dff6ff', '#a9def9', '#7cc6fe', '#c4f1ff'], balls: ['#ffffff', '#a9def9', '#e4c1f9', '#7cc6fe', '#d0f4de', '#fcf6bd'], text: '#e8f7ff', style: { ballStyle: 'glass', glow: true } },
+  lava: { bg: '#120402', ring: '#ff5a1f', rings: ['#ff2e00', '#ff5a1f', '#ff9500', '#ffcc00'], balls: ['#fff1a8', '#ffcc00', '#ff5a1f', '#ffe6d5', '#ff9500', '#ff2e00'], text: '#ffd2a6', style: { glow: true, bloom: true } },
+  vaporwave: { bg: '#1a0b2e', ring: '#ff71ce', rings: ['#ff71ce', '#01cdfe', '#05ffa1', '#b967ff', '#fffb96'], balls: ['#fffb96', '#01cdfe', '#ff71ce', '#05ffa1', '#b967ff', '#ffffff'], text: '#fffb96', font: 'condensed', style: { backdrop: 'grid' } },
+  candy: { bg: '#2b0a3d', ring: '#ffe3f1', rings: ['#ff4d9d', '#ffd23f', '#7cff6b', '#4dd4ff', '#c77dff'], balls: ['#ff4d9d', '#ffd23f', '#4dd4ff', '#7cff6b', '#c77dff', '#ff9f1c'], text: '#ffffff', font: 'rounded', style: { ballStyle: 'glossy' } },
+  paper: { bg: '#f4efe6', ring: '#1b1b1b', rings: ['#1d3557', '#e63946', '#2a9d8f', '#f4a261', '#264653'], balls: ['#e63946', '#1d3557', '#2a9d8f', '#f4a261', '#6d597a', '#264653'], text: '#1b1b1b', font: 'serif', style: { glow: false, grain: true } },
+  midnight: { bg: '#070a1a', ring: '#c9d6ff', rings: ['#7b8cff', '#a6b4ff', '#5865f2', '#c9d6ff'], balls: ['#ffe066', '#ffffff', '#ff8fab', '#7bffd0', '#a6b4ff', '#ffb86b'], text: '#e6ebff', style: { backdrop: 'stars' } },
+  forest: { bg: '#0b1a12', ring: '#cfe8c4', rings: ['#52b788', '#74c69d', '#95d5b2', '#2d6a4f', '#b7e4c7'], balls: ['#ffd166', '#f4a261', '#ffffff', '#e76f51', '#b7e4c7', '#ffb4a2'], text: '#e9f5db' },
+  retro: { bg: '#0b0f0b', ring: '#33ff66', rings: ['#33ff66', '#ffcc33', '#ff3366', '#33ccff'], balls: ['#ffcc33', '#ff3366', '#33ccff', '#33ff66', '#cc66ff', '#ff9933'], text: '#33ff66', font: 'mono', style: { scanlines: true, glow: false } },
+};
+
+/** Racers for "versus": names, colors and (optionally) emoji. */
+const RACERS: { labels: string[]; colors: string[]; emojis?: string[] }[] = [
+  { labels: ['Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Pink', 'White'], colors: ['#ff3b5c', '#3b8bff', '#2ee66b', '#ffd23f', '#b25cff', '#ff9f1c', '#ff7ac8', '#f2f2f2'] },
+  { labels: ['Cat', 'Dog', 'Frog', 'Fox', 'Panda', 'Tiger', 'Pig', 'Monkey'], colors: ['#ffb3c6', '#ffd6a5', '#b9fbc0', '#ffc09f', '#e5e5e5', '#ffe066', '#ffc8dd', '#d4a373'], emojis: ['🐱', '🐶', '🐸', '🦊', '🐼', '🐯', '🐷', '🐵'] },
+  { labels: ['Apple', 'Orange', 'Lemon', 'Grape', 'Peach', 'Melon', 'Cherry', 'Kiwi'], colors: ['#ff5c5c', '#ffa94d', '#ffe066', '#b197fc', '#ffc9a8', '#8ce99a', '#ff8787', '#a9e34b'], emojis: ['🍎', '🍊', '🍋', '🍇', '🍑', '🍉', '🍒', '🥝'] },
+  { labels: ['1', '2', '3', '4', '5', '6', '7', '8'], colors: ['#ff4d6d', '#4dd4ff', '#ffd23f', '#7cff6b', '#c77dff', '#ff9f1c', '#ff7ac8', '#f2f2f2'], emojis: ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣'] },
+];
+
+/** Repaint a raw scene in a named palette: style colors, text, and every entity's own colors (teams keep theirs). */
+function repaint(s: Raw, name: string): void {
+  const pal = PALETTES[name];
+  if (!pal) throw new Error(`palette: unknown palette "${name}". Available: ${Object.keys(PALETTES).join(', ')}`);
+  const style = obj(s, 'style');
+  Object.assign(style, { background: pal.bg, ringColor: pal.ring, palette: [...pal.balls] }, structuredClone(pal.style ?? {}));
+  delete style.theme;
+  const overlay = obj(s, 'overlay');
+  overlay.textColor = pal.text;
+  if (pal.font) overlay.font = pal.font;
+  let ring = 0;
+  let ball = 0;
+  const nextRing = () => pal.rings[ring++ % pal.rings.length];
+  for (const e of (s.entities ?? []) as Raw[]) {
+    if (e.type === 'ball' || e.type === 'emitter' || e.type === 'pendulum') {
+      if (e.team || e.teams) continue;
+      if (e.colors) e.colors = e.colors.map(() => pal.balls[ball++ % pal.balls.length]);
+      else if (e.color) e.color = pal.balls[ball++ % pal.balls.length];
+    } else if (e.type === 'nested' || e.type === 'strata' || e.type === 'brickwall') {
+      e.colors = e.type === 'strata' ? pal.rings.slice(0, 4) : [...pal.rings];
+      if (e.type === 'strata' && e.fadeTo) e.fadeTo = pal.bg;
+    } else if (e.type === 'ring' || e.type === 'polygon') {
+      if (e.color) e.color = nextRing();
+    } else if (e.type === 'stalker' || e.type === 'zone' || e.type === 'territory' || e.type === 'force' || e.type === 'portal') {
+      continue;
+    } else if (e.colors) e.colors = e.colors.map(() => nextRing());
+    else if (e.color) e.color = nextRing();
+  }
+}
 
 export const MODIFIERS: Record<string, ModifierDef> = {
   'grow-on-bounce': {
@@ -263,7 +321,7 @@ export const MODIFIERS: Record<string, ModifierDef> = {
         const endOn = s.duration?.endOn ?? 'firstEscape';
         const gapped = (s.entities ?? []).some((e: Raw) => (e.type === 'ring' && e.gaps?.length) || e.type === 'nested');
         clock.rush =
-          gapped && (endOn === 'firstEscape' || endOn === 'allEscaped')
+          gapped && (endOn === 'firstEscape' || endOn === 'allEscaped' || endOn === 'firstOut')
             ? [{ do: 'shrinkGap', amount: -3 }]
             : [{ do: 'speedUp', factor: 1.06, max: 3200 }];
       }
@@ -490,6 +548,83 @@ export const MODIFIERS: Record<string, ModifierDef> = {
     description: 'The camera is never quite level: it slowly tilts, drifts and breathes.',
     params: { amount: { default: 0.6, description: '0–1' } },
     apply: (s, p) => (obj(s, 'camera').unease = Math.max(0, Math.min(1, p.amount))),
+  },
+  // ---- quick-setting looks, sounds and twists ---------------------------------------------
+  palette: {
+    description: 'Repaint everything in a named palette (background, rings, balls, text), over the scene’s own colors: neon, pastel, sunset, ocean, mono, gold, toxic, sakura, ice, lava, vaporwave, candy, paper, midnight, forest, retro.',
+    params: { name: { default: 'neon', description: 'which palette' } },
+    apply: (s, p) => repaint(s, String(p.name)),
+  },
+  versus: {
+    description: 'Which one gets out first? The scene’s ball becomes a race between named, colored balls (or animals, fruit, numbers). The first ball out of every ring wins.',
+    params: { count: { default: 2, description: 'how many balls race (2–8)' }, set: { default: 0, description: '0 colors, 1 animals, 2 fruit, 3 numbers' } },
+    apply: (s, p) => {
+      const ball = balls(s).find((b) => (b.count ?? 1) > 0 && !b.team && !b.teams);
+      if (!ball) return;
+      const n = Math.max(2, Math.min(8, Math.round(p.count)));
+      const set = RACERS[Math.abs(Math.round(p.set)) % RACERS.length];
+      ball.count = n;
+      ball.colors = set.colors.slice(0, n);
+      ball.labels = set.labels.slice(0, n);
+      if (set.emojis) ball.emojis = set.emojis.slice(0, n);
+      ball.spread = Math.max(ball.spread ?? 0, (ball.radius ?? 22) * 3);
+      delete ball.color;
+      delete ball.direction;
+      const duration = obj(s, 'duration');
+      const ringCount = (s.entities ?? []).filter((e: Raw) => e.type === 'ring' || e.type === 'polygon').length + (s.entities ?? []).reduce((n: number, e: Raw) => n + (e.type === 'nested' || e.type === 'strata' ? 2 : 0), 0);
+      if (duration.endOn === 'allEscaped' || duration.endOn === undefined || (duration.endOn === 'firstEscape' && ringCount > 1)) duration.endOn = ringCount > 1 ? 'firstOut' : 'firstEscape';
+      obj(s, 'overlay').winner = true;
+      const audio = obj(s, 'audio');
+      if (audio.rhythmLock) audio.rhythmLock = false;
+    },
+  },
+  'ball-size': {
+    description: 'Every ball (and the template for spawned ones) grows or shrinks by a factor. Bigger balls fit through fewer gaps.',
+    params: { factor: { default: 1.5, description: 'radius multiplier' } },
+    apply: (s, p) => {
+      for (const b of balls(s)) b.radius = Math.max(2, Math.round((b.radius ?? 22) * p.factor * 10) / 10);
+    },
+  },
+  hype: {
+    description: 'A big finish: a 3-2-1 intro, slow motion into the climax, a bass drop, confetti, bloom and screen shake.',
+    params: { slowmo: { default: 1.6, description: 'seconds of slow motion at the climax' } },
+    apply: (s, p) => {
+      Object.assign(obj(s, 'camera'), { countdown: 3, slowmo: p.slowmo, slowmoFactor: 0.3, shake: Math.max(1.2, obj(s, 'camera').shake ?? 0) });
+      Object.assign(obj(s, 'style'), { confetti: true, bloom: true, chromatic: true });
+      obj(s, 'audio').climax = 'drop';
+    },
+  },
+  asmr: {
+    description: 'ASMR: soft, close, wooden and glassy taps in a small room, no music bed or big hits, long silky trails.',
+    params: { instrument: { default: 'kalimba', description: 'kalimba, marimba, glass, pop or bell' } },
+    apply: (s, p) => {
+      const audio = obj(s, 'audio');
+      Object.assign(audio, { instrument: p.instrument, reverb: 0.22, drone: 'none', climax: 'none', escapeStyle: 'classic', burst: 'none', volume: Math.min(audio.volume ?? 0.7, 0.62), bounceSpacing: Math.max(audio.bounceSpacing ?? 0, 0.05) });
+      Object.assign(obj(s, 'style'), { trail: 0.9, trailStyle: 'ribbon', glitch: false, chromatic: false, scanlines: false });
+      obj(s, 'camera').shake = 0;
+    },
+  },
+  arcade: {
+    description: '8-bit arcade: chiptune bleeps, a green-screen palette, scanlines, blocky dots for trails and a mono font.',
+    params: {},
+    apply: (s) => {
+      repaint(s, 'retro');
+      const audio = obj(s, 'audio');
+      Object.assign(audio, { instrument: 'chip', reverb: 0.1 });
+      Object.assign(obj(s, 'style'), { trailStyle: 'dots', ballStyle: 'flat', glow: false, bloom: false, scanlines: true, ringStyle: 'segments' });
+      obj(s, 'overlay').font = 'mono';
+    },
+  },
+  lofi: {
+    description: 'Lo-fi: a soft, slightly flat piano in a warm room, dusky colors, film grain and a vignette. Beats to escape to.',
+    params: {},
+    apply: (s) => {
+      repaint(s, 'sunset');
+      const audio = obj(s, 'audio');
+      Object.assign(audio, { instrument: 'piano', transpose: (audio.transpose ?? 0) - 3, reverb: 0.45, volume: Math.min(audio.volume ?? 0.7, 0.65), climax: 'none', drone: 'none' });
+      Object.assign(obj(s, 'style'), { grain: true, vignette: true, bloom: true, glow: false, trailStyle: 'ribbon', backdrop: 'none' });
+      obj(s, 'overlay').font = 'serif';
+    },
   },
   countdown: {
     description: 'A 3-2-1-GO intro with the run frozen.',

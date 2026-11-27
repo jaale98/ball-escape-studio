@@ -1,0 +1,70 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "The last hider makes it with a split second left.",
+      "seed": 70,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Eight hiders",
+      "emoji": "👥",
+      "kind": "twist",
+      "note": "Eight kids hiding instead of five.",
+      "seed": 65,
+      "set": {
+        "entities.32.count": 8
+      },
+      "patch": {
+        "overlay": {
+          "title": "Eight hide. It seeks."
+        }
+      }
+    },
+    {
+      "name": "VHS tape",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "Found footage of the game: scanlines, hum and glitches.",
+      "seed": 13,
+      "modifiers": [
+        "vhs",
+        {
+          "use": "unease",
+          "amount": 0.3
+        }
+      ]
+    },
+    {
+      "name": "Flashlights",
+      "emoji": "🔦",
+      "kind": "twist",
+      "note": "Bigger pools of light: you see more of the room, and more of it.",
+      "seed": 113,
+      "patch": {
+        "style": {
+          "light": 200,
+          "darkness": 0.9
+        }
+      }
+    },
+    {
+      "name": "Heartbeat",
+      "emoji": "💓",
+      "kind": "vibe",
+      "note": "A heartbeat that races as it gets close, and single-frame words.",
+      "seed": 221,
+      "modifiers": [
+        "heartbeat",
+        {
+          "use": "subliminal",
+          "set": 3
+        }
+      ]
+    }
+  ]
+}

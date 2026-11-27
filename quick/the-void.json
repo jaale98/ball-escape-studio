@@ -1,0 +1,61 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "The last one falls in with a split second left.",
+      "seed": 307,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Hungrier",
+      "emoji": "🕳️",
+      "kind": "twist",
+      "note": "The void grows stronger faster.",
+      "seed": 37,
+      "set": {
+        "modifiers.0.grow": 1.075
+      }
+    },
+    {
+      "name": "VHS tape",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "Found on a tape: scanlines, hum, a PLAY stamp and glitches.",
+      "seed": 68,
+      "modifiers": [
+        "vhs",
+        {
+          "use": "unease",
+          "amount": 0.3
+        }
+      ]
+    },
+    {
+      "name": "Toxic void",
+      "emoji": "☣️",
+      "kind": "look",
+      "note": "A sickly green void.",
+      "seed": 95,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "toxic"
+        }
+      ]
+    },
+    {
+      "name": "Dreamcore",
+      "emoji": "☁️",
+      "kind": "vibe",
+      "note": "Slowed and reverbed: pastel haze, long trails, a huge washed-out room.",
+      "seed": 105,
+      "modifiers": [
+        "dreamcore"
+      ]
+    }
+  ]
+}

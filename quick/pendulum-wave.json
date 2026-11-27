@@ -1,0 +1,69 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Thirty pendulums",
+      "emoji": "🌊",
+      "kind": "twist",
+      "note": "Thirty pendulums instead of fifteen.",
+      "seed": 1,
+      "set": {
+        "entities.0.count": 30
+      }
+    },
+    {
+      "name": "Gold",
+      "emoji": "🥇",
+      "kind": "look",
+      "note": "Gold bobs with bells.",
+      "seed": 1,
+      "patch": {
+        "audio": {
+          "instrument": "bell"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "gold"
+        }
+      ]
+    },
+    {
+      "name": "ASMR",
+      "emoji": "🎧",
+      "kind": "vibe",
+      "note": "Soft wooden taps as the wave lines up.",
+      "seed": 1,
+      "modifiers": [
+        {
+          "use": "asmr",
+          "instrument": "marimba"
+        }
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 1,
+      "modifiers": [
+        "lofi"
+      ]
+    },
+    {
+      "name": "Neon",
+      "emoji": "🌃",
+      "kind": "look",
+      "note": "Neon bobs and bloom.",
+      "seed": 1,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "neon"
+        }
+      ]
+    }
+  ]
+}

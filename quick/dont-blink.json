@@ -1,0 +1,70 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "It gets out with a split second left.",
+      "seed": 246,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Longer blinks",
+      "emoji": "😑",
+      "kind": "twist",
+      "note": "It moves faster in the dark.",
+      "seed": 218,
+      "set": {
+        "entities.1.speed": 620
+      }
+    },
+    {
+      "name": "Two of you",
+      "emoji": "🆚",
+      "kind": "twist",
+      "note": "Two balls, one thing in the dark. First one out wins.",
+      "seed": 395,
+      "modifiers": [
+        {
+          "use": "versus",
+          "count": 2,
+          "set": 0
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "It only needs one of you."
+        }
+      }
+    },
+    {
+      "name": "VHS tape",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "Found on a tape: scanlines, hum, a PLAY stamp and glitches.",
+      "seed": 374,
+      "modifiers": [
+        "vhs",
+        {
+          "use": "unease",
+          "amount": 0.3
+        }
+      ]
+    },
+    {
+      "name": "Black and white",
+      "emoji": "⬛",
+      "kind": "look",
+      "note": "Drained of color, like old film.",
+      "seed": 298,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "mono"
+        }
+      ]
+    }
+  ]
+}

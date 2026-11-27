@@ -1,0 +1,66 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Thirty ghosts",
+      "emoji": "🦋",
+      "kind": "twist",
+      "note": "Thirty copies a millionth of a degree apart instead of twelve.",
+      "seed": 597,
+      "set": {
+        "modifiers.0.copies": 30
+      },
+      "patch": {
+        "overlay": {
+          "title": "It starts as one dot. Then 30."
+        }
+      }
+    },
+    {
+      "name": "Neon",
+      "emoji": "🌃",
+      "kind": "look",
+      "note": "Neon ghosts and bloom.",
+      "seed": 595,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "neon"
+        }
+      ]
+    },
+    {
+      "name": "Rainbow",
+      "emoji": "🌈",
+      "kind": "vibe",
+      "note": "Every ghost drifts through the rainbow.",
+      "seed": 542,
+      "modifiers": [
+        "rainbow"
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 96,
+      "modifiers": [
+        "lofi"
+      ]
+    },
+    {
+      "name": "ASMR",
+      "emoji": "🎧",
+      "kind": "vibe",
+      "note": "Soft glassy taps as the ghosts drift apart.",
+      "seed": 18,
+      "modifiers": [
+        {
+          "use": "asmr",
+          "instrument": "glass"
+        }
+      ]
+    }
+  ]
+}

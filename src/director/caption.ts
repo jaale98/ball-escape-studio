@@ -12,7 +12,7 @@ const TAGS: [RegExp | ((s: Scene) => boolean), string[]][] = [
   [(s) => s.audio.melody.startsWith('midi:') || s.audio.rhythmLock, ['#music', '#asmr']],
   [(s) => s.duration.trimStart > 0, ['#loop', '#infiniteloop']],
   [(s) => s.entities.some((e) => e.type === 'ball' && e.frozen), ['#chainreaction']],
-  [(s) => s.duration.endOn === 'firstEscape' || s.duration.endOn === 'allEscaped', ['#canitescape']],
+  [(s) => s.duration.endOn === 'firstEscape' || s.duration.endOn === 'allEscaped' || s.duration.endOn === 'firstOut', ['#canitescape']],
   [(s) => s.teams.length > 1, ['#whowins', '#teams']],
   [(s) => s.entities.some((e) => e.type === 'territory' && e.layout !== 'paint'), ['#pongwars']],
   [(s) => s.teams.some((t) => /rock|paper|scissors/i.test(t.name)), ['#rockpaperscissors']],
@@ -38,7 +38,7 @@ export interface Caption {
 export function caption(scene: Scene, facts: string[] = [], winner = ''): Caption {
   const hook = scene.overlay.title?.trim() || scene.title;
   const lines: string[] = [];
-  if (scene.duration.endOn === 'lastStanding' || scene.duration.endOn === 'firstEscape' || scene.duration.endOn === 'finish') {
+  if (scene.duration.endOn === 'lastStanding' || scene.duration.endOn === 'firstEscape' || scene.duration.endOn === 'firstOut' || scene.duration.endOn === 'finish') {
     const names = scene.entities.flatMap((e) => (e.type === 'ball' && e.labels ? e.labels.slice(0, e.count) : []));
     if (names.length > 1) lines.push(`${names.join(' vs ')}. Pick one before it ends.`);
     else lines.push('Watch till the end.');

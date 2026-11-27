@@ -1,0 +1,67 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "The last moon falls in with a split second left.",
+      "seed": 235,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Hungrier",
+      "emoji": "🕳️",
+      "kind": "twist",
+      "note": "The black hole grows stronger faster.",
+      "seed": 18,
+      "set": {
+        "modifiers.0.grow": 1.075
+      },
+      "patch": {
+        "overlay": {
+          "title": "It gets hungrier every second"
+        }
+      }
+    },
+    {
+      "name": "Golden moons",
+      "emoji": "🌕",
+      "kind": "look",
+      "note": "Gold moons around a black hole, with bells.",
+      "seed": 60,
+      "patch": {
+        "audio": {
+          "instrument": "bell"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "gold"
+        }
+      ]
+    },
+    {
+      "name": "Dreamcore",
+      "emoji": "☁️",
+      "kind": "vibe",
+      "note": "Slowed and reverbed: pastel haze, long trails, a huge washed-out room.",
+      "seed": 103,
+      "modifiers": [
+        "dreamcore"
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 159,
+      "modifiers": [
+        "hype"
+      ]
+    }
+  ]
+}

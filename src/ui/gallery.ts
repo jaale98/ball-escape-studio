@@ -17,6 +17,8 @@ export interface GalleryHooks {
   open(name: string): void;
   /** Run a file operation on the dev server; returns the resulting scene name. */
   op(op: 'derive' | 'duplicate' | 'rename' | 'delete', name: string, to?: string): Promise<string>;
+  /** How many quick settings a scene has (quick/<name>.json). */
+  quickCount?(name: string): number;
 }
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -137,6 +139,8 @@ function card(s: SceneEntry, kids: number): HTMLElement {
   if (raw.extends) tags.push(`builds on ${raw.extends}`);
   if (raw.audio?.rhythmLock) tags.push('rhythm lock');
   if (kids) tags.push(`${kids} remixes/matches`);
+  const quick = hooks.quickCount?.(s.name) ?? 0;
+  if (quick) tags.push(`${quick} quick settings`);
   meta.textContent = tags.join(' · ');
   const actions = document.createElement('div');
   actions.className = 'g-actions';

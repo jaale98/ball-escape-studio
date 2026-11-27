@@ -1,0 +1,69 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "It finds the corner with a split second left.",
+      "seed": 58,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Paper",
+      "emoji": "📄",
+      "kind": "look",
+      "note": "A clean paper look instead of the retro screen.",
+      "seed": 300,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "paper"
+        }
+      ]
+    },
+    {
+      "name": "Big logo",
+      "emoji": "🔷",
+      "kind": "twist",
+      "note": "A bigger logo finds the corner sooner: a 13 s clock.",
+      "seed": 122,
+      "modifiers": [
+        {
+          "use": "ball-size",
+          "factor": 1.3
+        }
+      ],
+      "patch": {
+        "clock": {
+          "seconds": 13,
+          "final": 4
+        },
+        "overlay": {
+          "title": "13 seconds to hit the corner"
+        }
+      }
+    },
+    {
+      "name": "VHS",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "The screensaver, recorded off a TV at 3 a.m.",
+      "seed": 58,
+      "modifiers": [
+        "vhs"
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion as it reaches the corner, a bass drop and confetti.",
+      "seed": 58,
+      "modifiers": [
+        "hype"
+      ]
+    }
+  ]
+}

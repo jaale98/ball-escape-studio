@@ -1,0 +1,64 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Whirlpool",
+      "emoji": "🌊",
+      "kind": "look",
+      "note": "Ocean blues: a whirlpool down the drain.",
+      "seed": 201,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "ocean"
+        }
+      ]
+    },
+    {
+      "name": "Neon drain",
+      "emoji": "🌃",
+      "kind": "look",
+      "note": "Two neon streams spiral into the drain.",
+      "seed": 201,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "neon"
+        }
+      ]
+    },
+    {
+      "name": "ASMR",
+      "emoji": "🎧",
+      "kind": "vibe",
+      "note": "Soft wooden taps, no music bed, silky trails. Headphones on.",
+      "seed": 201,
+      "modifiers": [
+        {
+          "use": "asmr",
+          "instrument": "kalimba"
+        }
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 201,
+      "modifiers": [
+        "lofi"
+      ]
+    },
+    {
+      "name": "Rainbow drain",
+      "emoji": "🌈",
+      "kind": "vibe",
+      "note": "Every bead drifts through the rainbow.",
+      "seed": 201,
+      "modifiers": [
+        "rainbow"
+      ]
+    }
+  ]
+}

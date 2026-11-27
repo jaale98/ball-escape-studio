@@ -331,6 +331,17 @@ export function deepMerge(base: unknown, over: unknown): unknown {
   return structuredClone(over);
 }
 
+/** Set a value at a dotted path ("entities.1.speed"), creating objects on the way. */
+export function setPath(obj: Raw, path: string, value: unknown): void {
+  const parts = path.split('.');
+  let cur: Raw = obj;
+  for (const p of parts.slice(0, -1)) {
+    if (cur[p] === undefined || cur[p] === null) cur[p] = {};
+    cur = cur[p];
+  }
+  cur[parts[parts.length - 1]] = value;
+}
+
 /** Follow "extends" chains and merge. Keeps "modifiers" from every level (parent first). */
 export function mergeSource(name: string, sources: Record<string, unknown>, seen: string[] = []): Raw {
   if (seen.includes(name)) throw new Error(`extends: cycle ${[...seen, name].join(' → ')}`);
@@ -412,20 +423,22 @@ export function resolveScene(name: string, sources: Record<string, unknown>, ove
 // ---- Authoring schema --------------------------------------------------------
 
 /** The source file format (for JSON Schema generation / editor autocomplete). */
+/** A "modifiers" list (scenes and quick settings). */
+export const ModifierListSchema = z
+  .array(
+    z.union([
+      z.enum(Object.keys(MODIFIERS) as [string, ...string[]]),
+      z.object({ use: z.enum(Object.keys(MODIFIERS) as [string, ...string[]]) }).catchall(z.union([z.number(), z.boolean(), z.string()])),
+    ]),
+  )
+  .describe(Object.entries(MODIFIERS).map(([k, m]) => `${k}: ${m.description}`).join('\n'));
+
 export const SourceSchema = SceneSchema.omit({ entities: true })
   .partial()
   .extend({
     $schema: z.string().optional(),
     extends: z.string().optional().describe('Inherit from another scene (file name without .json).'),
-    modifiers: z
-      .array(
-        z.union([
-          z.enum(Object.keys(MODIFIERS) as [string, ...string[]]),
-          z.object({ use: z.enum(Object.keys(MODIFIERS) as [string, ...string[]]) }).catchall(z.union([z.number(), z.boolean()])),
-        ]),
-      )
-      .optional()
-      .describe(Object.entries(MODIFIERS).map(([k, m]) => `${k}: ${m.description}`).join('\n')),
+    modifiers: ModifierListSchema.optional(),
     entities: z.array(z.union([EntitySchema, PrefabSchema])).optional(),
   })
   .strict();

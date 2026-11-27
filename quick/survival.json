@@ -1,0 +1,72 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "30-second clock",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Add a 30 s countdown: one must outlast the sweeper before zero.",
+      "seed": 175,
+      "modifiers": [
+        {
+          "use": "clock",
+          "seconds": 30,
+          "final": 5
+        }
+      ]
+    },
+    {
+      "name": "Double sweeper",
+      "emoji": "🔪",
+      "kind": "twist",
+      "note": "The sweeper spins half again as fast.",
+      "seed": 73,
+      "set": {
+        "entities.1.spin": 1.95
+      },
+      "patch": {
+        "overlay": {
+          "title": "Dodge the fast sweeper"
+        }
+      }
+    },
+    {
+      "name": "Deep blue",
+      "emoji": "🌊",
+      "kind": "look",
+      "note": "Ocean blues and a marimba.",
+      "seed": 139,
+      "patch": {
+        "audio": {
+          "instrument": "marimba"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "ocean"
+        }
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 139,
+      "modifiers": [
+        "hype"
+      ]
+    },
+    {
+      "name": "Arcade",
+      "emoji": "🕹️",
+      "kind": "vibe",
+      "note": "Chiptune bleeps, green-screen colors and scanlines.",
+      "seed": 139,
+      "modifiers": [
+        "arcade"
+      ]
+    }
+  ]
+}

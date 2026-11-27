@@ -13,6 +13,8 @@ When the user describes a video idea:
 5. To look at a frame, run in the browser page: `await studio.capture('name', 12.5)`. It saves the exact export frame at 12.5 s to `captures/name.png`; read the image to check it.
 6. Run `npm test` before finishing.
 
+7. Give a new scene quick settings: write `quick/<name>.json` with about five variations (see below) and tune them with `npm run quick -- <name> --tune`.
+
 When you are running from the studio's prompt box, extra instructions are appended (see `server/claude.ts`): you may only edit `scenes/` and run `npm run sim` / `npm test`, and you should write the scene file first so the preview updates, then validate.
 
 If `.studio/taste.md` exists, read it: it lists videos the user liked or disliked (with their notes). Lean toward what they liked.
@@ -37,6 +39,26 @@ Reaching for code is the last resort. If a format truly needs a new engine capab
 - Songs: `"melody": "midi:<name>"`. The songbook (`songs/songs.json` lists titles; source in `scripts/songbook.ts`, regenerate with `npm run songs`) has 27 public-domain pieces; songbook songs put the melody in part 0 and the bass in part 1, and `parts` defaults to the detected melody track anyway. Users can drop their own `.mid` files into `songs/`. With rhythm lock, `"backing": true` plays the other tracks in time (`backingParts`, `backingVolume`).
 - `audio.rhythmLock: true` keeps every bounce on the beat. It needs exactly one ball and a ring or polygon (gravity is fine); `rhythmLockStatus()` in `src/engine/world.ts` says whether it applies. Pick the seed with `npm run sim -- <name> --director music-sync`, since not every seed stays in time.
 - Keep `keepEnergy: true` for bouncing formats; use `keepEnergy: false` with restitution below 1 and some `friction` for things that settle (Plinko).
+
+## Quick settings
+
+- Each scene's ready-made variations live in `quick/<scene>.json` (schema `quick.schema.json`, code `src/director/quick.ts`). The Tune tab shows them as cards; picking one is a layer, never an unsaved change to the scene file.
+- Fields:
+  - `name`, `emoji`, `kind` (pace, look, sound, twist, vibe) and a one-line `note`.
+  - `patch`: deep-merged like `extends`.
+  - `set`: dotted paths, e.g. `"entities.1.count": 10` or `"modifiers.0.amount": 2.2`.
+  - `modifiers`: appended to the scene's own.
+  - `seed`, plus optional `story` and `target` for how it's judged.
+- A good set mixes kinds:
+  - A pace change: `story: "last-second"` with `target` = clock − 0.25 for a buzzer beater, or a shorter clock with higher `world.speedScale` / `spinScale`.
+  - A twist: `versus`, more balls, a stronger force, a harder gap.
+  - A look: the `palette` modifier, plus an instrument.
+  - A vibe: `lofi`, `arcade`, `asmr`, `hype`, `dreamcore`, `vhs`, `lights-out` + `heartbeat`.
+  - Song swaps for rhythm-lock scenes.
+- Give a twist a new short hook in `patch.overlay.title`.
+- `npm run quick -- <scene> --tune` picks each seed (600 candidates, never a seed the scene or a sibling already uses) and writes it back. `npm run quick` checks them all; `npm test` resolves them. Fix a WARN by changing the design (easier or harder), not by forcing a bad seed.
+- Renaming, duplicating or deleting a scene in the studio takes its quick file along.
+- `endOn: firstOut` is the first ball out of every ring (the `versus` race through nested rings).
 
 ## V2 building blocks
 
@@ -110,5 +132,6 @@ Reaching for code is the last resort. If a format truly needs a new engine capab
 - `scripts/`: `sim.ts` (headless runner and seed search), `determinism.ts` (`npm test`), `schema.ts`, `make-midi.ts`.
 - `server/studio.ts`: dev-only endpoints (captures, Save to file, the AI prompt box, version history, ratings). `server/claude.ts`: runs `claude -p` on the user's plan and turns its stream into studio events.
 - `src/scenes.ts`: scene sources with hot updates (scene edits never reload the page). `src/ui/assistant.ts`: prompt box. `src/ui/history.ts`: history panel and Like/Dislike.
+- `quick/<scene>.json`: quick settings; `src/quick.ts` loads them with hot updates, `src/ui/quick.ts` draws the cards, `scripts/quick.ts` checks and tunes them.
 - `.studio/` (gitignored): `history/<scene>/` snapshots of every scene version, `taste.md` likes and dislikes.
 - `npm run eval:ai`: runs 10 scene requests through the prompt-box path and reports how many produce valid scenes and how fast.

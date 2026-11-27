@@ -1,0 +1,69 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "The last brick falls with a split second on the clock.",
+      "seed": 17,
+      "story": "last-second",
+      "target": 39.75
+    },
+    {
+      "name": "Ten balls",
+      "emoji": "💥",
+      "kind": "twist",
+      "note": "Ten balls instead of five on a 25 s clock: a faster demolition.",
+      "seed": 435,
+      "set": {
+        "entities.2.count": 10
+      },
+      "patch": {
+        "clock": {
+          "seconds": 25,
+          "final": 5
+        },
+        "overlay": {
+          "title": "Ten balls. 25 seconds."
+        }
+      }
+    },
+    {
+      "name": "William Tell",
+      "emoji": "🎺",
+      "kind": "sound",
+      "note": "The William Tell gallop on a bright piano.",
+      "seed": 3,
+      "patch": {
+        "audio": {
+          "melody": "midi:william-tell",
+          "instrument": "piano"
+        }
+      }
+    },
+    {
+      "name": "Pastel",
+      "emoji": "🎀",
+      "kind": "look",
+      "note": "Soft pastel bricks and glossy balls.",
+      "seed": 67,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "pastel"
+        }
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 72,
+      "modifiers": [
+        "hype"
+      ]
+    }
+  ]
+}

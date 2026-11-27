@@ -1,0 +1,78 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Fast spread",
+      "emoji": "🦠",
+      "kind": "twist",
+      "note": "Every touch spreads it more easily, on a 25 s clock.",
+      "seed": 397,
+      "set": {
+        "modifiers.0.chance": 0.4
+      },
+      "patch": {
+        "clock": {
+          "seconds": 25,
+          "final": 5
+        },
+        "overlay": {
+          "title": "It spreads faster now."
+        }
+      }
+    },
+    {
+      "name": "Fifty people",
+      "emoji": "👥",
+      "kind": "twist",
+      "note": "Fifty people in the dark, one infected.",
+      "seed": 8,
+      "set": {
+        "entities.1.count": 50,
+        "entities.1.radius": 17,
+        "modifiers.0.chance": 0.1
+      },
+      "patch": {
+        "overlay": {
+          "title": "Fifty people. One cough."
+        }
+      }
+    },
+    {
+      "name": "Lights on",
+      "emoji": "💡",
+      "kind": "twist",
+      "note": "The same outbreak with the lights on: watch it spread.",
+      "seed": 47,
+      "patch": {
+        "style": {
+          "darkness": 0,
+          "flicker": false
+        }
+      }
+    },
+    {
+      "name": "VHS tape",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "Security-camera footage: scanlines, hum and glitches.",
+      "seed": 47,
+      "modifiers": [
+        "vhs",
+        {
+          "use": "unease",
+          "amount": 0.3
+        }
+      ]
+    },
+    {
+      "name": "Heartbeat",
+      "emoji": "💓",
+      "kind": "vibe",
+      "note": "A heartbeat that races as the clock runs out.",
+      "seed": 47,
+      "modifiers": [
+        "heartbeat"
+      ]
+    }
+  ]
+}

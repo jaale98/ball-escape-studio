@@ -3,6 +3,7 @@
  *
  *   POST /__studio/capture?name=     save an image to captures/
  *   POST /__studio/scene?name=       overwrite scenes/<name>.json ("Save to file")
+ *   POST /__studio/quick?name=       write quick/<name>.json (the scene's quick settings; the scene file is untouched)
  *   POST /__studio/ai                run Claude Code on a prompt; streams NDJSON AiEvents
  *   GET  /__studio/history?name=     versions of a scene, newest first
  *   POST /__studio/history/restore   { name, id } write an old version back (as a new version)
@@ -16,6 +17,8 @@
  *   GET  /__studio/exports           past exports (from exports/log.csv)
  *   POST /__studio/reveal            { file } show an export (or the folder) in Finder / Explorer
  *   POST /__studio/scene-op          { op: derive|duplicate|rename|delete, name, to? }
+ *
+ * Renaming, duplicating or deleting a scene takes its quick/<name>.json along.
  *
  * Every change to a scene file (from the AI, a slider save, a restore, or your
  * editor) is snapshotted in .studio/history/<scene>/ so nothing is ever lost.
@@ -54,6 +57,7 @@ function send(res: ServerResponse, code: number, body: unknown): void {
 export function studioPlugin(): Plugin {
   let root = process.cwd();
   const scenesDir = () => resolve(root, 'scenes');
+  const quickFile = (name: string) => resolve(root, 'quick', `${name}.json`);
   const historyDir = (name: string) => resolve(root, '.studio', 'history', name);
   /** Why the next change to a scene file happens (consumed by the watcher). */
   const pendingLabels = new Map<string, string>();
@@ -140,6 +144,23 @@ export function studioPlugin(): Plugin {
         send(res, 200, { file: `scenes/${name}.json`, name });
       });
 
+      server.middlewares.use('/__studio/quick', async (req, res) => {
+        if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
+        const name = new URL(req.url ?? '', 'http://x').searchParams.get('name') ?? '';
+        if (!NAME.test(name)) return send(res, 400, { error: 'bad scene name' });
+        if (!existsSync(join(scenesDir(), `${name}.json`))) return send(res, 404, { error: `no scene ${name}` });
+        let parsed: { quick?: unknown };
+        try {
+          parsed = JSON.parse((await readBody(req)).toString('utf8'));
+        } catch {
+          return send(res, 400, { error: 'body is not JSON' });
+        }
+        if (!parsed || !Array.isArray(parsed.quick)) return send(res, 400, { error: 'expected { "quick": [...] }' });
+        mkdirSync(resolve(root, 'quick'), { recursive: true });
+        writeFileSync(quickFile(name), `${JSON.stringify({ $schema: '../quick.schema.json', quick: parsed.quick }, null, 2)}\n`);
+        send(res, 200, { file: `quick/${name}.json` });
+      });
+
       server.middlewares.use('/__studio/image', async (req, res) => {
         if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
         const raw = new URL(req.url ?? '', 'http://x').searchParams.get('name') ?? '';
@@ -197,6 +218,8 @@ export function studioPlugin(): Plugin {
           const dest = join(scenesDir(), `${made}.json`);
           pendingLabels.set(dest, op === 'derive' ? `new, building on ${name}` : `duplicated from ${name}`);
           writeFileSync(dest, `${JSON.stringify(out, null, 2)}\n`);
+          // A duplicate plays exactly the same, so its quick settings still hold.
+          if (op === 'duplicate' && existsSync(quickFile(name)) && !existsSync(quickFile(made))) writeFileSync(quickFile(made), readFileSync(quickFile(name)));
           return send(res, 200, { name: made });
         }
         if (op === 'rename') {
@@ -214,13 +237,16 @@ export function studioPlugin(): Plugin {
           pendingLabels.set(dest, `renamed from ${name}`);
           renameSync(file, dest);
           if (existsSync(historyDir(name)) && !existsSync(historyDir(to))) renameSync(historyDir(name), historyDir(to));
+          if (existsSync(quickFile(name)) && !existsSync(quickFile(to))) renameSync(quickFile(name), quickFile(to));
           return send(res, 200, { name: to });
         }
         if (op === 'delete') {
           if (extenders.length) return send(res, 409, { error: `Other scenes build on ${name}: ${extenders.map((f) => f.replace(/\.json$/, '')).join(', ')}. Delete or rename those first.` });
           const trash = resolve(root, '.studio', 'trash');
           mkdirSync(trash, { recursive: true });
-          renameSync(file, join(trash, `${name}-${Date.now()}.json`));
+          const stamp = Date.now();
+          renameSync(file, join(trash, `${name}-${stamp}.json`));
+          if (existsSync(quickFile(name))) renameSync(quickFile(name), join(trash, `${name}-${stamp}.quick.json`));
           return send(res, 200, { name });
         }
         send(res, 400, { error: 'unknown op' });

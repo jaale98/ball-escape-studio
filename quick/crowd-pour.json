@@ -1,0 +1,64 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Sand",
+      "emoji": "🏜️",
+      "kind": "look",
+      "note": "Warm desert sand through one gap.",
+      "seed": 11,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "sunset"
+        }
+      ]
+    },
+    {
+      "name": "ASMR",
+      "emoji": "🎧",
+      "kind": "vibe",
+      "note": "Soft marimba patter as the beads pour.",
+      "seed": 7,
+      "modifiers": [
+        {
+          "use": "asmr",
+          "instrument": "marimba"
+        }
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 23,
+      "modifiers": [
+        "lofi"
+      ]
+    },
+    {
+      "name": "Neon",
+      "emoji": "🌃",
+      "kind": "look",
+      "note": "Neon beads and bloom.",
+      "seed": 6,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "neon"
+        }
+      ]
+    },
+    {
+      "name": "Rainbow",
+      "emoji": "🌈",
+      "kind": "vibe",
+      "note": "Every bead drifts through the rainbow.",
+      "seed": 8,
+      "modifiers": [
+        "rainbow"
+      ]
+    }
+  ]
+}

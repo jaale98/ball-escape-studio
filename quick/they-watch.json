@@ -1,0 +1,61 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "It gets out with a split second left.",
+      "seed": 488,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "More eyes",
+      "emoji": "👁️",
+      "kind": "twist",
+      "note": "Twenty-four pairs of eyes instead of fifteen.",
+      "seed": 324,
+      "set": {
+        "entities.1.count": 24
+      }
+    },
+    {
+      "name": "VHS tape",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "Found on a tape: scanlines, hum, a PLAY stamp and glitches.",
+      "seed": 438,
+      "modifiers": [
+        "vhs",
+        {
+          "use": "unease",
+          "amount": 0.3
+        }
+      ]
+    },
+    {
+      "name": "Lights on",
+      "emoji": "💡",
+      "kind": "twist",
+      "note": "The lights come on: you can see all of them.",
+      "seed": 454,
+      "patch": {
+        "style": {
+          "darkness": 0.55,
+          "flicker": false
+        }
+      }
+    },
+    {
+      "name": "Heartbeat",
+      "emoji": "💓",
+      "kind": "vibe",
+      "note": "A heartbeat that races as the real one gets close.",
+      "seed": 15,
+      "modifiers": [
+        "heartbeat"
+      ]
+    }
+  ]
+}

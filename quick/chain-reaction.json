@@ -1,0 +1,69 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Neon",
+      "emoji": "🌃",
+      "kind": "look",
+      "note": "Neon sparks and bloom.",
+      "seed": 24,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "neon"
+        }
+      ]
+    },
+    {
+      "name": "ASMR",
+      "emoji": "🎧",
+      "kind": "vibe",
+      "note": "Soft wooden taps, no music bed, silky trails. Headphones on.",
+      "seed": 441,
+      "modifiers": [
+        {
+          "use": "asmr",
+          "instrument": "kalimba"
+        }
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 599,
+      "modifiers": [
+        "lofi"
+      ]
+    },
+    {
+      "name": "Gold",
+      "emoji": "🥇",
+      "kind": "look",
+      "note": "Gold beads waking each other, with bells.",
+      "seed": 492,
+      "patch": {
+        "audio": {
+          "instrument": "bell"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "gold"
+        }
+      ]
+    },
+    {
+      "name": "Rainbow",
+      "emoji": "🌈",
+      "kind": "vibe",
+      "note": "Every bead drifts through the rainbow.",
+      "seed": 2,
+      "modifiers": [
+        "rainbow"
+      ]
+    }
+  ]
+}

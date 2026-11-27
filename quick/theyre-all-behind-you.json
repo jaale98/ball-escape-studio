@@ -1,0 +1,61 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "It gets out with a split second left.",
+      "seed": 38,
+      "story": "last-second",
+      "target": 39.75
+    },
+    {
+      "name": "Nine of them",
+      "emoji": "👥",
+      "kind": "twist",
+      "note": "Nine shadows on the path instead of five.",
+      "seed": 50,
+      "set": {
+        "entities.3.count": 9
+      }
+    },
+    {
+      "name": "VHS tape",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "Found on a tape: scanlines, hum, a PLAY stamp and glitches.",
+      "seed": 55,
+      "modifiers": [
+        "vhs",
+        {
+          "use": "unease",
+          "amount": 0.3
+        }
+      ]
+    },
+    {
+      "name": "Toxic",
+      "emoji": "☣️",
+      "kind": "look",
+      "note": "Sickly greens deep underground.",
+      "seed": 92,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "toxic"
+        }
+      ]
+    },
+    {
+      "name": "Heartbeat",
+      "emoji": "💓",
+      "kind": "vibe",
+      "note": "A heartbeat that races as they close in.",
+      "seed": 100,
+      "modifiers": [
+        "heartbeat"
+      ]
+    }
+  ]
+}

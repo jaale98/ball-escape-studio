@@ -1,0 +1,71 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 23,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Fruit race",
+      "emoji": "🍉",
+      "kind": "twist",
+      "note": "Apple, orange and lemon bounce around the hexagon. First one out wins.",
+      "seed": 58,
+      "modifiers": [
+        {
+          "use": "versus",
+          "count": 3,
+          "set": 2
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "Which fruit escapes?"
+        }
+      }
+    },
+    {
+      "name": "Sakura",
+      "emoji": "🌸",
+      "kind": "look",
+      "note": "Cherry-blossom pinks, glossy balls and a kalimba.",
+      "seed": 24,
+      "patch": {
+        "audio": {
+          "instrument": "kalimba"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "sakura"
+        }
+      ]
+    },
+    {
+      "name": "Arcade",
+      "emoji": "🕹️",
+      "kind": "vibe",
+      "note": "Chiptune bleeps, green-screen colors and scanlines.",
+      "seed": 116,
+      "modifiers": [
+        "arcade"
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 189,
+      "modifiers": [
+        "hype"
+      ]
+    }
+  ]
+}

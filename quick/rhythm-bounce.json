@@ -1,0 +1,81 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "William Tell",
+      "emoji": "🐎",
+      "kind": "sound",
+      "note": "Six rings play the William Tell gallop.",
+      "seed": 51,
+      "patch": {
+        "audio": {
+          "melody": "midi:william-tell"
+        },
+        "overlay": {
+          "title": "Six rings play William Tell"
+        }
+      }
+    },
+    {
+      "name": "Turkish march",
+      "emoji": "🥁",
+      "kind": "sound",
+      "note": "Six rings play the Turkish March.",
+      "seed": 232,
+      "patch": {
+        "audio": {
+          "melody": "midi:turkish-march",
+          "instrument": "chip"
+        },
+        "overlay": {
+          "title": "Six rings play the Turkish March"
+        }
+      }
+    },
+    {
+      "name": "Mountain king",
+      "emoji": "⛰️",
+      "kind": "sound",
+      "note": "Six rings play In the Hall of the Mountain King.",
+      "seed": 210,
+      "patch": {
+        "audio": {
+          "melody": "midi:hall-of-the-mountain-king",
+          "instrument": "marimba"
+        },
+        "overlay": {
+          "title": "Six rings play the Mountain King"
+        }
+      }
+    },
+    {
+      "name": "Eine kleine",
+      "emoji": "🎻",
+      "kind": "sound",
+      "note": "Six rings play Eine kleine Nachtmusik.",
+      "seed": 76,
+      "patch": {
+        "audio": {
+          "melody": "midi:eine-kleine-nachtmusik",
+          "instrument": "piano"
+        },
+        "overlay": {
+          "title": "Six rings play Mozart"
+        }
+      }
+    },
+    {
+      "name": "Neon can-can",
+      "emoji": "🌃",
+      "kind": "look",
+      "note": "The can-can in neon.",
+      "seed": 151,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "neon"
+        }
+      ]
+    }
+  ]
+}

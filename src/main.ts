@@ -4,12 +4,14 @@ import { caption, captionText } from './director/caption';
 import { hasScripts, preflight } from './director/check';
 import { critique } from './director/critic';
 import { weirdPick } from './director/remix';
+import { applyQuick, type Quick, quickId, resolveQuick } from './director/quick';
 import { revealColors } from './director/reveal';
 import { direct, landingSpots, scoreOne } from './director/pool';
 import { defaultTarget, defaultTemplate, type RunScore } from './director/score';
 import { PHYSICS_HZ, type Scene } from './engine/scene';
 import { rateAt, type Timing, timingFor } from './engine/timing';
 import { mergeSource, resolveScene } from './engine/source';
+import { quickFiles, type QuickSet, quickSetsFrom } from './quick';
 import { DT, rhythmLockStatus, World } from './engine/world';
 import { canExport, exportMp4 } from './export/mp4';
 import { AB_VARIANTS, type ExportOptions } from './export/presets';
@@ -29,11 +31,18 @@ import { initLook, refreshLook } from './ui/look';
 import { initMusic, refreshMusic } from './ui/music';
 import { enqueue, enqueueVariants, initQueue } from './ui/queue';
 import { fmt, setPath, tunables } from './ui/sliders';
+import { initQuick, refreshQuick } from './ui/quick';
 import { initTimeline, jumpToClimax, setLength, setRun, setTime } from './ui/timeline';
 
 // Every JSON file in scenes/ is a scene. Edits arrive as hot updates (no page reload).
 let scenes: SceneEntry[] = entriesFrom(sceneFiles);
 let sources: Record<string, unknown> = Object.fromEntries(scenes.map((s) => [s.name, s.raw]));
+
+// Quick settings: quick/<scene>.json, a few ready-made variations per scene (never written into the scene file).
+let quickSets: Record<string, QuickSet> = quickSetsFrom(quickFiles);
+/** The quick setting being shown (a layer under the unsaved changes), or null for the scene as saved. */
+let activeQuick: Quick | null = null;
+const quickList = (): Quick[] => quickSets[shownScene]?.list ?? [];
 
 // MIDI files in songs/ can be melodies: "audio": { "melody": "midi:minuet-in-g" }.
 let songs: Record<string, string> = songUrls(songFiles);
@@ -105,6 +114,7 @@ function showTab(tab: string): void {
   for (const s of document.querySelectorAll<HTMLElement>('section.tab')) s.hidden = s.dataset.tab !== tab;
   store.set('tab', tab);
   if (tab === 'history') void refreshExports();
+  if (tab === 'tune') refreshQuick();
 }
 for (const b of document.querySelectorAll<HTMLButtonElement>('.tabs button')) b.addEventListener('click', () => showTab(b.dataset.tab!));
 showTab(store.get('tab') ?? 'create');
@@ -159,6 +169,11 @@ function updateDirty(): void {
   const labels = [...overrides.keys()].map((p) => (p === 'seed' ? 'seed' : p.split('.').slice(-1)[0]));
   $('dirty-text').textContent = n ? `${n} unsaved change${n === 1 ? '' : 's'}: ${[...new Set(labels)].slice(0, 4).join(', ')}${labels.length > 4 ? '…' : ''}` : '';
   $('dirty-text').title = [...overrides.keys()].join('\n');
+  // On top of a quick setting, Save writes into that quick setting, never the scene file.
+  $('save').textContent = activeQuick ? 'Save to quick setting' : 'Save';
+  $('save').title = activeQuick ? `Write your changes into the quick setting “${activeQuick.name}” (quick/${shownScene}.json). The scene file is not changed.` : 'Write your changes into the scene file (⌘S)';
+  const saveNew = document.getElementById('quick-save-new') as HTMLButtonElement | null;
+  if (saveNew) saveNew.disabled = n === 0;
   // The "Make it weird" note only makes sense while its change is unsaved.
   if (n === 0 && $('export-msg').textContent?.startsWith('Weird:')) $('export-msg').textContent = '';
 }
@@ -175,6 +190,7 @@ function setTweak(path: string, value: unknown, rebuild = true): void {
 async function saveChanges(): Promise<boolean> {
   const entry = currentEntry();
   if (!entry || !overrides.size) return true;
+  if (activeQuick) return saveIntoQuick(activeQuick, activeQuick);
   const merged = mergeSource(entry.name, sources);
   const child = structuredClone(entry.raw) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   const inheritedMods = ((merged.modifiers as unknown[]) ?? []).length - ((child.modifiers as unknown[]) ?? []).length;
@@ -228,7 +244,7 @@ function discardChanges(): void {
 async function confirmLeave(): Promise<boolean> {
   if (!overrides.size) return true;
   const r = await ask({
-    title: `Save your changes to “${shownScene}”?`,
+    title: activeQuick ? `Save your changes to the quick setting “${activeQuick.name}”?` : `Save your changes to “${shownScene}”?`,
     body: `You have ${overrides.size} unsaved change${overrides.size === 1 ? '' : 's'}.`,
     buttons: [
       { label: 'Save', value: 'save', primary: true },
@@ -257,6 +273,7 @@ async function openScene(name: string): Promise<void> {
   shownScene = name;
   sceneSelect.value = name;
   store.set('scene', name);
+  activeQuick = null;
   void loadScene();
 }
 
@@ -274,7 +291,7 @@ async function loadScene(rebuild = true): Promise<void> {
   $('scene-path').textContent = entry.path;
   $('scene-json').textContent = JSON.stringify(entry.raw, null, 2);
   try {
-    const resolved = resolveScene(entry.name, sources, (merged) => {
+    const resolved = resolveQuick(entry.name, sources, activeQuick, (merged) => {
       for (const [path, v] of overrides) setPath(merged, path, v);
     });
     let song = null;
@@ -315,6 +332,7 @@ async function loadScene(rebuild = true): Promise<void> {
     errorBox.hidden = true;
     if (rebuild) {
       buildSliders();
+      refreshQuick();
       void refreshHistory(entry.name);
     }
     updateDirty();
@@ -346,6 +364,7 @@ function buildSliders(): void {
   } catch {
     return;
   }
+  if (activeQuick) applyQuick(merged, activeQuick);
   for (const [path, v] of overrides) setPath(merged, path, v);
   let group = '';
   for (const t of tunables(merged)) {
@@ -630,6 +649,10 @@ document.addEventListener('keydown', (e) => {
   if (e.code === 'Space') {
     e.preventDefault();
     setPlaying(!playing);
+  } else if (/^[0-9]$/.test(e.key)) {
+    const n = Number(e.key);
+    if (n === 0) void pickQuick(null);
+    else if (quickList()[n - 1]) void pickQuick(quickList()[n - 1]);
   } else if (e.key === 'r') $('reroll').click();
   else if (e.key === 'm') toggleSound();
   else if (e.key === 'j') jumpToClimax();
@@ -667,22 +690,29 @@ zonesBox.addEventListener('change', () => {
   store.set('x-zones', zonesBox.checked ? '1' : '0');
 });
 
-function exportMeta(s: Scene, name: string) {
-  return { caption: captionText(caption(s)), info: { scene: name, seed: s.seed, speedScale: s.world.speedScale, spinScale: s.world.spinScale } };
+function exportMeta(s: Scene, name: string, quick: Quick | null = activeQuick) {
+  return { caption: captionText(caption(s)), info: { scene: currentEntry()?.name ?? name, ...(quick ? { quick: quick.name } : {}), seed: s.seed, speedScale: s.world.speedScale, spinScale: s.world.spinScale } };
 }
+
+/** The shown scene's name for export files, with the quick setting's id when one is shown. */
+function exportName(): string {
+  const name = currentEntry()?.name ?? 'scene';
+  return activeQuick ? `${name}-${quickId(activeQuick)}` : name;
+}
+const exportTitle = (s: Scene) => `${currentEntry()?.name ?? 'scene'}${activeQuick ? ` · ${activeQuick.name}` : ''} · seed ${s.seed}`;
 
 exportBtn.addEventListener('click', () => {
   if (!scene) return;
-  const name = currentEntry()?.name ?? 'scene';
-  enqueue(`${name} · seed ${scene.seed}`, `${name}-seed${scene.seed}`, scene, exportMeta(scene, name), exportOpts());
+  const name = exportName();
+  enqueue(exportTitle(scene), `${name}-seed${scene.seed}`, scene, exportMeta(scene, name), exportOpts());
   $('export-msg').textContent = 'Added to the export queue below.';
 });
 
 /** The same run (same scene, same seed) four ways: normal / TikTok-safe style × 60 / 30 fps, all with the TikTok preset. */
 function exportAB(): void {
   if (!scene) return;
-  const name = currentEntry()?.name ?? 'scene';
-  enqueueVariants(`${name} · seed ${scene.seed}`, `${name}-seed${scene.seed}`, scene, exportMeta(scene, name), AB_VARIANTS);
+  const name = exportName();
+  enqueueVariants(exportTitle(scene), `${name}-seed${scene.seed}`, scene, exportMeta(scene, name), AB_VARIANTS);
   $('export-msg').textContent = 'Queued 4 A/B variants (TikTok preset: normal / safe × 60 / 30 fps).';
 }
 $('export-ab').addEventListener('click', exportAB);
@@ -723,14 +753,19 @@ if (!store.get('welcomed')) $('welcome').hidden = false;
   /** Queue an export with explicit options, e.g. studio.exportTikTok({ fps: 30, safe: true }). Defaults: tiktok, 60 fps, current style toggle. */
   exportTikTok: (opts: Partial<ExportOptions> = {}) => {
     if (!scene) throw new Error('no scene');
-    const name = currentEntry()?.name ?? 'scene';
-    enqueue(`${name} · seed ${scene.seed}`, `${name}-seed${scene.seed}`, scene, exportMeta(scene, name), { preset: 'tiktok', fps: 60, safe: safeBox.checked, ...opts });
+    const name = exportName();
+    enqueue(exportTitle(scene), `${name}-seed${scene.seed}`, scene, exportMeta(scene, name), { preset: 'tiktok', fps: 60, safe: safeBox.checked, ...opts });
   },
   /** Queue the 4 A/B variants of the current run. */
   exportAB: () => exportAB(),
   seek: (t: number) => seek(t),
   audioInfo: () => ({ soundOn, playing, state: audio?.ctx.state ?? 'none', sampleRate: audio?.ctx.sampleRate, voicesPlayed, events: world?.events.length ?? 0, cursor: audioCursor, done: world?.done, exporting, directorOpen, seeking }),
   open: (name: string) => openScene(name),
+  /** Show a quick setting by name or id (null: the scene as saved). */
+  quick: (name: string | null) => pickQuick(name === null ? null : (quickList().find((q) => q.name === name || quickId(q) === name) ?? null)),
+  get quickSettings() {
+    return quickList().map((q) => q.name);
+  },
   /**
    * Dev server only: save a frame to captures/<name>.png. With `seconds`, renders the
    * exact export frame at that time (deterministic); without it, saves the live preview.
@@ -816,6 +851,7 @@ function mergedSource(): Record<string, unknown> {
   const entry = currentEntry();
   if (!entry) return {};
   const merged = mergeSource(entry.name, sources);
+  if (activeQuick) applyQuick(merged, activeQuick);
   for (const [path, v] of overrides) setPath(merged, path, v);
   return merged;
 }
@@ -897,6 +933,148 @@ function dependsOnChanged(name: string, before: Record<string, unknown>): boolea
   return false;
 }
 
+// ---- Quick settings ----------------------------------------------------------------------------
+
+/** Show a quick setting (null = the scene as saved). Unsaved changes are saved or discarded first. */
+async function pickQuick(q: Quick | null): Promise<void> {
+  if ((q?.name ?? null) === (activeQuick?.name ?? null) && !overrides.size) {
+    restart();
+    return;
+  }
+  if (!(await confirmLeave())) return;
+  activeQuick = q;
+  weirdLast = null;
+  void loadScene();
+}
+
+/** Resolve the shown scene with a quick setting (no unsaved changes), MIDI and pictures included. */
+async function resolveWithQuick(q: Quick | null): Promise<Scene> {
+  const s = resolveQuick(shownScene, sources, q);
+  if (s.audio.melody.startsWith('midi:') && !s.audio.notes) applySong(s.audio, await loadSong(songUrl(s.audio.melody.slice(5))));
+  await ensureImages(s);
+  return s;
+}
+
+/** Write the shown scene's quick file with old replaced by next (or removed, or added when old is null). */
+async function writeQuick(old: Quick | null, next: Quick | null): Promise<void> {
+  const list = quickList().slice();
+  const i = old ? list.findIndex((x) => x.name === old.name) : -1;
+  if (i >= 0) {
+    if (next) list[i] = next;
+    else list.splice(i, 1);
+  } else if (next) list.push(next);
+  await postQuick(list);
+  if (activeQuick && old && activeQuick.name === old.name) activeQuick = next;
+}
+
+/** Write the shown scene's whole quick file. */
+async function postQuick(list: Quick[]): Promise<void> {
+  const res = await fetch(`/__studio/quick?name=${encodeURIComponent(shownScene)}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ quick: list }) });
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? `HTTP ${res.status}. Saving needs the dev server (npm run dev).`);
+  // Show the new version right away; the file's hot update confirms it.
+  quickSets = { ...quickSets, [shownScene]: { list, error: '' } };
+}
+
+/**
+ * Fold the unsaved changes into a quick setting: the seed becomes its seed, Make it weird's
+ * modifier list becomes its modifiers (after the scene's own), everything else a dotted "set".
+ */
+function withChanges(base: Quick): Quick {
+  const q: Quick = structuredClone(base);
+  const ownMods = ((mergeSource(shownScene, sources).modifiers as unknown[]) ?? []).length;
+  for (const [path, v] of overrides) {
+    if (path === 'seed') q.seed = v as number;
+    else if (path === 'modifiers') q.modifiers = (Array.isArray(v) ? v.slice(ownMods) : []) as Quick['modifiers'];
+    else (q.set ??= {})[path] = structuredClone(v);
+  }
+  if (q.modifiers && !q.modifiers.length) delete q.modifiers;
+  return q;
+}
+
+async function saveIntoQuick(target: Quick, base: Quick): Promise<boolean> {
+  try {
+    const next = withChanges(base);
+    const isNew = !quickList().some((x) => x.name === target.name);
+    await writeQuick(isNew ? null : target, next);
+    activeQuick = next;
+    overrides.clear();
+    updateDirty();
+    $('save-msg').textContent = `Saved to the quick setting “${next.name}” (quick/${shownScene}.json). The scene file is unchanged.`;
+    setTimeout(() => ($('save-msg').textContent = ''), 4000);
+    void loadScene();
+    return true;
+  } catch (err) {
+    $('save-msg').textContent = `Save failed: ${(err as Error).message}`;
+    return false;
+  }
+}
+
+initQuick({
+  sceneName: () => shownScene,
+  list: quickList,
+  error: () => quickSets[shownScene]?.error ?? '',
+  active: () => activeQuick,
+  pick: (q) => void pickQuick(q),
+  resolve: resolveWithQuick,
+  key: (q) => `${shownScene}|${JSON.stringify(sources[shownScene] ? mergeSource(shownScene, sources) : null)}|${JSON.stringify(q)}`,
+  exportAll: (items) => {
+    const name = currentEntry()?.name ?? 'scene';
+    for (const { q, scene: s } of items) {
+      const file = q ? `${name}-${quickId(q)}` : name;
+      enqueue(`${name} · ${q ? q.name : 'original'} · seed ${s.seed}`, `${file}-seed${s.seed}`, s, exportMeta(s, file, q), exportOpts());
+    }
+    showTab('create');
+    $('export-msg').textContent = `Queued ${items.length} videos: the original and every quick setting.`;
+  },
+  hasChanges: () => overrides.size > 0,
+  saveNew: async () => {
+    if (!overrides.size) return;
+    const taken = new Set(quickList().map((q) => quickId(q)));
+    let suggestion = activeQuick ? `${activeQuick.name} 2` : 'My take';
+    for (let i = 2; taken.has(quickId({ name: suggestion })); i++) suggestion = `${activeQuick?.name ?? 'My take'} ${i}`;
+    const r = await ask({
+      title: 'Save as a quick setting',
+      body: `Your ${overrides.size} unsaved change${overrides.size === 1 ? '' : 's'}${activeQuick ? ` on top of “${activeQuick.name}”` : ''} ${overrides.size === 1 ? 'becomes' : 'become'} a quick setting for ${shownScene}. The scene file is not changed.`,
+      input: { value: suggestion, placeholder: 'Name, e.g. Neon rush' },
+      buttons: [
+        { label: 'Save', value: 'save', primary: true },
+        { label: 'Cancel', value: 'cancel' },
+      ],
+    });
+    const name = r.input.slice(0, 32);
+    if (r.value !== 'save' || !name) return;
+    if (taken.has(quickId({ name }))) {
+      $('quick-msg').textContent = `There is already a quick setting called “${name}”.`;
+      return;
+    }
+    const base: Quick = activeQuick ? { ...structuredClone(activeQuick), name, note: activeQuick.note } : { name, kind: 'twist', note: `Saved from the Tune tab: ${[...overrides.keys()].slice(0, 3).join(', ')}` };
+    await saveIntoQuick(base, base);
+  },
+  write: async (old, next) => {
+    await writeQuick(old, next);
+    void loadScene();
+  },
+  writeAll: async (list) => {
+    await postQuick(list);
+    refreshQuick();
+  },
+});
+
+window.addEventListener('quick-updated', (e) => {
+  quickSets = (e as CustomEvent<Record<string, QuickSet>>).detail;
+  if (activeQuick) {
+    const id = quickId(activeQuick);
+    const next = quickList().find((q) => quickId(q) === id) ?? null;
+    const changed = JSON.stringify(next) !== JSON.stringify(activeQuick);
+    activeQuick = next;
+    if (changed) {
+      void loadScene();
+      return;
+    }
+  }
+  refreshQuick();
+});
+
 // ---- Panels wired to the rest ----------------------------------------------------------------
 
 initAssistant({
@@ -964,6 +1142,7 @@ initExports({
 
 initGallery({
   scenes: () => scenes,
+  quickCount: (name) => quickSets[name]?.list.length ?? 0,
   sources: () => sources,
   current: () => shownScene,
   open: (name) => void openScene(name),
@@ -981,7 +1160,7 @@ initGallery({
 });
 
 const variantName = (r: RunScore) => {
-  const name = currentEntry()?.name ?? 'scene';
+  const name = exportName();
   return `${name}-seed${r.seed}${r.speed !== 1 || r.spin !== 1 ? `-v${Math.round(r.speed * 100)}-${Math.round(r.spin * 100)}` : ''}`;
 };
 

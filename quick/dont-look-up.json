@@ -1,0 +1,70 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 19,
+      "story": "last-second",
+      "target": 44.75
+    },
+    {
+      "name": "Golden hour",
+      "emoji": "🌅",
+      "kind": "look",
+      "note": "The same fall, warm sunset colors instead of black.",
+      "seed": 6,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "sunset"
+        }
+      ]
+    },
+    {
+      "name": "Lights out",
+      "emoji": "🔦",
+      "kind": "vibe",
+      "note": "Pitch black but a small light around the eye, and a heartbeat.",
+      "seed": 32,
+      "modifiers": [
+        {
+          "use": "lights-out",
+          "light": 160
+        },
+        "heartbeat"
+      ]
+    },
+    {
+      "name": "Two of you",
+      "emoji": "🆚",
+      "kind": "twist",
+      "note": "Two balls fall through 2000 rings. First one out wins.",
+      "seed": 10,
+      "modifiers": [
+        {
+          "use": "versus",
+          "count": 2,
+          "set": 0
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "Two fall. Who lands first?"
+        }
+      }
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 73,
+      "modifiers": [
+        "hype"
+      ]
+    }
+  ]
+}

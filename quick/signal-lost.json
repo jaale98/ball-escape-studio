@@ -1,0 +1,63 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 314,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Feedback loop",
+      "emoji": "🔁",
+      "kind": "vibe",
+      "note": "The tape plays inside itself, again and again.",
+      "seed": 94,
+      "modifiers": [
+        {
+          "use": "droste",
+          "levels": 3
+        }
+      ]
+    },
+    {
+      "name": "Heartbeat",
+      "emoji": "💓",
+      "kind": "vibe",
+      "note": "A heartbeat under the static that races as time runs out.",
+      "seed": 125,
+      "modifiers": [
+        "heartbeat"
+      ]
+    },
+    {
+      "name": "Lights out",
+      "emoji": "🔦",
+      "kind": "vibe",
+      "note": "The screen goes dark but for a light around the ball.",
+      "seed": 518,
+      "modifiers": [
+        {
+          "use": "lights-out",
+          "light": 200
+        }
+      ]
+    },
+    {
+      "name": "Second tape",
+      "emoji": "⬛",
+      "kind": "look",
+      "note": "A black-and-white copy of the same tape.",
+      "seed": 92,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "mono"
+        }
+      ]
+    }
+  ]
+}

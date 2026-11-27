@@ -456,9 +456,9 @@ export const SceneSchema = z
       .object({
         max: z.number().positive().default(60).describe('Hard cap in seconds.'),
         endOn: z
-          .enum(['firstEscape', 'allEscaped', 'lastStanding', 'never', 'oneTeam', 'finish', 'cleared', 'mostTerritory'])
+          .enum(['firstEscape', 'allEscaped', 'firstOut', 'lastStanding', 'never', 'oneTeam', 'finish', 'cleared', 'mostTerritory'])
           .default('firstEscape')
-          .describe('oneTeam = every ball left is on one team; finish = a ball reaches a finish zone; cleared = every brick and breakable ring is gone; mostTerritory = lock the board at max minus tail and show who owns the most cells.'),
+          .describe('firstOut = the first ball out of every container wins (a race through nested rings); oneTeam = every ball left is on one team; finish = a ball reaches a finish zone; cleared = every brick and breakable ring is gone; mostTerritory = lock the board at max minus tail and show who owns the most cells.'),
         tail: z.number().nonnegative().default(2).describe('Seconds to keep rolling after the ending event.'),
         trimStart: z.number().nonnegative().default(0).describe('Export skips this many seconds (the simulation still runs from 0). Perfect loops use it.'),
       })

@@ -1,0 +1,76 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 296,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Star peg",
+      "emoji": "⭐",
+      "kind": "twist",
+      "note": "The square becomes a spinning star. Still has to squeeze out.",
+      "seed": 367,
+      "set": {
+        "entities.1.shape": "star"
+      },
+      "patch": {
+        "overlay": {
+          "title": "Star peg. Round exit."
+        }
+      }
+    },
+    {
+      "name": "Square off",
+      "emoji": "🆚",
+      "kind": "twist",
+      "note": "Two squares fight for the same gap. First one out wins.",
+      "seed": 283,
+      "modifiers": [
+        {
+          "use": "versus",
+          "count": 2,
+          "set": 0
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "Two squares. One exit."
+        }
+      }
+    },
+    {
+      "name": "Paper cut",
+      "emoji": "📄",
+      "kind": "look",
+      "note": "Ink on paper, a serif title and a soft piano.",
+      "seed": 190,
+      "patch": {
+        "audio": {
+          "instrument": "piano"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "paper"
+        }
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 278,
+      "modifiers": [
+        "lofi"
+      ]
+    }
+  ]
+}

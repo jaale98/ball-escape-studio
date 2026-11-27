@@ -1,0 +1,67 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 137,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Lights out",
+      "emoji": "🔦",
+      "kind": "vibe",
+      "note": "The buzzing lights fail, and a heartbeat races as it gets close.",
+      "seed": 593,
+      "modifiers": [
+        {
+          "use": "lights-out",
+          "light": 210
+        },
+        "heartbeat"
+      ]
+    },
+    {
+      "name": "Found footage",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "Recorded on a camcorder that wandered in.",
+      "seed": 175,
+      "modifiers": [
+        "vhs"
+      ]
+    },
+    {
+      "name": "It’s faster",
+      "emoji": "🏃",
+      "kind": "twist",
+      "note": "It moves twice as fast. Still escapable?",
+      "seed": 232,
+      "set": {
+        "entities.1.speed": 40,
+        "entities.1.accel": 6
+      }
+    },
+    {
+      "name": "Level 1",
+      "emoji": "⬛",
+      "kind": "look",
+      "note": "A grey, drained version of the same rooms.",
+      "seed": 437,
+      "patch": {
+        "overlay": {
+          "title": "Level 1. It followed you."
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "mono"
+        }
+      ]
+    }
+  ]
+}

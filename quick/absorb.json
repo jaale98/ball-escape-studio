@@ -1,0 +1,65 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "The last marble is eaten with a split second left.",
+      "seed": 4,
+      "story": "last-second",
+      "target": 34.75
+    },
+    {
+      "name": "Deep sea",
+      "emoji": "🐟",
+      "kind": "look",
+      "note": "Ocean colors, like plankton in the deep.",
+      "seed": 120,
+      "patch": {
+        "overlay": {
+          "title": "The big fish eats the rest"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "ocean"
+        }
+      ]
+    },
+    {
+      "name": "ASMR",
+      "emoji": "🎧",
+      "kind": "vibe",
+      "note": "Soft glassy taps as the marbles merge. Headphones on.",
+      "seed": 142,
+      "modifiers": [
+        {
+          "use": "asmr",
+          "instrument": "glass"
+        }
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 149,
+      "modifiers": [
+        "hype"
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 232,
+      "modifiers": [
+        "lofi"
+      ]
+    }
+  ]
+}

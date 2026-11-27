@@ -1,0 +1,66 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 308,
+      "story": "last-second",
+      "target": 24.75
+    },
+    {
+      "name": "Double decoy",
+      "emoji": "🆚",
+      "kind": "twist",
+      "note": "Two balls leave clones in the same ring. First one out wins.",
+      "seed": 541,
+      "modifiers": [
+        {
+          "use": "versus",
+          "count": 2,
+          "set": 0
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "Two balls. Twice the decoys."
+        }
+      }
+    },
+    {
+      "name": "Neon decoys",
+      "emoji": "🌃",
+      "kind": "look",
+      "note": "Neon clones and bloom.",
+      "seed": 512,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "neon"
+        }
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 539,
+      "modifiers": [
+        "lofi"
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 218,
+      "modifiers": [
+        "hype"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Neon loop",
+      "emoji": "🌃",
+      "kind": "look",
+      "note": "A neon loop with bloom.",
+      "seed": 437,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "neon"
+        }
+      ],
+      "patch": {
+        "duration": {
+          "max": 8.825,
+          "trimStart": 2,
+          "endOn": "never",
+          "tail": 0
+        },
+        "overlay": {
+          "timer": false
+        }
+      }
+    },
+    {
+      "name": "Pastel loop",
+      "emoji": "🎀",
+      "kind": "look",
+      "note": "A soft pastel loop.",
+      "seed": 171,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "pastel"
+        }
+      ],
+      "patch": {
+        "duration": {
+          "max": 8.825,
+          "trimStart": 2,
+          "endOn": "never",
+          "tail": 0
+        },
+        "overlay": {
+          "timer": false
+        }
+      }
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "A lo-fi loop: soft piano, grain.",
+      "seed": 587,
+      "modifiers": [
+        "lofi"
+      ],
+      "patch": {
+        "duration": {
+          "max": 12.5,
+          "trimStart": 2,
+          "endOn": "never",
+          "tail": 0
+        },
+        "overlay": {
+          "timer": false
+        }
+      }
+    },
+    {
+      "name": "ASMR",
+      "emoji": "🎧",
+      "kind": "vibe",
+      "note": "A soft loop of wooden taps.",
+      "seed": 219,
+      "modifiers": [
+        {
+          "use": "asmr",
+          "instrument": "marimba"
+        }
+      ],
+      "patch": {
+        "duration": {
+          "max": 12.5,
+          "trimStart": 2,
+          "endOn": "never",
+          "tail": 0
+        },
+        "overlay": {
+          "timer": false
+        }
+      }
+    },
+    {
+      "name": "Gold loop",
+      "emoji": "🥇",
+      "kind": "look",
+      "note": "A gold loop with bells.",
+      "seed": 298,
+      "patch": {
+        "audio": {
+          "instrument": "bell"
+        },
+        "duration": {
+          "max": 8.825,
+          "trimStart": 2,
+          "endOn": "never",
+          "tail": 0
+        },
+        "overlay": {
+          "timer": false
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "gold"
+        }
+      ]
+    }
+  ]
+}

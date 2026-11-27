@@ -1,0 +1,82 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "The survivor gets out with a split second left.",
+      "seed": 300,
+      "story": "last-second",
+      "target": 29.75
+    },
+    {
+      "name": "Ten into the dark",
+      "emoji": "👥",
+      "kind": "twist",
+      "note": "Ten go in instead of six.",
+      "seed": 260,
+      "set": {
+        "entities.2.count": 10,
+        "entities.2.labels": [
+          "Ana",
+          "Bo",
+          "Cy",
+          "Dee",
+          "Eli",
+          "Fen",
+          "Gus",
+          "Hal",
+          "Ivy",
+          "Jo"
+        ]
+      },
+      "patch": {
+        "overlay": {
+          "title": "Ten go in. Only one gets out."
+        }
+      }
+    },
+    {
+      "name": "VHS tape",
+      "emoji": "📼",
+      "kind": "vibe",
+      "note": "Found on a tape: scanlines, hum, a PLAY stamp and glitches.",
+      "seed": 288,
+      "modifiers": [
+        "vhs",
+        {
+          "use": "unease",
+          "amount": 0.3
+        }
+      ]
+    },
+    {
+      "name": "Toxic",
+      "emoji": "☣️",
+      "kind": "look",
+      "note": "Sickly greens in the dark.",
+      "seed": 65,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "toxic"
+        }
+      ]
+    },
+    {
+      "name": "Heartbeat",
+      "emoji": "💓",
+      "kind": "vibe",
+      "note": "A heartbeat that races as it closes in, and a camera that won’t sit level.",
+      "seed": 176,
+      "modifiers": [
+        "heartbeat",
+        {
+          "use": "unease",
+          "amount": 0.5
+        }
+      ]
+    }
+  ]
+}

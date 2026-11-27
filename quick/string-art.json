@@ -1,0 +1,69 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Gold thread",
+      "emoji": "🥇",
+      "kind": "look",
+      "note": "Gold thread on black.",
+      "seed": 1,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "gold"
+        }
+      ]
+    },
+    {
+      "name": "Star",
+      "emoji": "⭐",
+      "kind": "twist",
+      "note": "Every line joins the bounce five back: a star instead of a web.",
+      "seed": 1,
+      "patch": {
+        "style": {
+          "lines": "star"
+        },
+        "overlay": {
+          "title": "One ball draws a star"
+        }
+      }
+    },
+    {
+      "name": "Neon",
+      "emoji": "🌃",
+      "kind": "look",
+      "note": "Neon thread and bloom.",
+      "seed": 1,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "neon"
+        }
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 1,
+      "modifiers": [
+        "lofi"
+      ]
+    },
+    {
+      "name": "Pencil",
+      "emoji": "✏️",
+      "kind": "look",
+      "note": "Pencil lines on paper.",
+      "seed": 1,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "paper"
+        }
+      ]
+    }
+  ]
+}

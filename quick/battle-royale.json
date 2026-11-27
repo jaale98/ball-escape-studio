@@ -1,0 +1,90 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "The last knockout lands with a split second on the clock.",
+      "seed": 216,
+      "story": "last-second",
+      "target": 34.75
+    },
+    {
+      "name": "Storm",
+      "emoji": "🌪️",
+      "kind": "twist",
+      "note": "The arena closes in, battle-royale style.",
+      "seed": 198,
+      "modifiers": [
+        {
+          "use": "storm",
+          "rate": 7,
+          "min": 170
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "The storm is coming"
+        }
+      }
+    },
+    {
+      "name": "Lava arena",
+      "emoji": "🌋",
+      "kind": "look",
+      "note": "A molten arena with bloom.",
+      "seed": 10,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "lava"
+        }
+      ]
+    },
+    {
+      "name": "Zoo fight",
+      "emoji": "🦁",
+      "kind": "twist",
+      "note": "Eight animals instead of colors.",
+      "seed": 23,
+      "set": {
+        "entities.1.emojis": [
+          "🦁",
+          "🐯",
+          "🐻",
+          "🐺",
+          "🦊",
+          "🐸",
+          "🐵",
+          "🐼"
+        ],
+        "entities.1.labels": [
+          "Lion",
+          "Tiger",
+          "Bear",
+          "Wolf",
+          "Fox",
+          "Frog",
+          "Monkey",
+          "Panda"
+        ]
+      },
+      "patch": {
+        "overlay": {
+          "title": "Pick your animal"
+        }
+      }
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 55,
+      "modifiers": [
+        "hype"
+      ]
+    }
+  ]
+}

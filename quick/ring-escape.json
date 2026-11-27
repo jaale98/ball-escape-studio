@@ -1,0 +1,81 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "Same scene, a run that gets out with a split second left.",
+      "seed": 272,
+      "story": "last-second",
+      "target": 34.75
+    },
+    {
+      "name": "Red vs blue",
+      "emoji": "🆚",
+      "kind": "twist",
+      "note": "Two balls race through all five rings. First one out wins.",
+      "seed": 239,
+      "modifiers": [
+        {
+          "use": "versus",
+          "count": 2,
+          "set": 0
+        }
+      ],
+      "patch": {
+        "overlay": {
+          "title": "Red or blue?"
+        }
+      }
+    },
+    {
+      "name": "Neon nights",
+      "emoji": "🌃",
+      "kind": "look",
+      "note": "Neon rings, bloom and a synth.",
+      "seed": 250,
+      "patch": {
+        "audio": {
+          "instrument": "synth"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "neon"
+        }
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 393,
+      "modifiers": [
+        "lofi"
+      ]
+    },
+    {
+      "name": "15-second sprint",
+      "emoji": "⚡",
+      "kind": "pace",
+      "note": "Everything faster on a 15 s clock: short enough to replay.",
+      "seed": 179,
+      "patch": {
+        "clock": {
+          "seconds": 15,
+          "final": 4
+        },
+        "world": {
+          "speedScale": 1.35,
+          "spinScale": 1.5
+        },
+        "overlay": {
+          "title": "15 seconds. Five rings."
+        }
+      }
+    }
+  ]
+}

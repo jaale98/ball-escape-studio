@@ -1,0 +1,74 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Sixteen pendulums",
+      "emoji": "🎛️",
+      "kind": "twist",
+      "note": "Sixteen double pendulums instead of eight.",
+      "seed": 1,
+      "set": {
+        "entities.0.count": 16
+      },
+      "patch": {
+        "overlay": {
+          "title": "When do you see sixteen?"
+        }
+      }
+    },
+    {
+      "name": "Neon",
+      "emoji": "🌃",
+      "kind": "look",
+      "note": "Neon arms and bloom.",
+      "seed": 1,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "neon"
+        }
+      ]
+    },
+    {
+      "name": "ASMR",
+      "emoji": "🎧",
+      "kind": "vibe",
+      "note": "Soft glassy chimes as the arms swing.",
+      "seed": 1,
+      "modifiers": [
+        {
+          "use": "asmr",
+          "instrument": "glass"
+        }
+      ]
+    },
+    {
+      "name": "Lo-fi",
+      "emoji": "☕",
+      "kind": "vibe",
+      "note": "Soft piano, dusky colors and film grain. Beats to escape to.",
+      "seed": 1,
+      "modifiers": [
+        "lofi"
+      ]
+    },
+    {
+      "name": "Gold",
+      "emoji": "🥇",
+      "kind": "look",
+      "note": "Gold arms with bells.",
+      "seed": 1,
+      "patch": {
+        "audio": {
+          "instrument": "bell"
+        }
+      },
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "gold"
+        }
+      ]
+    }
+  ]
+}

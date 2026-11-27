@@ -1,0 +1,93 @@
+{
+  "$schema": "../quick.schema.json",
+  "quick": [
+    {
+      "name": "Buzzer beater",
+      "emoji": "⏱️",
+      "kind": "pace",
+      "note": "The winner gets out with a split second on the clock.",
+      "seed": 69,
+      "story": "last-second",
+      "target": 19.75
+    },
+    {
+      "name": "Animal race",
+      "emoji": "🐾",
+      "kind": "twist",
+      "note": "Cat, dog, frog and fox instead of colors.",
+      "seed": 91,
+      "set": {
+        "entities.1.labels": [
+          "Cat",
+          "Dog",
+          "Frog",
+          "Fox"
+        ],
+        "entities.1.emojis": [
+          "🐱",
+          "🐶",
+          "🐸",
+          "🦊"
+        ]
+      },
+      "patch": {
+        "overlay": {
+          "title": "Pick an animal"
+        }
+      }
+    },
+    {
+      "name": "Eight racers",
+      "emoji": "🎌",
+      "kind": "twist",
+      "note": "Eight balls in the same ring: harder to call.",
+      "seed": 145,
+      "set": {
+        "entities.1.count": 8,
+        "entities.1.labels": [
+          "Red",
+          "Blue",
+          "Yellow",
+          "Green",
+          "Purple",
+          "Orange",
+          "Pink",
+          "White"
+        ],
+        "entities.1.radius": 22
+      },
+      "patch": {
+        "clock": {
+          "seconds": 10,
+          "final": 4
+        },
+        "overlay": {
+          "title": "Eight balls. 10 seconds."
+        }
+      }
+    },
+    {
+      "name": "Pastel",
+      "emoji": "🎀",
+      "kind": "look",
+      "note": "Soft pastels, glossy balls, a marimba.",
+      "seed": 585,
+      "modifiers": [
+        {
+          "use": "palette",
+          "name": "pastel"
+        }
+      ]
+    },
+    {
+      "name": "Hype edit",
+      "emoji": "🎉",
+      "kind": "vibe",
+      "note": "3-2-1 intro, slow motion into the finish, a bass drop and confetti.",
+      "seed": 200,
+      "modifiers": [
+        "hype"
+      ]
+    }
+  ]
+}
